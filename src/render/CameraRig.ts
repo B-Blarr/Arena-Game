@@ -4,6 +4,7 @@ import { clamp, damp } from '../utils/math';
 const BASE_FOV = 55;
 const DASH_FOV_KICK = 7;
 const OFFSET = new Vector3(0, 24, 14);
+const LOOKAHEAD_DIST = 2.5;
 const MAX_SHAKE_OFFSET = 0.35;
 const MAX_SHAKE_ROLL = (1.5 * Math.PI) / 180;
 const TRAUMA_DECAY = 1.6;
@@ -13,8 +14,9 @@ const TRAUMA_GAIN_PER_WINDOW = 0.5;
 const lookTarget = new Vector3();
 
 /**
- * Kamera leicht schraeg von oben/hinten, weiches Follow mit Lookahead,
- * Trauma-basiertes Screenshake (Staerke = trauma²) und FOV-Kick beim Dash.
+ * Kamera leicht schraeg von oben/hinten, weiches Follow mit Lookahead
+ * (friert beim Stillstand ein statt zurueckzugleiten), Trauma-basiertes
+ * Screenshake (Staerke = trauma²) und FOV-Kick beim Dash.
  * Laeuft komplett auf Echtzeit (rawDt) — bleibt auch im Hitstop weich.
  */
 export class CameraRig {
@@ -59,12 +61,14 @@ export class CameraRig {
   }
 
   update(rawDt: number, targetX: number, targetZ: number, velX: number, velZ: number): void {
-    // Lookahead in Bewegungsrichtung, selbst geglaettet
+    // Lookahead in Bewegungsrichtung, selbst geglaettet — aber NUR waehrend
+    // der Bewegung. Beim Stillstand friert er ein: das Zurueckgleiten zur
+    // Mitte bei ansonsten stehendem Bild wirkte wie stoerendes Nachjustieren.
     const speed = Math.hypot(velX, velZ);
-    const aheadX = speed > 0.1 ? (velX / speed) * 2.5 : 0;
-    const aheadZ = speed > 0.1 ? (velZ / speed) * 2.5 : 0;
-    this.lookaheadX = damp(this.lookaheadX, aheadX, 3, rawDt);
-    this.lookaheadZ = damp(this.lookaheadZ, aheadZ, 3, rawDt);
+    if (speed > 0.1) {
+      this.lookaheadX = damp(this.lookaheadX, (velX / speed) * LOOKAHEAD_DIST, 3, rawDt);
+      this.lookaheadZ = damp(this.lookaheadZ, (velZ / speed) * LOOKAHEAD_DIST, 3, rawDt);
+    }
 
     this.followX = damp(this.followX, targetX + this.lookaheadX, 8, rawDt);
     this.followZ = damp(this.followZ, targetZ + this.lookaheadZ, 8, rawDt);
