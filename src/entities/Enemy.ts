@@ -1,4 +1,4 @@
-import { ENEMIES, type EnemyDef } from '../config/enemies';
+import { AFFIX_SHIELD, ELITE, ENEMIES, ENEMY_PHANTOM, PHANTOM_AI, type EnemyDef } from '../config/enemies';
 
 /**
  * Gegner als flaches, poolbares Daten-Struct. Die Optik (InstancedMesh)
@@ -37,6 +37,14 @@ export interface Enemy {
   dashHitToken: number;
   /** Nova-Ketten-Tiefe: von welcher Explosions-Generation getroffen. */
   novaDepth: number;
+  /** Elite-Affix: 0 = kein Elite, 1 = Schild, 2 = Wut (dient auch als Elite-Flag). */
+  eliteAffix: number;
+  /** Elite-Schild: 1 = naechster Treffer wird nullifiziert. */
+  shieldHp: number;
+  /** Kern-Dieb: Anzahl gefressener Kerne. */
+  carriedCores: number;
+  /** Dieb entkommen: despawnt OHNE Kill-Pipeline (kein Loot/Combo/Nova). */
+  escaped: boolean;
   yRot: number;
   rotSpeed: number;
   bobPhase: number;
@@ -50,6 +58,7 @@ export function makeEnemy(): Enemy {
     flashTimer: 0, scalePop: 0, slowTimer: 0, slowFactor: 1,
     fireTimer: 0, telegraphTimer: 0, spawnProtection: 0,
     orbCooldown: 0, dashHitToken: -1, novaDepth: 0,
+    eliteAffix: 0, shieldHp: 0, carriedCores: 0, escaped: false,
     yRot: 0, rotSpeed: 0, bobPhase: 0,
   };
 }
@@ -89,13 +98,32 @@ export function initEnemy(
   e.scalePop = 0;
   e.slowTimer = 0;
   e.slowFactor = 1;
-  e.fireTimer = 1 + Math.random() * 1.5;
+  // Phantom: Blink-Timer deterministisch (uid-gestaffelt) — der Teleport ist
+  // Gameplay, kein Kosmetik-Jitter, und darf den Daily Seed nicht brechen.
+  e.fireTimer = type === ENEMY_PHANTOM
+    ? PHANTOM_AI.blinkInterval * (0.6 + 0.15 * (uid % 4))
+    : 1 + Math.random() * 1.5;
   e.telegraphTimer = 0;
   e.spawnProtection = 0;
   e.orbCooldown = 0;
   e.dashHitToken = -1;
   e.novaDepth = 0;
+  e.eliteAffix = 0;
+  e.shieldHp = 0;
+  e.carriedCores = 0;
+  e.escaped = false;
   e.yRot = Math.random() * Math.PI * 2;
   e.rotSpeed = (Math.random() - 0.5) * 3;
   e.bobPhase = Math.random() * Math.PI * 2;
+}
+
+/** Macht einen frisch initialisierten Gegner zur Elite-Variante. */
+export function applyElite(e: Enemy, affix: number): void {
+  e.maxHp = Math.round(e.maxHp * ELITE.hpMult);
+  e.hp = e.maxHp;
+  e.damage = Math.round(e.damage * ELITE.damageMult);
+  e.points = Math.round(e.points * ELITE.pointsMult);
+  e.radius *= ELITE.radiusMult;
+  e.eliteAffix = affix;
+  e.shieldHp = affix === AFFIX_SHIELD ? 1 : 0;
 }

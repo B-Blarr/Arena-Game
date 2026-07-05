@@ -34,7 +34,7 @@ export class Sfx {
         else this.magnet();
       }),
       events.on('explosion', () => this.explosion()),
-      events.on('upgradeChosen', () => this.upgrade()),
+      events.on('upgradeChosen', (e) => (e.rarity === 'legendary' ? this.legendaryChosen() : this.upgrade())),
       events.on('waveStarted', (e) => (e.isBossWave ? this.bossIntro() : this.waveStart())),
       events.on('waveCleared', () => this.fanfare()),
       events.on('bossTelegraph', () => this.warning()),
@@ -43,6 +43,17 @@ export class Sfx {
       events.on('playerRevived', () => this.revive()),
       events.on('uiHover', () => this.uiHover()),
       events.on('uiClick', () => this.uiClick()),
+      // Neue Inhalte
+      events.on('legendaryRevealed', () => this.legendaryFanfare()),
+      events.on('orbitalStrike', () => this.orbitalZap()),
+      events.on('enemyFuse', () => this.fuseWarning()),
+      events.on('eliteSpawned', () => this.eliteSting()),
+      events.on('eliteShieldBroken', () => this.shieldBreak()),
+      events.on('goldenWave', () => this.goldenFanfare()),
+      events.on('capsuleIncoming', () => this.capsuleSting()),
+      events.on('capsuleReward', () => this.reward()),
+      events.on('coreStolen', () => this.stolenBlip()),
+      events.on('thiefEscaped', () => this.thiefWhoosh()),
     );
   }
 
@@ -256,6 +267,94 @@ export class Sfx {
     if (!this.engine.acquireVoice('uiclick', 60, 0.08)) return;
     this.tone('sine', 880, 880, 0.06, 0.18);
     this.noise(0.03, 0.08, 'highpass', 4000, 4000);
+  }
+
+  // ------------------------------------------------ Neue Inhalte
+
+  /** Goldene Fanfare beim Aufdecken einer legendaeren Karte. */
+  private legendaryFanfare(): void {
+    if (!this.engine.acquireVoice('legendary', 2000, 1.6)) return;
+    const notes = [523.25, 659.25, 783.99, 1046.5, 1318.5]; // C5-E5-G5-C6-E6
+    notes.forEach((f, i) => {
+      const dur = i === notes.length - 1 ? 0.5 : 0.14;
+      this.tone('triangle', f, f, dur, 0.32, 0.45 + i * 0.13);
+      this.tone('square', f, f, dur, 0.08, 0.45 + i * 0.13);
+    });
+    // Glitzer-Schimmer obendrauf
+    this.noise(0.5, 0.1, 'highpass', 7000, 7000, 1, 1.0);
+  }
+
+  /** Fettere Wahl-Bestaetigung fuer Legendaere. */
+  private legendaryChosen(): void {
+    if (!this.engine.acquireVoice('legchosen', 500, 1.0)) return;
+    this.tone('triangle', 523.25, 523.25, 0.5, 0.32);
+    this.tone('triangle', 784, 784, 0.5, 0.28, 0.08);
+    this.tone('triangle', 1046.5, 1046.5, 0.6, 0.24, 0.16);
+    this.tone('sine', 130, 65, 0.4, 0.3);
+  }
+
+  /** Orbital-Laser-Einschlag: Zap von oben. */
+  private orbitalZap(): void {
+    if (!this.engine.acquireVoice('orbital', 300, 0.5)) return;
+    this.tone('sawtooth', 2400, 200, 0.25, 0.28);
+    this.noise(0.3, 0.3, 'lowpass', 4000, 300);
+  }
+
+  /** Bomber-Zuendung: tiefes, draengendes Doppel-Ticken. */
+  private fuseWarning(): void {
+    if (!this.engine.acquireVoice('fuse', 400, 0.4)) return;
+    this.tone('square', 420, 420, 0.09, 0.16);
+    this.tone('square', 420, 420, 0.09, 0.16, 0.22);
+    this.tone('square', 520, 520, 0.09, 0.18, 0.5);
+  }
+
+  /** Elite betritt die Arena: kurzes dunkles Signal. */
+  private eliteSting(): void {
+    if (!this.engine.acquireVoice('elite', 600, 0.6)) return;
+    this.tone('sawtooth', 160, 320, 0.25, 0.22);
+    this.tone('square', 640, 640, 0.1, 0.12, 0.2);
+  }
+
+  /** Elite-Schild zerbricht: Klirren. */
+  private shieldBreak(): void {
+    if (!this.engine.acquireVoice('shield', 200, 0.3)) return;
+    this.noise(0.15, 0.3, 'highpass', 3500, 3500, 3);
+    this.tone('triangle', 1800, 900, 0.12, 0.2);
+  }
+
+  /** Goldene Welle: kurze Gold-Fanfare. */
+  private goldenFanfare(): void {
+    if (!this.engine.acquireVoice('golden', 1000, 1.0)) return;
+    const notes = [659.25, 783.99, 1046.5]; // E5-G5-C6
+    notes.forEach((f, i) => this.tone('triangle', f, f, 0.16, 0.3, i * 0.11));
+    this.noise(0.3, 0.08, 'highpass', 6000, 6000, 1, 0.35);
+  }
+
+  /** Versorgungskapsel im Anflug. */
+  private capsuleSting(): void {
+    if (!this.engine.acquireVoice('capsule', 800, 0.7)) return;
+    this.tone('sine', 660, 990, 0.2, 0.22);
+    this.tone('sine', 990, 990, 0.15, 0.16, 0.22);
+  }
+
+  /** Kapsel-Belohnung eingesammelt. */
+  private reward(): void {
+    if (!this.engine.acquireVoice('reward', 300, 0.6)) return;
+    const notes = [523.25, 659.25, 1046.5];
+    notes.forEach((f, i) => this.tone('triangle', f, f, 0.14, 0.28, i * 0.08));
+  }
+
+  /** Dieb frisst einen Kern: tiefer, "falscher" Blip. */
+  private stolenBlip(): void {
+    if (!this.engine.acquireVoice('stolen', 150, 0.15)) return;
+    this.tone('sine', 440, 220, 0.12, 0.2);
+  }
+
+  /** Dieb entkommt: absteigender Whoosh. */
+  private thiefWhoosh(): void {
+    if (!this.engine.acquireVoice('thief', 500, 0.5)) return;
+    this.noise(0.35, 0.25, 'bandpass', 2600, 300, 2);
+    this.tone('sine', 600, 150, 0.3, 0.15);
   }
 
   /** Punktzahl-Countup-Tick im Game-Over-Screen. */

@@ -7,16 +7,20 @@ import {
   DirectionalLight,
   FogExp2,
   HemisphereLight,
+  InstancedMesh,
   Material,
+  Matrix4,
   Mesh,
   MeshBasicMaterial,
   MeshStandardMaterial,
   PlaneGeometry,
   Points,
   PointsMaterial,
+  Quaternion,
   RepeatWrapping,
   Scene,
   TorusGeometry,
+  Vector3,
   AdditiveBlending,
   BoxGeometry,
 } from 'three';
@@ -24,24 +28,79 @@ import { ARENA_RADIUS } from '../config/balance';
 import { Rng } from '../core/Rng';
 
 /**
- * Statische Arena: Neon-Grid-Boden (prozedurale CanvasTexture, kein
- * Asset-Download), leuchtende Ring-Wand, Pylonen, Sternenhimmel, Fog.
- * Wird einmalig gebaut und ueberlebt alle Run-Restarts.
+ * Arena-Biome: alle 5 Wellen wechselt die Farbstimmung. Hintergruende
+ * bleiben fast schwarz und meiden Rot/Orangerot — Rot ist exklusiv die
+ * Gefahrenfarbe (Gegner-Projektile/Telegraphs) und muss immer knallen.
+ */
+interface BiomeDef {
+  bg: number;
+  grid: number;
+  gridIntensity: number;
+  wall: number;
+  ring: number;
+  pylon: number;
+}
+
+const BIOMES: readonly BiomeDef[] = [
+  // W1-5 "Cyan-Nacht" (Klassiker)
+  { bg: 0x050510, grid: 0x00e5ff, gridIntensity: 0.5, wall: 0x00e5ff, ring: 0x00e5ff, pylon: 0xff3df2 },
+  // W6-10 "Magenta-Daemmerung"
+  { bg: 0x0c0514, grid: 0xe03df2, gridIntensity: 0.45, wall: 0xff3df2, ring: 0xff3df2, pylon: 0x00e5ff },
+  // W11-15 "Matrix-Smaragd" (kuehler als das Schwarm-Lime)
+  { bg: 0x02100c, grid: 0x00ff9c, gridIntensity: 0.5, wall: 0x00ff9c, ring: 0x00ff9c, pylon: 0xffc83d },
+  // W16-20 "Blau-Eis" (einzige gegnerfreie Hue)
+  { bg: 0x040918, grid: 0x4d8dff, gridIntensity: 0.5, wall: 0x4d8dff, ring: 0x4d8dff, pylon: 0xffffff },
+  // W21+ "Gold-Inferno" (Grid gedimmt wegen Splitter-Gelb)
+  { bg: 0x120a04, grid: 0xffc83d, gridIntensity: 0.4, wall: 0xffc83d, ring: 0xffc83d, pylon: 0xff3df2 },
+];
+
+const FOG_DENSITY = 0.018;
+const FOG_DENSITY_BOSS = 0.024;
+
+/**
+ * Arena: Neon-Grid-Boden (prozedurale CanvasTexture, kein Asset-Download),
+ * leuchtende Ring-Wand, instanzierte Pylonen, rotierender Sternenhimmel, Fog.
+ * Wird einmalig gebaut und ueberlebt alle Run-Restarts; Biome faerben nur
+ * die vorhandenen Materialien um (weicher Lerp in update()).
  */
 export class Arena {
   private readonly disposables: Array<BufferGeometry | Material | CanvasTexture> = [];
   private floorMat!: MeshStandardMaterial;
+  private wallMat!: MeshBasicMaterial;
+  private ringMat!: MeshBasicMaterial;
+  private pylonMat!: MeshBasicMaterial;
+  private pylonMesh!: InstancedMesh;
+  private stars!: Points;
+  private readonly bgColor = new Color(0x050510);
+  private readonly fog = new FogExp2(0x050510, FOG_DENSITY);
   private beatPulse = 0;
 
+  // Lerp-Ziele (vorallokiert, keine Frame-Allokationen)
+  private readonly tBg = new Color();
+  private readonly tGrid = new Color();
+  private readonly tWall = new Color();
+  private readonly tRing = new Color();
+  private readonly tPylon = new Color();
+  private tFogDensity = FOG_DENSITY;
+  private tGridIntensity = 0.5;
+  private gridIntensity = 0.5;
+
+  private currentBiome = 0;
+  private bossMode = false;
+
   constructor(scene: Scene) {
-    scene.background = new Color(0x050510);
-    scene.fog = new FogExp2(0x050510, 0.018);
+    scene.background = this.bgColor;
+    scene.fog = this.fog;
 
     this.buildLights(scene);
     this.buildFloor(scene);
     this.buildWall(scene);
     this.buildPylons(scene);
     this.buildStars(scene);
+
+    this.setBiome(0, false);
+    // Startzustand sofort einnehmen (kein Einblend-Lerp beim App-Start)
+    this.snapToTargets();
   }
 
   private track<T extends BufferGeometry | Material | CanvasTexture>(d: T): T {
@@ -57,6 +116,7 @@ export class Arena {
     scene.add(hemi, dir);
   }
 
+  /** Grid in Weiss gebacken — die Faerbung uebernimmt floorMat.emissive (Biome). */
   private makeGridTexture(): CanvasTexture {
     const size = 512;
     const canvas = document.createElement('canvas');
@@ -72,19 +132,19 @@ export class Arena {
         const p = i * step;
         // weicher Glow unter der Linie
         const grad = ctx.createLinearGradient(p - 8, 0, p + 8, 0);
-        grad.addColorStop(0, 'rgba(0,229,255,0)');
-        grad.addColorStop(0.5, 'rgba(0,229,255,0.35)');
-        grad.addColorStop(1, 'rgba(0,229,255,0)');
+        grad.addColorStop(0, 'rgba(255,255,255,0)');
+        grad.addColorStop(0.5, 'rgba(255,255,255,0.35)');
+        grad.addColorStop(1, 'rgba(255,255,255,0)');
         ctx.fillStyle = grad;
         ctx.fillRect(p - 8, 0, 16, size);
         const gradH = ctx.createLinearGradient(0, p - 8, 0, p + 8);
-        gradH.addColorStop(0, 'rgba(0,229,255,0)');
-        gradH.addColorStop(0.5, 'rgba(0,229,255,0.35)');
-        gradH.addColorStop(1, 'rgba(0,229,255,0)');
+        gradH.addColorStop(0, 'rgba(255,255,255,0)');
+        gradH.addColorStop(0.5, 'rgba(255,255,255,0.35)');
+        gradH.addColorStop(1, 'rgba(255,255,255,0)');
         ctx.fillStyle = gradH;
         ctx.fillRect(0, p - 8, size, 16);
         // scharfe Kernlinie
-        ctx.fillStyle = 'rgba(120,245,255,0.9)';
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
         ctx.fillRect(p - 1, 0, 2, size);
         ctx.fillRect(0, p - 1, size, 2);
       }
@@ -101,13 +161,13 @@ export class Arena {
     const gridTex = this.makeGridTexture();
     const geo = this.track(new PlaneGeometry(90, 90));
     // Grid liegt in der Emissive-Map: der Puls steuert emissiveIntensity,
-    // die Grundflaeche bleibt dunkel (bloomt nicht).
+    // emissive-Farbe = Biome-Tint, die Grundflaeche bleibt dunkel.
     this.floorMat = this.track(
       new MeshStandardMaterial({
         color: 0x0b0e1e,
         roughness: 0.85,
         metalness: 0.1,
-        emissive: 0xffffff,
+        emissive: 0x00e5ff,
         emissiveMap: gridTex,
         emissiveIntensity: 0.5,
       }),
@@ -121,7 +181,7 @@ export class Arena {
   private buildWall(scene: Scene): void {
     // Transluzente Energie-Wand
     const wallGeo = this.track(new CylinderGeometry(ARENA_RADIUS, ARENA_RADIUS, 2.4, 64, 1, true));
-    const wallMat = this.track(
+    this.wallMat = this.track(
       new MeshBasicMaterial({
         color: new Color(0x00e5ff).multiplyScalar(0.6),
         transparent: true,
@@ -129,44 +189,54 @@ export class Arena {
         blending: AdditiveBlending,
         depthWrite: false,
       }),
-    );
-    const wall = new Mesh(wallGeo, wallMat);
+    ) as MeshBasicMaterial;
+    const wall = new Mesh(wallGeo, this.wallMat);
     wall.position.y = 1.2;
     scene.add(wall);
 
     // Leuchtende Neon-Ringe oben/unten
     const ringGeo = this.track(new TorusGeometry(ARENA_RADIUS, 0.09, 8, 96));
-    const ringMat = this.track(
+    this.ringMat = this.track(
       new MeshBasicMaterial({ color: new Color(0x00e5ff).multiplyScalar(2.2) }),
-    );
-    const bottom = new Mesh(ringGeo, ringMat);
+    ) as MeshBasicMaterial;
+    const bottom = new Mesh(ringGeo, this.ringMat);
     bottom.rotation.x = Math.PI / 2;
     bottom.position.y = 0.05;
-    const top = new Mesh(ringGeo, ringMat);
+    const top = new Mesh(ringGeo, this.ringMat);
     top.rotation.x = Math.PI / 2;
     top.position.y = 2.4;
     scene.add(bottom, top);
   }
 
+  /** 10 Pylonen als EIN InstancedMesh (statt 10 Draw Calls). */
   private buildPylons(scene: Scene): void {
     const geo = this.track(new BoxGeometry(0.5, 1, 0.5));
-    const mat = this.track(
+    this.pylonMat = this.track(
       new MeshBasicMaterial({ color: new Color(0xff3df2).multiplyScalar(1.6) }),
-    );
+    ) as MeshBasicMaterial;
     const rng = new Rng(1337);
     const count = 10;
+    this.pylonMesh = new InstancedMesh(geo, this.pylonMat, count);
+    const mat4 = new Matrix4();
+    const pos = new Vector3();
+    const quat = new Quaternion();
+    const scl = new Vector3();
     for (let i = 0; i < count; i++) {
       const angle = (i / count) * Math.PI * 2;
       const h = 1.5 + rng.next() * 3;
-      const pylon = new Mesh(geo, mat);
-      pylon.scale.y = h;
-      pylon.position.set(
+      pos.set(
         Math.cos(angle) * (ARENA_RADIUS + 2.5),
         h / 2,
         Math.sin(angle) * (ARENA_RADIUS + 2.5),
       );
-      scene.add(pylon);
+      scl.set(1, h, 1);
+      mat4.compose(pos, quat, scl);
+      this.pylonMesh.setMatrixAt(i, mat4);
     }
+    // Matrizen sind statisch — kein needsUpdate im Loop
+    this.pylonMesh.instanceMatrix.needsUpdate = true;
+    this.pylonMesh.frustumCulled = false;
+    scene.add(this.pylonMesh);
   }
 
   private buildStars(scene: Scene): void {
@@ -204,21 +274,82 @@ export class Arena {
         fog: false,
       }),
     );
-    const stars = new Points(geo, mat);
-    scene.add(stars);
+    this.stars = new Points(geo, mat);
+    scene.add(this.stars);
   }
 
-  /** Beat-Puls vom Musik-Sequencer: Grid leuchtet kurz auf. */
-  pulse(): void {
-    this.beatPulse = 1;
+  // ---------------------------------------------------------- Biomes
+
+  /** Wird bei waveStarted gerufen: Biome-Index = floor((wave-1)/5) % 5. */
+  setBiome(index: number, isBossWave: boolean): void {
+    this.currentBiome = ((index % BIOMES.length) + BIOMES.length) % BIOMES.length;
+    this.bossMode = isBossWave;
+    this.refreshTargets();
+  }
+
+  /** Boss-Dramatik an/aus (bossDied -> aus), ohne das Biome zu wechseln. */
+  setBossMode(on: boolean): void {
+    this.bossMode = on;
+    this.refreshTargets();
+  }
+
+  private refreshTargets(): void {
+    const b = BIOMES[this.currentBiome] as BiomeDef;
+    this.tBg.set(b.bg);
+    this.tGrid.set(b.grid);
+    this.tWall.set(b.wall).multiplyScalar(0.6);
+    this.tRing.set(b.ring).multiplyScalar(2.2);
+    this.tPylon.set(b.pylon).multiplyScalar(1.6);
+    this.tFogDensity = FOG_DENSITY;
+    this.tGridIntensity = b.gridIntensity;
+    if (this.bossMode) {
+      // dunkler, dichter Nebel, weisse Ringe — kein Strobe, nur Lerp
+      this.tBg.lerp(new Color(0x000000), 0.55);
+      this.tFogDensity = FOG_DENSITY_BOSS;
+      this.tGridIntensity = Math.min(this.tGridIntensity, 0.35);
+      this.tRing.set(0xffffff).multiplyScalar(2.0);
+    }
+  }
+
+  /** Zielwerte sofort einnehmen (nur beim App-Start / Run-Reset). */
+  snapToTargets(): void {
+    this.bgColor.copy(this.tBg);
+    this.fog.color.copy(this.tBg);
+    this.floorMat.emissive.copy(this.tGrid);
+    this.wallMat.color.copy(this.tWall);
+    this.ringMat.color.copy(this.tRing);
+    this.pylonMat.color.copy(this.tPylon);
+    this.fog.density = this.tFogDensity;
+    this.gridIntensity = this.tGridIntensity;
+  }
+
+  /** Beat-Puls vom Musik-Sequencer; bossStomp ruft mit strength 1.5. */
+  pulse(strength = 1): void {
+    this.beatPulse = Math.max(this.beatPulse, Math.min(1.5, strength));
   }
 
   update(rawDt: number): void {
     if (this.beatPulse > 0) this.beatPulse = Math.max(0, this.beatPulse - rawDt * 3);
-    this.floorMat.emissiveIntensity = 0.5 + this.beatPulse * 0.25;
+
+    // Weicher Biome-Uebergang (~1.5-2 s), laeuft in Echtzeit weiter
+    const k = 1 - Math.exp(-2.2 * rawDt);
+    this.bgColor.lerp(this.tBg, k);
+    this.fog.color.copy(this.bgColor);
+    this.floorMat.emissive.lerp(this.tGrid, k);
+    this.wallMat.color.lerp(this.tWall, k);
+    this.ringMat.color.lerp(this.tRing, k);
+    this.pylonMat.color.lerp(this.tPylon, k);
+    this.fog.density += (this.tFogDensity - this.fog.density) * k;
+    this.gridIntensity += (this.tGridIntensity - this.gridIntensity) * k;
+
+    this.floorMat.emissiveIntensity = this.gridIntensity + this.beatPulse * 0.25;
+
+    // Langsame Himmelsdrehung
+    this.stars.rotation.y += rawDt * 0.01;
   }
 
   dispose(): void {
+    this.pylonMesh.dispose();
     for (const d of this.disposables) d.dispose();
     this.disposables.length = 0;
   }

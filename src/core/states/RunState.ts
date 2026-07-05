@@ -51,6 +51,8 @@ export class RunState implements GameState {
     g.waves.reset();
     g.score.reset();
     g.pickupSystem.reset();
+    g.surprise.reset();
+    g.runStats.reset();
     g.upgrades.reset();
     g.particles.reset();
     g.instRenderer.reset();
@@ -95,6 +97,8 @@ export class RunState implements GameState {
     g.ui.hidePrompt();
     g.hud.hide();
     g.time.reset();
+    // Tod WAEHREND eines Bosskampfs: Arena nicht im Boss-Look zuruecklassen
+    g.arena.setBossMode(false);
     g.audioEngine.duckMusic(false);
     this.paused = false;
   }
@@ -102,6 +106,8 @@ export class RunState implements GameState {
   private startWave(w: number): void {
     const g = this.game;
     this.tookDamageThisWave = false;
+    // VOR waves.startWave: Spawns/Scaling muessen das Golden-Flag schon sehen
+    g.surprise.rollForWave(w);
     g.waves.startWave(w);
     g.music.setWave(w);
     g.music.setBossMode(isBossWave(w));
@@ -170,6 +176,7 @@ export class RunState implements GameState {
     g.collision.update(dt);
     g.combat.update(dt, input);
     g.pickupSystem.update(dt);
+    g.surprise.update(dt);
     g.score.update(dt);
     g.particles.update(dt);
 
@@ -335,7 +342,7 @@ export class RunState implements GameState {
     const g = this.game;
     const p = g.world.player;
     g.arena.update(rawDt);
-    g.instRenderer.render(g.world, alpha, rawDt);
+    g.instRenderer.render(g.world, alpha, rawDt, g.time.scale > 0);
     g.particles.render();
     g.cameraRig.update(rawDt, p.x, p.z, p.velX, p.velZ);
     g.hud.update(rawDt, g.world, g.score, g.world.enemies.count);

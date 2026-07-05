@@ -52,6 +52,9 @@ export const RNG_STREAM_DROPS = 0x85ebca6b;
 /** Boss-Beschwoerungen: eigener Stream — ihr spielerabhaengiger Verbrauch
  *  darf den Wellen-Plan (rngWaves) im Daily Seed nicht verschieben. */
 export const RNG_STREAM_SUMMONS = 0xc2b2ae35;
+/** Ueberraschungs-Events (Goldene Welle, Versorgungskapsel): eigener Stream
+ *  mit FESTEM Verbrauch pro Wellenstart — Daily Seed bleibt stabil. */
+export const RNG_STREAM_EVENTS = 0x27d4eb2f;
 
 export function makeRng(seed: number, stream: number): Rng {
   return new Rng((seed ^ stream) >>> 0);

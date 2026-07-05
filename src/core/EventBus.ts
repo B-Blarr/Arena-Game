@@ -10,6 +10,20 @@ export interface GameEvents {
   enemyKilled: { x: number; z: number; enemyType: number; points: number; scale: number };
   explosion: { x: number; z: number; radius: number; color: number };
   projectileWallHit: { x: number; z: number };
+  /** Bomber-Zuendung: roter Warn-Ring am Boden. */
+  enemyFuse: { x: number; z: number; radius: number; duration: number };
+  /** Kern-Dieb frisst einen liegenden Kern. */
+  coreStolen: { x: number; z: number; carried: number };
+  /** Kern-Dieb entkommt mitsamt Beute. */
+  thiefEscaped: { x: number; z: number; cores: number };
+  /** Phantom teleportiert zur Flanke. */
+  phantomBlink: { fromX: number; fromZ: number; toX: number; toZ: number };
+  /** Elite-Gegner betritt die Arena. */
+  eliteSpawned: { x: number; z: number; enemyType: number; affix: number };
+  /** Elite-Schild zerbricht am ersten Treffer. */
+  eliteShieldBroken: { x: number; z: number };
+  /** Orbital-Laser (legendaeres Upgrade) schlaegt ein. */
+  orbitalStrike: { x: number; z: number };
 
   // Spieler
   playerHit: { damage: number; hp: number; maxHp: number };
@@ -20,7 +34,7 @@ export interface GameEvents {
   playerRevived: Record<string, never>;
 
   // Boss
-  bossSpawned: { name: string; maxHp: number };
+  bossSpawned: { name: string; maxHp: number; x: number; z: number };
   bossHpChanged: { hp: number; maxHp: number };
   bossPhase: { phase: number };
   bossTelegraph: {
@@ -42,8 +56,14 @@ export interface GameEvents {
   waveCleared: { wave: number; perfect: boolean; bonus: number };
   portalOpened: { x: number; z: number };
 
+  // Ueberraschungen
+  goldenWave: { wave: number };
+  capsuleIncoming: { x: number; z: number };
+  capsuleLanded: { x: number; z: number };
+  capsuleReward: { x: number; z: number; kind: 'cores' | 'hearts' | 'magnet' | 'rapidFire' };
+
   // Pickups
-  pickupCollected: { kind: 'core' | 'heart' | 'magnet'; x: number; z: number; value: number };
+  pickupCollected: { kind: 'core' | 'heart' | 'magnet' | 'capsule'; x: number; z: number; value: number };
 
   // Score / Meta
   scoreChanged: { score: number; delta: number };
@@ -54,7 +74,9 @@ export interface GameEvents {
   // Ablauf / UI
   runStarted: Record<string, never>;
   gameOver: { score: number; wave: number; coresEarned: number; isRecord: boolean };
-  upgradeChosen: { id: string };
+  upgradeChosen: { id: string; rarity: string };
+  /** Ein legendaeres Upgrade liegt im Angebot (Zeremonie/Fanfare). */
+  legendaryRevealed: { id: string };
   uiHover: Record<string, never>;
   uiClick: Record<string, never>;
   musicBeat: { step: number };

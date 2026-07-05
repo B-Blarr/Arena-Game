@@ -17,7 +17,9 @@ import { CombatSystem } from '../systems/CombatSystem';
 import { JuiceDirector } from '../systems/JuiceDirector';
 import { ParticleSystem } from '../systems/ParticleSystem';
 import { PickupSystem } from '../systems/PickupSystem';
+import { RunStats } from '../systems/RunStats';
 import { ScoreSystem } from '../systems/ScoreSystem';
+import { SurpriseDirector } from '../systems/SurpriseDirector';
 import { UpgradeSystem } from '../systems/UpgradeSystem';
 import { WaveSystem } from '../systems/WaveSystem';
 import { Hud } from '../ui/Hud';
@@ -68,6 +70,8 @@ export class Game {
   readonly waves: WaveSystem;
   readonly score: ScoreSystem;
   readonly upgrades: UpgradeSystem;
+  readonly surprise: SurpriseDirector;
+  readonly runStats: RunStats;
   readonly juice: JuiceDirector;
 
   readonly ui: UiManager;
@@ -110,7 +114,9 @@ export class Game {
     this.waves = new WaveSystem(this.world, this.events);
     this.score = new ScoreSystem(this.events);
     this.upgrades = new UpgradeSystem(this.world, this.events, this.score);
-    this.juice = new JuiceDirector(this.events, this.time, this.cameraRig, this.world);
+    this.surprise = new SurpriseDirector(this.world, this.events, this.pickupSystem);
+    this.runStats = new RunStats(this.events);
+    this.juice = new JuiceDirector(this.events, this.time, this.cameraRig, this.world, this.renderer);
 
     // UI
     this.ui = new UiManager(this.events);
@@ -204,6 +210,13 @@ export class Game {
       this.events.on('enemyKilled', () => {
         this.save.data.stats.totalKills++;
       }),
+      // Arena-Biome: alle 5 Wellen neue Farbstimmung, Boss-Wellen dunkler
+      this.events.on('waveStarted', (e) => {
+        this.arena.setBiome(Math.floor((e.wave - 1) / 5), e.isBossWave);
+      }),
+      this.events.on('bossDied', () => this.arena.setBossMode(false)),
+      // Boss-Stampfer laesst das Boden-Grid aufleuchten
+      this.events.on('bossStomp', () => this.arena.pulse(1.5)),
     );
   }
 
@@ -218,6 +231,10 @@ export class Game {
     this.audioEngine.setVolumes(s.masterVolume, s.sfxVolume, s.musicVolume, s.muted);
     this.popups.damageNumbersEnabled = s.damageNumbers;
     this.cameraRig.fxIntensity = s.reduceFx ? 0.4 : 1;
+    this.renderer.fxIntensity = s.reduceFx ? 0.4 : 1;
+    this.instRenderer.fxIntensity = s.reduceFx ? 0.4 : 1;
+    // CSS-Effekte (Shimmer/Pulse) daempfen sich ueber diese Klasse selbst
+    document.body.classList.toggle('reduce-fx', s.reduceFx);
     this.combat.autoAimEnabled = s.autoAim;
     this.hud.setMuted(s.muted);
   }
@@ -268,6 +285,10 @@ export class Game {
       coresEarned,
       totalCores: save.cores,
       teaser: this.buildTeaser(),
+      dps: this.runStats.dps(this.world.elapsed),
+      strongestHit: this.runStats.strongestHit,
+      maxCombo: this.runStats.maxComboMultiplier,
+      build: this.runStats.build(this.world.player),
     };
     this.events.emit('gameOver', { score: finalScore, wave, coresEarned, isRecord });
     this.fsm.change(this.gameOverState);
@@ -306,7 +327,7 @@ export class Game {
   /** Hintergrund-Rendering fuer Menue/Shop/GameOver. */
   renderBackdrop(alpha: number, rawDt: number): void {
     this.arena.update(rawDt);
-    this.instRenderer.render(this.world, alpha, rawDt);
+    this.instRenderer.render(this.world, alpha, rawDt, false);
     this.particles.render();
     const p = this.world.player;
     this.cameraRig.update(rawDt, p.x, p.z, 0, 0);
@@ -321,6 +342,7 @@ export class Game {
     this.sfx.dispose();
     this.audioEngine.dispose();
     this.juice.dispose();
+    this.runStats.dispose();
     this.score.dispose();
     this.particles.dispose();
     this.instRenderer.dispose();

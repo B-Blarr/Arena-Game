@@ -1,4 +1,5 @@
 import { ARENA_RADIUS, PLAYER } from '../config/balance';
+import { ENEMY_BOMBER } from '../config/enemies';
 import { UPGRADE_VALUES as UV } from '../config/upgrades';
 import type { EventBus } from '../core/EventBus';
 import type { World } from '../core/World';
@@ -146,7 +147,9 @@ export class CollisionSystem {
       const rr = boss.def.radius + proj.radius;
       if (segPointDist2(proj.prevX, proj.prevZ, proj.x, proj.z, boss.x, boss.z) < rr * rr) {
         const crit = Math.random() < world.player.stats.critChance;
-        const damage = Math.round(proj.damage * (crit ? world.player.stats.critMultiplier : 1));
+        const damage = Math.round(
+          proj.damage * (crit ? world.player.stats.critMultiplier : 1) * world.player.damageBoost,
+        );
         boss.takeDamage(damage, this.events);
         this.events.emit('enemyHit', { x: proj.x, z: proj.z, damage, crit, enemyType: -1 });
         if (proj.pierceLeft > 0) {
@@ -162,7 +165,9 @@ export class CollisionSystem {
         const rr = m.radius + proj.radius;
         if (segPointDist2(proj.prevX, proj.prevZ, proj.x, proj.z, m.x, m.z) < rr * rr) {
           const crit = Math.random() < world.player.stats.critChance;
-          const damage = Math.round(proj.damage * (crit ? world.player.stats.critMultiplier : 1));
+          const damage = Math.round(
+            proj.damage * (crit ? world.player.stats.critMultiplier : 1) * world.player.damageBoost,
+          );
           m.hp -= damage;
           m.flashTimer = 0.08;
           m.scalePop = 0.2;
@@ -262,6 +267,8 @@ export class CollisionSystem {
       if (idx >= this.world.enemies.count) continue;
       const e = this.world.enemies.get(idx);
       if (e.hp <= 0 || e.spawnProtection > 0) continue;
+      // Bomber schadet AUSSCHLIESSLICH per Explosion (damage = Blast-Wert)
+      if (e.type === ENEMY_BOMBER) continue;
       const dx = e.x - p.x;
       const dz = e.z - p.z;
       const rr = e.radius + PLAYER.radius;

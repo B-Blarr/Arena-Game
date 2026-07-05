@@ -10,9 +10,12 @@ export const ENEMY_SWARM = 2;
 export const ENEMY_TANK = 3;
 export const ENEMY_SPLITTER = 4;
 export const ENEMY_SPLITTER_CHILD = 5;
-export const ENEMY_TYPE_COUNT = 6;
+export const ENEMY_BOMBER = 6;
+export const ENEMY_THIEF = 7;
+export const ENEMY_PHANTOM = 8;
+export const ENEMY_TYPE_COUNT = 9;
 
-export type EnemyShape = 'cube' | 'octahedron' | 'tetrahedron' | 'sphere';
+export type EnemyShape = 'cube' | 'octahedron' | 'tetrahedron' | 'sphere' | 'icosahedron';
 
 export interface EnemyDef {
   id: string;
@@ -32,6 +35,8 @@ export interface EnemyDef {
   /** Wellen-Budget: Kosten pro Spawn-Einheit (Schwarm = ganze Gruppe). */
   budgetCost: number;
   minWave: number;
+  /** Auf "Einfach" erst spaeter freigeschaltet (Kindermodus bleibt sanft). */
+  minWaveEasy?: number;
   /** Max. Anteil am Wellen-Budget (1 = unbegrenzt). */
   budgetShare: number;
   groupSize: number;
@@ -73,6 +78,27 @@ export const ENEMIES: readonly EnemyDef[] = [
     hp: 10, speed: 4.5, damage: 5, points: 5, coreChance: 0, mass: 1.3,
     budgetCost: 0, minWave: 999, budgetShare: 0, groupSize: 1, maxAlive: 0,
   },
+  {
+    // Bomber "Zuender": Projektil-Rot = "weg hier!". Schadet NUR per
+    // Explosion (Kontakt-Ausnahme in CollisionSystem), damage = Blast.
+    id: 'bomber', color: 0xff3b30, shape: 'sphere', radius: 0.5, scale: 1.05,
+    hp: 18, speed: 4.2, damage: 26, points: 30, coreChance: 0.12, mass: 1.1,
+    budgetCost: 10, minWave: 6, minWaveEasy: 9, budgetShare: 0.25, groupSize: 1, maxAlive: 4,
+  },
+  {
+    // Kern-Dieb: einziger kalt-heller Gegner, frisst liegende Kerne.
+    id: 'thief', color: 0xdbe4ff, shape: 'icosahedron', radius: 0.45, scale: 0.9,
+    hp: 26, speed: 4.6, damage: 5, points: 40, coreChance: 0, mass: 1.2,
+    // budgetShare 0.25: bei 0.15 wuerde der budgetShare-Deckel (total*share)
+    // den Dieb auf Normal erst ab Welle 6 zulassen — minWave 4 waere tot
+    budgetCost: 12, minWave: 4, minWaveEasy: 8, budgetShare: 0.25, groupSize: 1, maxAlive: 2,
+  },
+  {
+    // Phantom: blinkt zur Flanke — bestraft stures Rueckwaerts-Kiten.
+    id: 'phantom', color: 0xb84dff, shape: 'tetrahedron', radius: 0.5, scale: 1.15,
+    hp: 24, speed: 3.4, damage: 12, points: 35, coreChance: 0.15, mass: 0.8,
+    budgetCost: 11, minWave: 9, minWaveEasy: 12, budgetShare: 0.2, groupSize: 1, maxAlive: 3,
+  },
 ];
 
 /** Verhaltens-Parameter Schuetze. */
@@ -98,3 +124,63 @@ export const SEPARATION = {
   radius: 0.9,
   strength: 18,
 };
+
+/** Bomber ("Zuender"): rennt heran, stoppt, zuendet nach Telegraph. */
+export const BOMBER_AI = {
+  /** Ab dieser Distanz zum Spieler startet die Zuendung. */
+  triggerRange: 2.4,
+  fuseTime: 0.9,
+  /** Auf "Einfach" laengere Zuendschnur — mehr Zeit zum Weglaufen. */
+  easyFuseMult: 1.5,
+  blastRadius: 3.2,
+  /** Explosion trifft andere Gegner doppelt so hart wie den Spieler. */
+  enemyDamageMult: 2.0,
+};
+
+/** Kern-Dieb: frisst liegende Kerne und flieht mit der Beute. */
+export const THIEF_AI = {
+  stealDistance: 0.6,
+  maxCarry: 4,
+  maxCarryEasy: 2,
+  /** Fluchtzeit ab erstem Diebstahl, danach entkommt er. */
+  escapeTime: 6,
+  escapeTimeEasy: 9,
+  /** Ohne Kerne: seitlicher Orbit in dieser Distanz (wie Schuetze). */
+  orbitRange: 8,
+  bonusCoresOnKill: 1,
+};
+
+/** Phantom: blinkt zur Flanke, wenn der Spieler zu nah kommt. */
+export const PHANTOM_AI = {
+  blinkInterval: 2.8,
+  blinkRange: 5,
+  blinkDistance: 4,
+};
+
+/** Elite-Varianten: seltene, sichtbar staerkere Einzel-Gegner mit 1 Affix. */
+export const ELITE = {
+  minWave: 6,
+  minWaveEasy: 9,
+  /** Chance pro gekaufter Einheit: base + perWave * (Welle - minWave), gedeckelt. */
+  baseChance: 0.05,
+  chancePerWave: 0.01,
+  maxChance: 0.15,
+  maxPerWave: 2,
+  hpMult: 2.2,
+  damageMult: 1.3,
+  pointsMult: 3,
+  visualScale: 1.35,
+  radiusMult: 1.2,
+  /** Affix "Wut": unter 50 % HP Tempo-Schub. */
+  rageThreshold: 0.5,
+  rageSpeedMult: 1.45,
+  dropCores: 2,
+  dropHeartChance: 0.35,
+  /** Nur diese Typen koennen Elite werden (Indizes). */
+  eligible: [ENEMY_CHASER, ENEMY_SHOOTER, ENEMY_TANK, ENEMY_SPLITTER] as readonly number[],
+};
+
+/** Elite-Affixe (Werte im Enemy-Struct-Feld eliteAffix). */
+export const AFFIX_NONE = 0;
+export const AFFIX_SHIELD = 1;
+export const AFFIX_RAGE = 2;

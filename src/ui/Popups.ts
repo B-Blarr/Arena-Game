@@ -68,13 +68,37 @@ export class Popups {
         this.banner(e.perfect ? `${STR.waveCleared} ${STR.wavePerfect}` : STR.waveCleared, 'gold-banner');
       }),
       events.on('waveStarted', (e) => {
-        if (!e.isBossWave) this.banner(`${STR.waveIncoming} ${e.wave}`, '');
+        if (e.isBossWave) return;
+        // Goldene Welle: EIN kombinierter Banner (es gibt nur ein Banner-Element)
+        if (this.world.goldenWave) {
+          this.banner(`${STR.waveIncoming} ${e.wave} — ${STR.goldenWave}`, 'gold-banner');
+        } else {
+          this.banner(`${STR.waveIncoming} ${e.wave}`, '');
+        }
       }),
       events.on('bossSpawned', (e) => {
         const name = STR.bosses[e.name] ?? e.name.toUpperCase();
         this.banner(`⚠ ${name} ⚠`, 'boss-banner');
       }),
       events.on('playerRevived', () => this.banner(STR.revived, 'gold-banner')),
+      // Ueberraschungen & neue Gegner
+      events.on('capsuleIncoming', () => this.banner(STR.capsuleIncoming, 'gold-banner')),
+      events.on('capsuleReward', (e) => {
+        this.spawn(e.x, e.z, STR.capsuleRewards[e.kind] ?? '', 'heal-pop');
+      }),
+      events.on('thiefEscaped', (e) => {
+        this.spawn(e.x, e.z, `${STR.thiefEscaped} (−${e.cores} ⬡)`, 'crit');
+      }),
+      events.on('coreStolen', (e) => {
+        if (this.damageNumbersEnabled) this.spawn(e.x, e.z, '−⬡', '');
+      }),
+      events.on('eliteSpawned', (e) => {
+        this.spawn(e.x, e.z, `★ ${STR.eliteSpawned}`, 'crit');
+      }),
+      // Legendaer gewaehlt: goldener Banner beim Zurueckkehren ins Spiel
+      events.on('upgradeChosen', (e) => {
+        if (e.rarity === 'legendary') this.banner(STR.legendaryFound, 'gold-banner');
+      }),
     );
   }
 

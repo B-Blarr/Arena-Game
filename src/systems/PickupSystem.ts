@@ -1,9 +1,9 @@
-import { ARENA_RADIUS, PICKUPS } from '../config/balance';
-import { ENEMY_TANK } from '../config/enemies';
+import { ARENA_RADIUS, PICKUPS, SURPRISE } from '../config/balance';
+import { ELITE, ENEMY_TANK } from '../config/enemies';
 import type { EventBus } from '../core/EventBus';
 import type { World } from '../core/World';
 import type { Enemy } from '../entities/Enemy';
-import { initPickup, PICKUP_CORE, PICKUP_HEART, PICKUP_MAGNET } from '../entities/Pickup';
+import { initPickup, PICKUP_CAPSULE, PICKUP_CORE, PICKUP_HEART, PICKUP_MAGNET } from '../entities/Pickup';
 
 /**
  * Drops, Magnet-Sog und Einsammeln. Kerne despawnen nie waehrend der
@@ -28,14 +28,20 @@ export class PickupSystem {
     const rng = world.rngDrops;
     const player = world.player;
 
-    // Kern
+    // Kern (Goldene Welle: doppelt)
     const coreChance = e.coreChance * player.stats.coreChanceMult;
-    if (rng.chance(Math.min(coreChance, 0.95))) this.spawn(PICKUP_CORE, e.x, e.z);
+    if (rng.chance(Math.min(coreChance, 0.95))) this.spawnCoreMaybeGolden(e.x, e.z);
 
     // Tank: garantiert Kern (75 %) oder Herz (25 %) zusaetzlich
     if (e.type === ENEMY_TANK) {
       if (rng.chance(0.25)) this.spawn(PICKUP_HEART, e.x + 0.4, e.z);
-      else this.spawn(PICKUP_CORE, e.x + 0.4, e.z);
+      else this.spawnCoreMaybeGolden(e.x + 0.4, e.z);
+    }
+
+    // Elite: garantierte Bonus-Beute (macht den harten Kampf lohnend)
+    if (e.eliteAffix > 0) {
+      for (let i = 0; i < ELITE.dropCores; i++) this.spawnCoreMaybeGolden(e.x + 0.3 * i, e.z - 0.3 * i);
+      if (rng.chance(ELITE.dropHeartChance)) this.spawn(PICKUP_HEART, e.x, e.z + 0.5);
     }
 
     // Herz mit Mitleids-Regel und Anti-Unsterblichkeits-Nerf
@@ -50,6 +56,21 @@ export class PickupSystem {
     if (rng.chance(PICKUPS.magnetChance)) this.spawn(PICKUP_MAGNET, e.x, e.z - 0.4);
   }
 
+  /** Einzelner Kern (Dieb-Beute, Belohnungen). */
+  spawnCore(x: number, z: number): void {
+    this.spawn(PICKUP_CORE, x, z);
+  }
+
+  /** Versorgungskapsel (SurpriseDirector): laeuft ab und blinkt am Ende. */
+  spawnCapsule(x: number, z: number): void {
+    const p = this.world.pickups.spawn();
+    if (!p) return;
+    initPickup(p, PICKUP_CAPSULE, x, z, SURPRISE.capsule.lifetime);
+    // Kapsel landet punktgenau im Telegraph-Ring — kein Auswurf-Impuls
+    p.vx = 0;
+    p.vz = 0;
+  }
+
   /** Boss-Belohnung: Kern-Fontaene. */
   spawnCoreFountain(x: number, z: number, count: number): void {
     for (let i = 0; i < count; i++) {
@@ -62,6 +83,12 @@ export class PickupSystem {
         p.vz = Math.sin(a) * s;
       }
     }
+  }
+
+  /** Goldene Welle: jeder Gegner-Kern-Drop wird verdoppelt. */
+  private spawnCoreMaybeGolden(x: number, z: number): void {
+    this.spawn(PICKUP_CORE, x, z);
+    if (this.world.goldenWave) this.spawn(PICKUP_CORE, x + 0.35, z + 0.35);
   }
 
   private spawn(kind: number, x: number, z: number) {
@@ -102,7 +129,7 @@ export class PickupSystem {
       p.prevZ = p.z;
       p.age += dt;
 
-      // Herzen laufen ab (blinken die letzten Sekunden im Renderer)
+      // Herzen/Kapseln laufen ab (blinken die letzten Sekunden im Renderer)
       if (p.lifetime > 0 && p.age >= p.lifetime) {
         pool.despawn(i);
         continue;
@@ -119,9 +146,9 @@ export class PickupSystem {
         continue;
       }
 
-      // Magnet-Sog
+      // Magnet-Sog (Kapseln muessen bewusst abgeholt werden)
       const inRange = dist < player.stats.pickupRadius || this.magnetTimer > 0;
-      if (inRange) p.magnetized = true;
+      if (inRange && p.kind !== PICKUP_CAPSULE) p.magnetized = true;
 
       if (p.magnetized && dist > 0.001) {
         // Homing mit Beschleunigung + leichter Seitwaertskomponente (Spiralbahn)
@@ -164,9 +191,36 @@ export class PickupSystem {
     } else if (kind === PICKUP_HEART) {
       world.player.heal(PICKUPS.heartHeal);
       this.events.emit('pickupCollected', { kind: 'heart', x, z, value: PICKUPS.heartHeal });
+    } else if (kind === PICKUP_CAPSULE) {
+      this.openCapsule(x, z);
     } else {
       this.magnetTimer = PICKUPS.magnetDuration;
       this.events.emit('pickupCollected', { kind: 'magnet', x, z, value: 0 });
     }
+  }
+
+  /** Kapsel-Belohnung: gewichteter Zufall (rngDrops — spielerabhaengig erlaubt). */
+  private openCapsule(x: number, z: number): void {
+    const world = this.world;
+    const cfg = SURPRISE.capsule;
+    const weights = cfg.rewards[world.difficulty];
+    const roll = world.rngDrops.next() * (weights.cores + weights.hearts + weights.magnet + weights.rapidFire);
+    let kind: 'cores' | 'hearts' | 'magnet' | 'rapidFire';
+    if (roll < weights.cores) {
+      kind = 'cores';
+      this.spawnCoreFountain(x, z, cfg.rewardCores);
+    } else if (roll < weights.cores + weights.hearts) {
+      kind = 'hearts';
+      // bewusst am maxHearts-Deckel vorbei — die Kapsel ist das Geschenk
+      for (let i = 0; i < cfg.rewardHearts; i++) this.spawn(PICKUP_HEART, x + 0.4 * (i + 1), z - 0.3 * i);
+    } else if (roll < weights.cores + weights.hearts + weights.magnet) {
+      kind = 'magnet';
+      this.magnetTimer = PICKUPS.magnetDuration;
+    } else {
+      kind = 'rapidFire';
+      world.player.rapidFireTimer = cfg.rapidFireDuration;
+    }
+    this.events.emit('pickupCollected', { kind: 'capsule', x, z, value: 0 });
+    this.events.emit('capsuleReward', { x, z, kind });
   }
 }

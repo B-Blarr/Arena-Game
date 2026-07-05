@@ -32,6 +32,17 @@ export interface PlayerStats {
   novaDamage: number;
   ricochet: number;
   boomerang: boolean;
+  // Legendaere Upgrades
+  /** Spiegelklon: Schadensanteil der Geister-Salve (0 = aus). */
+  cloneDamageFrac: number;
+  /** Orbital-Laser: Schaden pro Einschlag (0 = aus). */
+  orbitalDamage: number;
+  /** Schwarzes Loch: Sog-Beschleunigung waehrend des Dashs (0 = aus). */
+  blackHolePull: number;
+  /** Ueberladung: Bonus-Schadensanteil unter 30 % HP (0 = aus). */
+  overchargeBonus: number;
+  /** Projektil-Radius (Mega-Kugeln vergroessern ihn). */
+  projectileRadius: number;
 }
 
 export class Player {
@@ -63,6 +74,10 @@ export class Player {
   orbAngle = 0;
   stacks = new Map<string, number>();
   reviveAvailable = false;
+  /** Orbital-Laser: Restzeit bis zum naechsten Einschlag. */
+  orbitalTimer = 0;
+  /** "Turbofeuer!"-Kapselbuff: Restzeit erhoehter Feuerrate. */
+  rapidFireTimer = 0;
 
   stats: PlayerStats = this.computeStats();
 
@@ -94,6 +109,8 @@ export class Player {
     this.dashId = 0;
     this.fireCooldown = 0;
     this.orbAngle = 0;
+    this.orbitalTimer = 0;
+    this.rapidFireTimer = 0;
     this.reviveAvailable = (perma.secondChance ?? 0) > 0;
     this.recomputeStats();
     this.dashCooldowns = new Array<number>(this.stats.dashCharges).fill(0);
@@ -125,6 +142,8 @@ export class Player {
       orbCount: 0, orbDamage: UV.orbDamage, dashDamage: 0, dashCharges: 1,
       dashCooldown: DASH.cooldown, frostSlow: 0, frostDuration: 0,
       novaChance: 0, novaDamage: UV.novaDamage, ricochet: 0, boomerang: false,
+      cloneDamageFrac: 0, orbitalDamage: 0, blackHolePull: 0, overchargeBonus: 0,
+      projectileRadius: UV.projectileRadiusBase,
     };
   }
 
@@ -146,9 +165,12 @@ export class Player {
     s.fireRate = w.fireRate * (1 + st('fireRate') * UV.fireRatePerStack);
 
     const multishot = st('multishot');
+    const hasMega = st('megaShots') > 0;
+    // megaShots-Bonus steckt im damageMult — Orbs/Nova/Orbital skalieren mit
     const damageMult =
       (1 + calibLv * 0.06) *
       (1 + st('damage') * UV.damagePerStack) *
+      (hasMega ? 1 + UV.megaShotsDamageBonus : 1) *
       Math.pow(UV.multishotDamageMult, multishot);
     s.damage = w.damage * damageMult;
     s.projectileCount = w.projectileCount + multishot;
@@ -156,7 +178,7 @@ export class Player {
     const rangeMult = 1 + st('range') * UV.rangePerStack;
     s.projectileSpeed = w.projectileSpeed * rangeMult;
     s.range = w.range * rangeMult;
-    s.pierce = w.pierce + st('pierce');
+    s.pierce = w.pierce + st('pierce') + (hasMega ? UV.megaShotsPierce : 0);
     s.knockback = w.knockback;
     s.critChance = Math.min(PLAYER.critChance + st('crit') * UV.critPerStack, UV.critCap);
     s.critMultiplier = PLAYER.critMultiplier;
@@ -173,10 +195,22 @@ export class Player {
     const frostDef = frost > 0 ? UV.frost[Math.min(frost, UV.frost.length) - 1] : undefined;
     s.frostSlow = frostDef?.slow ?? 0;
     s.frostDuration = frostDef?.duration ?? 0;
-    s.novaChance = Math.min(st('nova') * UV.novaChancePerStack, 0.6);
+    // Kettenreaktion (legendaer): JEDER Kill explodiert
+    s.novaChance = st('chainReaction') > 0 ? 1 : Math.min(st('nova') * UV.novaChancePerStack, 0.6);
     s.novaDamage = UV.novaDamage * damageMult;
     s.ricochet = st('ricochet');
     s.boomerang = w.boomerang;
+    // Legendaere Upgrades
+    s.cloneDamageFrac = st('mirrorClone') > 0 ? UV.mirrorCloneDamageFrac : 0;
+    s.orbitalDamage = st('orbitalLaser') > 0 ? UV.orbitalLaserDamage * damageMult : 0;
+    s.blackHolePull = st('blackHoleDash') > 0 ? UV.blackHolePull : 0;
+    s.overchargeBonus = st('overcharge') > 0 ? UV.overchargeDamageBonus : 0;
+    s.projectileRadius = UV.projectileRadiusBase * (hasMega ? UV.megaShotsRadiusMult : 1);
+  }
+
+  /** Ueberladung: unter 30 % HP schlaegt alles haerter zu. */
+  get damageBoost(): number {
+    return 1 + (this.hp < this.stats.maxHp * UV.overchargeHpFrac ? this.stats.overchargeBonus : 0);
   }
 
   get isDashing(): boolean {
@@ -235,6 +269,7 @@ export class Player {
       this.events.emit('dashReady', {});
     }
     if (this.fireCooldown > 0) this.fireCooldown -= dt;
+    if (this.rapidFireTimer > 0) this.rapidFireTimer -= dt;
     this.orbAngle += dt * UV.orbRotationsPerSec * Math.PI * 2;
 
     if (dashPressed) this.tryDash(moveX, moveZ);

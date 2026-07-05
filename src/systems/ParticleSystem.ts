@@ -13,7 +13,8 @@ import type { EventBus } from '../core/EventBus';
 import type { AssetRegistry } from '../render/AssetRegistry';
 
 const MAX_PARTICLES = 2048;
-const MAX_RINGS = 12;
+// 16: bis zu 4 Bomber-Zuendringe + Portale + Schockwellen + Kapsel gleichzeitig
+const MAX_RINGS = 16;
 const MAX_LINES = 2;
 
 interface Particle {
@@ -162,11 +163,16 @@ export class ParticleSystem {
         this.burst(e.x, e.z, 0x00e5ff, 3, { speedMin: 1.5, speedMax: 4, lifeMin: 0.15, lifeMax: 0.3, sizeMin: 0.05, sizeMax: 0.09 });
       }),
       events.on('pickupCollected', (e) => {
-        const color = e.kind === 'heart' ? 0x4dff88 : e.kind === 'magnet' ? 0xffc83d : 0x00e5ff;
-        this.burst(e.x, e.z, color, 5, { speedMin: 1, speedMax: 3, lifeMin: 0.2, lifeMax: 0.4, sizeMin: 0.05, sizeMax: 0.1, gravity: 2 });
+        const color =
+          e.kind === 'heart' ? 0x4dff88 :
+          e.kind === 'magnet' || e.kind === 'capsule' ? 0xffc83d : 0x00e5ff;
+        const count = e.kind === 'capsule' ? 18 : 5;
+        this.burst(e.x, e.z, color, count, { speedMin: 1, speedMax: 3, lifeMin: 0.2, lifeMax: 0.4, sizeMin: 0.05, sizeMax: 0.1, gravity: 2 });
       }),
       events.on('portalOpened', (e) => {
         this.spawnRing(e.x, e.z, 0.3, 1.4, 1.0, 0.7, 0x00e5ff, 'hold');
+        // Zweiter Ring laeuft rueckwaerts — "Portal saugt an"
+        this.spawnRing(e.x, e.z, 2.4, 0.9, 1.0, 0.4, 0x00e5ff, 'expand');
       }),
       events.on('bossTelegraph', (e) => {
         if (e.kind === 'shockwave') {
@@ -201,6 +207,46 @@ export class ParticleSystem {
       }),
       events.on('playerDashed', (e) => {
         this.burst(e.x, e.z, 0x00e5ff, 6, { speedMin: 1, speedMax: 3, lifeMin: 0.2, lifeMax: 0.35, gravity: 0, sizeMin: 0.06, sizeMax: 0.12 });
+      }),
+      // ---------------- Neue Inhalte ----------------
+      // Bomber-Zuendung: statischer roter Warn-Ring in Blast-Groesse
+      events.on('enemyFuse', (e) => {
+        this.spawnRing(e.x, e.z, e.radius * 0.97, e.radius, e.duration, 0.6, 0xff3b30, 'hold');
+      }),
+      // Elite-Schild zerbricht: weisser Klirr-Ring
+      events.on('eliteShieldBroken', (e) => {
+        this.spawnRing(e.x, e.z, 0.4, 1.8, 0.35, 0.9, 0xffffff, 'expand');
+      }),
+      // Elite-Spawn: dicker goldener Ring am Portal
+      events.on('eliteSpawned', (e) => {
+        this.spawnRing(e.x, e.z, 0.4, 2.6, 0.6, 0.8, 0xffc83d, 'expand');
+      }),
+      // Versorgungskapsel: goldener Halte-Ring am Landepunkt + Lande-Burst
+      events.on('capsuleIncoming', (e) => {
+        this.spawnRing(e.x, e.z, 1.1, 1.3, 1.5, 0.7, 0xffc83d, 'hold');
+      }),
+      events.on('capsuleLanded', (e) => {
+        this.burst(e.x, e.z, 0xffc83d, 20, { speedMin: 2, speedMax: 6 });
+        this.spawnRing(e.x, e.z, 0.4, 2.4, 0.5, 0.8, 0xffc83d, 'expand');
+      }),
+      // Phantom-Blink: Cyan-Bursts an Start- und Zielpunkt
+      events.on('phantomBlink', (e) => {
+        this.burst(e.fromX, e.fromZ, 0xb84dff, 8, { speedMin: 1, speedMax: 4, lifeMin: 0.2, lifeMax: 0.4, gravity: 0 });
+        this.burst(e.toX, e.toZ, 0xb84dff, 8, { speedMin: 1, speedMax: 4, lifeMin: 0.2, lifeMax: 0.4, gravity: 0 });
+      }),
+      // Orbital-Laser: Einschlag-Burst + Ring (Saeule rendert der InstancedRenderer)
+      events.on('orbitalStrike', (e) => {
+        this.burst(e.x, e.z, 0xffc83d, 24, { speedMin: 3, speedMax: 9 });
+        this.spawnRing(e.x, e.z, 0.4, 3.2, 0.4, 0.85, 0xffc83d, 'expand');
+      }),
+      // Dieb frisst einen Kern: kleiner Cyan-Puff
+      events.on('coreStolen', (e) => {
+        this.burst(e.x, e.z, 0x00e5ff, 4, { speedMin: 1, speedMax: 2.5, lifeMin: 0.15, lifeMax: 0.3, gravity: 0, sizeMin: 0.05, sizeMax: 0.09 });
+      }),
+      // Boss-Intro: weisser Ring + Burst am Spawnpunkt
+      events.on('bossSpawned', (e) => {
+        this.spawnRing(e.x, e.z, 0.5, 10, 0.9, 0.7, 0xffffff, 'expand');
+        this.burst(e.x, e.z, 0xffffff, 30, { speedMin: 3, speedMax: 9 });
       }),
     );
   }

@@ -2,11 +2,12 @@ import type { EventBus } from '../core/EventBus';
 import type { Time } from '../core/Time';
 import type { World } from '../core/World';
 import type { CameraRig } from '../render/CameraRig';
+import type { Renderer } from '../render/Renderer';
 
 /**
  * Uebersetzt Gameplay-Events in Game-Feel: Trauma-Screenshake, Hitstop,
- * Zeitlupe, Weissblitz. Bewusst EIN Blitz beim Boss-Tod, kein Strobe
- * (Fotosensibilitaet, Kinder-Zielgruppe).
+ * Zeitlupe, Weissblitz, Chromatic-Aberration-Kicks. Bewusst EIN Blitz
+ * beim Boss-Tod, kein Strobe (Fotosensibilitaet, Kinder-Zielgruppe).
  */
 export class JuiceDirector {
   private readonly unsubs: Array<() => void> = [];
@@ -17,11 +18,15 @@ export class JuiceDirector {
     private readonly time: Time,
     private readonly rig: CameraRig,
     private readonly world: World,
+    private readonly renderer: Renderer,
   ) {
     this.flashEl = document.getElementById('screen-flash');
 
     this.unsubs.push(
-      events.on('playerHit', () => this.rig.addTrauma(0.4)),
+      events.on('playerHit', () => {
+        this.rig.addTrauma(0.4);
+        this.renderer.kickAberration(0.5);
+      }),
       events.on('enemyKilled', () => this.rig.addTrauma(0.06)),
       events.on('explosion', (e) => {
         const d = Math.hypot(e.x - this.world.player.x, e.z - this.world.player.z);
@@ -31,19 +36,38 @@ export class JuiceDirector {
       events.on('enemyHit', (e) => {
         if (e.crit) this.time.hitstop(0.04);
       }),
-      events.on('playerDashed', () => this.rig.dashKick()),
+      events.on('playerDashed', () => {
+        this.rig.dashKick();
+        this.renderer.kickAberration(0.35);
+      }),
+      // Boss-Intro: kurzer Zeitlupen-Moment + Beben — KEIN Weissblitz
+      // (der bleibt exklusiv beim Boss-Tod)
+      events.on('bossSpawned', () => {
+        this.time.slowmo(0.55, 0.7, 0.3);
+        this.rig.addTrauma(0.25);
+        this.renderer.kickAberration(0.6);
+      }),
       events.on('bossDied', () => {
         // Mega-Event: Hitstop -> Zeitlupe -> EIN Weissblitz -> Trauma
         this.time.hitstop(0.12);
         this.time.slowmo(0.25, 0.8, 0.4);
         this.flash();
         this.rig.addTrauma(0.7);
+        this.renderer.kickAberration(1);
       }),
       events.on('playerDied', () => {
         this.time.slowmo(0.3, 1.0, 0.5);
         this.rig.addTrauma(0.6);
       }),
       events.on('playerRevived', () => this.flash()),
+      // Legendaer gewaehlt: Rueckkehr ins Spiel in Zeitlupe + Blitz
+      events.on('upgradeChosen', (e) => {
+        if (e.rarity === 'legendary') {
+          this.flash();
+          this.time.slowmo(0.3, 0.5, 0.4);
+          this.renderer.kickAberration(0.8);
+        }
+      }),
     );
   }
 

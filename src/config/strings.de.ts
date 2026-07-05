@@ -39,6 +39,18 @@ export const STR = {
   bossIncoming: 'Boss!',
   hardUnlocked: 'Neuer Modus freigeschaltet: Schwer!',
 
+  // Ueberraschungen
+  goldenWave: '★ Goldene Welle! Doppelte Kerne! ★',
+  capsuleIncoming: 'Versorgung im Anflug!',
+  capsuleRewards: {
+    cores: 'Kern-Regen!',
+    hearts: 'Extra-Herzen!',
+    magnet: 'Magnet!',
+    rapidFire: 'Turbofeuer!',
+  } as Record<string, string>,
+  thiefEscaped: 'Dieb entkommen!',
+  eliteSpawned: 'Elite!',
+
   // Upgrade-Screen
   chooseUpgrade: 'Wähle ein Upgrade!',
   reroll: 'Neu würfeln',
@@ -48,7 +60,9 @@ export const STR = {
     common: 'Gewöhnlich',
     rare: 'Selten',
     epic: 'Episch',
+    legendary: 'Legendär',
   } as Record<string, string>,
+  legendaryFound: 'LEGENDÄR!',
 
   // Pause
   pause: 'Pause',
@@ -72,6 +86,12 @@ export const STR = {
   nextUnlockTeaser: (name: string, missing: number) => `Nur noch ${missing} Kerne bis: ${name}`,
   shopAffordable: 'Du kannst etwas Neues in der Werkstatt freischalten! 🛠',
   restartHint: 'Taste R für sofortigen Neustart',
+  runSummary: {
+    build: 'Dein Build',
+    dps: 'Schaden/s',
+    strongestHit: 'Stärkster Treffer',
+    bestCombo: 'Beste Combo',
+  },
 
   // Shop
   shopTitle: 'Werkstatt',
@@ -129,6 +149,12 @@ export const STR = {
     nova: { name: 'Nova-Kill', desc: '20 % Chance: Explosion bei Abschuss' },
     doubleDash: { name: 'Doppel-Dash', desc: 'Eine zweite Dash-Ladung' },
     ricochet: { name: 'Abpraller', desc: 'Kugeln springen zum nächsten Gegner' },
+    mirrorClone: { name: 'Spiegelklon', desc: 'Ein Geisterklon feuert jeden Schuss mit!' },
+    chainReaction: { name: 'Kettenreaktion', desc: 'JEDER besiegte Gegner explodiert!' },
+    orbitalLaser: { name: 'Orbital-Laser', desc: 'Alle 5 Sekunden: Laser auf den stärksten Gegner' },
+    blackHoleDash: { name: 'Schwarzes Loch', desc: 'Dein Dash saugt Gegner zusammen' },
+    overcharge: { name: 'Überladung', desc: 'Unter 30 % Leben: +50 % Schaden' },
+    megaShots: { name: 'Mega-Kugeln', desc: 'Riesige Kugeln: mehr Schaden, durchbohren Gegner' },
     corePack: { name: 'Kern-Paket', desc: 'Sofort +15 Kerne' },
     repair: { name: 'Reparatur', desc: 'Heilt sofort 30 % Leben' },
     scoreBoost: { name: 'Punkte-Schub', desc: 'Sofort Bonuspunkte (500 × Welle)' },

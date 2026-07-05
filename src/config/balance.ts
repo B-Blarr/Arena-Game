@@ -44,12 +44,14 @@ export interface DifficultyMods {
   budget: number;
   heartChance: number;
   coreMult: number;
+  /** Multiplikator auf die Elite-Spawn-Chance. */
+  eliteChanceMult: number;
 }
 
 export const DIFFICULTIES: Record<Difficulty, DifficultyMods> = {
-  easy: { playerHp: 1.5, enemySpeed: 0.85, enemyHp: 0.8, enemyDamage: 0.75, budget: 0.85, heartChance: 0.07, coreMult: 0.8 },
-  normal: { playerHp: 1.0, enemySpeed: 1.0, enemyHp: 1.0, enemyDamage: 1.0, budget: 1.0, heartChance: 0.04, coreMult: 1.0 },
-  hard: { playerHp: 1.0, enemySpeed: 1.1, enemyHp: 1.25, enemyDamage: 1.25, budget: 1.15, heartChance: 0.03, coreMult: 1.5 },
+  easy: { playerHp: 1.5, enemySpeed: 0.85, enemyHp: 0.8, enemyDamage: 0.75, budget: 0.85, heartChance: 0.07, coreMult: 0.8, eliteChanceMult: 0.5 },
+  normal: { playerHp: 1.0, enemySpeed: 1.0, enemyHp: 1.0, enemyDamage: 1.0, budget: 1.0, heartChance: 0.04, coreMult: 1.0, eliteChanceMult: 1.0 },
+  hard: { playerHp: 1.0, enemySpeed: 1.1, enemyHp: 1.25, enemyDamage: 1.25, budget: 1.15, heartChance: 0.03, coreMult: 1.5, eliteChanceMult: 1.3 },
 };
 
 /** "Schwer" wird freigeschaltet, wenn Welle 10 auf Normal erreicht wurde. */
@@ -104,6 +106,44 @@ export const PICKUPS = {
   coreFlyAccel: 40,
   coreMaxSpeed: 25,
   collectDistance: 0.7,
+};
+
+// ---------- Ueberraschungen (SurpriseDirector) ----------
+
+export const SURPRISE = {
+  /** Goldene Welle: doppelte Kern-Drops, auf Normal/Schwer etwas flottere Gegner. */
+  goldenChance: 0.1,
+  goldenMinWave: 4,
+  /** Tempo-Aufschlag NUR auf Normal/Schwer — auf Einfach reine Belohnung. */
+  goldenSpeedMult: 1.15,
+
+  capsule: {
+    /** Chance pro Nicht-Boss-Welle, nach Schwierigkeit. */
+    chance: { easy: 0.3, normal: 0.22, hard: 0.18 } as Record<Difficulty, number>,
+    minWave: 3,
+    minWaveEasy: 2,
+    /** Vorwarnzeit: goldener Ring am Landepunkt. */
+    telegraphTime: 1.5,
+    lifetime: 12,
+    blinkTime: 3,
+    /** Landet zufaellig 4–10 s nach Wellenstart. */
+    dropTimeMin: 4,
+    dropTimeMax: 10,
+    /** Landeposition: Radius-Band in der Arena. */
+    minRadius: 4,
+    edgeMargin: 5,
+    /** Belohnungs-Gewichte (cores/hearts/magnet/rapidFire), je Schwierigkeit. */
+    rewards: {
+      easy: { cores: 0.45, hearts: 0.3, magnet: 0.15, rapidFire: 0.1 },
+      normal: { cores: 0.4, hearts: 0.25, magnet: 0.15, rapidFire: 0.2 },
+      hard: { cores: 0.4, hearts: 0.25, magnet: 0.15, rapidFire: 0.2 },
+    } as Record<Difficulty, { cores: number; hearts: number; magnet: number; rapidFire: number }>,
+    rewardCores: 8,
+    rewardHearts: 2,
+    /** "Turbofeuer!": kurzzeitig +67 % Feuerrate (Cooldown x0.6). */
+    rapidFireDuration: 8,
+    rapidFireCooldownMult: 0.6,
+  },
 };
 
 // ---------- Score & Combo ----------

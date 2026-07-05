@@ -1,10 +1,12 @@
 import {
   AdditiveBlending,
   BoxGeometry,
+  BufferAttribute,
   BufferGeometry,
   CircleGeometry,
   Color,
   ConeGeometry,
+  CylinderGeometry,
   IcosahedronGeometry,
   Material,
   MeshBasicMaterial,
@@ -46,6 +48,15 @@ export class AssetRegistry {
   readonly geoPlayerBody = new ConeGeometry(0.42, 1.1, 6);
   readonly geoPlayerRing = new TorusGeometry(0.45, 0.06, 8, 24);
   readonly geoTelegraphLine = new BoxGeometry(1, 0.05, 1);
+  /** Kern-Dieb: silberner Kristall. */
+  readonly geoIcosahedron = new IcosahedronGeometry(0.6);
+  /** Versorgungskapsel: goldener Wuerfel. */
+  readonly geoCapsule = new BoxGeometry(0.5, 0.5, 0.5);
+  /** Orbital-Laser: Saeulen-Beam (Einheit, wird gestreckt). */
+  readonly geoBeam = new CylinderGeometry(0.25, 0.4, 1, 12, 1, true);
+  /** Projektil-Streak: gestreckte Box mit gebackenem Vertex-Gradient
+   *  (Kopf weiss, Heck schwarz) — bei additivem Blending gratis-Fade. */
+  readonly geoStreak = AssetRegistry.makeStreakGeometry();
 
   // Gegner: weisses Material, Farbe kommt pro Instanz (instanceColor)
   readonly matEnemy = new MeshBasicMaterial({ color: 0xffffff });
@@ -86,9 +97,25 @@ export class AssetRegistry {
     opacity: 0.8,
     depthWrite: false,
   });
+  readonly matCapsule = this.makeGlow(0xffc83d, 2.0);
+  /** Streaks: Farbe pro Instanz (instanceColor) x Vertex-Gradient. */
+  readonly matStreak = new MeshBasicMaterial({
+    color: 0xffffff,
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.55,
+    blending: AdditiveBlending,
+    depthWrite: false,
+  });
+  /** Elite-Marker: goldener additiver Boden-Ring. */
+  readonly matEliteRing = this.makeGlowTransparent(0xffc83d, 2.0, 0.55, true);
 
   /** HDR-Farben pro Gegnertyp (fuer instanceColor), Faktor 1.8 -> bloomt. */
   readonly enemyColors: Color[] = ENEMIES.map((def) => new Color(def.color).multiplyScalar(1.8));
+  /** Elite-Varianten: 50 % Richtung Weiss gelerpt und heisser — sichtbar "gleissend". */
+  readonly eliteColors: Color[] = ENEMIES.map((def) =>
+    new Color(def.color).lerp(new Color(0xffffff), 0.5).multiplyScalar(2.4),
+  );
 
   geometryFor(shape: EnemyShape): BufferGeometry {
     switch (shape) {
@@ -100,7 +127,24 @@ export class AssetRegistry {
         return this.geoTetrahedron;
       case 'sphere':
         return this.geoSphere;
+      case 'icosahedron':
+        return this.geoIcosahedron;
     }
+  }
+
+  private static makeStreakGeometry(): BoxGeometry {
+    const geo = new BoxGeometry(0.07, 0.07, 1);
+    const pos = geo.getAttribute('position');
+    const colors = new Float32Array(pos.count * 3);
+    for (let i = 0; i < pos.count; i++) {
+      // Helligkeit entlang der Laengsachse: Kopf (z=+0.5) hell, Heck dunkel
+      const v = Math.max(0, pos.getZ(i) + 0.5);
+      colors[i * 3] = v;
+      colors[i * 3 + 1] = v;
+      colors[i * 3 + 2] = v;
+    }
+    geo.setAttribute('color', new BufferAttribute(colors, 3));
+    return geo;
   }
 
   makeGlow(hex: number, intensity: number): MeshBasicMaterial {
@@ -109,12 +153,13 @@ export class AssetRegistry {
     return m;
   }
 
-  makeGlowTransparent(hex: number, intensity: number, opacity: number): MeshBasicMaterial {
+  makeGlowTransparent(hex: number, intensity: number, opacity: number, additive = false): MeshBasicMaterial {
     const m = new MeshBasicMaterial({
       color: new Color(hex).multiplyScalar(intensity),
       transparent: true,
       opacity,
       depthWrite: false,
+      ...(additive ? { blending: AdditiveBlending } : {}),
     });
     this.extraMaterials.push(m);
     return m;
@@ -126,11 +171,12 @@ export class AssetRegistry {
       this.geoPlayerProjectile, this.geoEnemyProjectile, this.geoCore, this.geoHeart,
       this.geoMagnet, this.geoOrb, this.geoParticle, this.geoRing, this.geoBlob,
       this.geoPlayerBody, this.geoPlayerRing, this.geoTelegraphLine,
+      this.geoIcosahedron, this.geoCapsule, this.geoBeam, this.geoStreak,
     ];
     for (const g of geos) g.dispose();
     const mats: Material[] = [
       this.matEnemy, this.matParticle, this.matBlob, this.matTelegraph,
-      this.matPortal, this.matShockwave, ...this.extraMaterials,
+      this.matPortal, this.matShockwave, this.matStreak, ...this.extraMaterials,
     ];
     for (const m of mats) m.dispose();
     this.extraMaterials = [];

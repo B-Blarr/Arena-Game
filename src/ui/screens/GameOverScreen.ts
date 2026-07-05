@@ -1,5 +1,6 @@
 import { STR } from '../../config/strings.de';
 import type { Sfx } from '../../audio/Sfx';
+import type { BuildEntry } from '../../systems/RunStats';
 
 export interface GameOverResult {
   score: number;
@@ -10,6 +11,11 @@ export interface GameOverResult {
   totalCores: number;
   /** "Nur noch X Kerne bis ..." oder null. */
   teaser: string | null;
+  /** Lauf-Statistik (fuer Optimierer — Kinder ignorieren sie einfach). */
+  dps: number;
+  strongestHit: number;
+  maxCombo: number;
+  build: BuildEntry[];
 }
 
 export interface GameOverCallbacks {
@@ -28,6 +34,8 @@ export class GameOverScreen {
   private waveEl!: HTMLElement;
   private recordEl!: HTMLElement;
   private coresEl!: HTMLElement;
+  private statsEl!: HTMLElement;
+  private buildEl!: HTMLElement;
   private teaserEl!: HTMLElement;
   private keyHandler: ((e: KeyboardEvent) => void) | null = null;
   private animFrame = 0;
@@ -44,6 +52,8 @@ export class GameOverScreen {
       <div class="gameover-score">0</div>
       <div class="gameover-sub gameover-wave"></div>
       <div class="gameover-cores">⬡ <span class="cores-val">0</span> ${STR.coresEarned}</div>
+      <div class="gameover-stats"></div>
+      <div class="gameover-build"></div>
       <div class="gameover-teaser"></div>
       <div class="gameover-buttons">
         <button class="btn btn-primary pulse-soft go-again">${STR.again}</button>
@@ -55,6 +65,8 @@ export class GameOverScreen {
     this.waveEl = this.root.querySelector('.gameover-wave') as HTMLElement;
     this.recordEl = this.root.querySelector('.record-banner') as HTMLElement;
     this.coresEl = this.root.querySelector('.cores-val') as HTMLElement;
+    this.statsEl = this.root.querySelector('.gameover-stats') as HTMLElement;
+    this.buildEl = this.root.querySelector('.gameover-build') as HTMLElement;
     this.teaserEl = this.root.querySelector('.gameover-teaser') as HTMLElement;
     (this.root.querySelector('.go-again') as HTMLButtonElement).addEventListener('click', () => this.cb.onAgain());
     (this.root.querySelector('.go-menu') as HTMLButtonElement).addEventListener('click', () => this.cb.onMenu());
@@ -65,6 +77,26 @@ export class GameOverScreen {
     this.waveEl.textContent = `${STR.reachedWave}: ${result.wave} · ${STR.bestScore}: ${result.best}`;
     this.teaserEl.textContent = result.teaser ?? '';
     this.coresEl.textContent = '0';
+
+    // Lauf-Statistik + Build-Anzeige ("Dein Build")
+    this.statsEl.textContent =
+      `⚔ ${result.dps} ${STR.runSummary.dps} · ` +
+      `💥 ${STR.runSummary.strongestHit} ${result.strongestHit} · ` +
+      `🔥 ${STR.runSummary.bestCombo} ×${result.maxCombo}`;
+    this.buildEl.innerHTML = '';
+    if (result.build.length > 0) {
+      const label = document.createElement('span');
+      label.className = 'build-label';
+      label.textContent = `${STR.runSummary.build}: `;
+      this.buildEl.appendChild(label);
+      for (const entry of result.build) {
+        const chip = document.createElement('span');
+        chip.className = `build-chip${entry.rarity === 'legendary' ? ' legendary' : ''}`;
+        chip.title = STR.upgrades[entry.id]?.name ?? entry.id;
+        chip.textContent = entry.stacks > 1 ? `${entry.icon}×${entry.stacks}` : entry.icon;
+        this.buildEl.appendChild(chip);
+      }
+    }
 
     // Punktzahl-Count-up (1.2 s, easeOutExpo) mit aufsteigendem Tick
     const start = performance.now();

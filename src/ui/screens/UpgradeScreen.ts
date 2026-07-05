@@ -19,6 +19,9 @@ export class UpgradeScreen {
   private keyHandler: ((e: KeyboardEvent) => void) | null = null;
   private choosing = false;
   private chooseTimeout = 0;
+  /** Zeremonie-Sperre: solange die legendaere Karte noch verdeckt ist. */
+  private revealLocked = false;
+  private revealTimeout = 0;
 
   constructor(private readonly cb: UpgradeCallbacks) {
     this.root = document.getElementById('screen-upgrade') as HTMLElement;
@@ -41,19 +44,38 @@ export class UpgradeScreen {
     this.hide(); // evtl. alten Key-Handler entfernen (Reroll)
     this.choosing = false;
     this.cardsWrap.innerHTML = '';
+    // Zeremonie: legendaere Karte erscheint als LETZTE, der Screen kriegt
+    // einen Andock-Punkt fuer Gold-Styling (has-legendary)
+    const hasLegendary = offers.some((o) => o.rarity === 'legendary');
+    this.root.classList.toggle('has-legendary', hasLegendary);
+    // Wahl erst nach dem Aufdecken — sonst waehlt ein hastiger Tastendruck
+    // die goldene Karte, bevor sie ueberhaupt sichtbar war
+    this.revealLocked = hasLegendary;
+    window.clearTimeout(this.revealTimeout);
+    if (hasLegendary) {
+      this.revealTimeout = window.setTimeout(() => {
+        this.revealLocked = false;
+      }, 550);
+    }
     offers.forEach((def, i) => {
       const info = STR.upgrades[def.id] ?? { name: def.id, desc: '' };
       const stacks = player.stackOf(def.id);
+      const isLegendary = def.rarity === 'legendary';
       const card = document.createElement('button');
       card.className = 'upgrade-card appear';
+      if (isLegendary) card.classList.add('legendary');
       card.style.setProperty('--rarity', `var(--rarity-${def.rarity})`);
-      card.style.animationDelay = `${i * 0.08}s`;
+      card.style.animationDelay = isLegendary ? '0.45s' : `${i * 0.08}s`;
+      // Legendaere sind Einmal-Karten — kein "Stufe 1/1"-Label
+      const stacksLabel = def.instant || isLegendary
+        ? ''
+        : `<span class="upgrade-stacks">${STR.stacksLabel} ${stacks + 1}/${def.maxStacks}</span>`;
       card.innerHTML = `
         <span class="upgrade-rarity-label">${STR.rarities[def.rarity] ?? def.rarity}</span>
         <span class="upgrade-icon">${def.icon}</span>
         <span class="upgrade-name">${info.name}</span>
         <span class="upgrade-desc">${info.desc}</span>
-        ${def.instant ? '' : `<span class="upgrade-stacks">${STR.stacksLabel} ${stacks + 1}/${def.maxStacks}</span>`}
+        ${stacksLabel}
         <span class="upgrade-key keycap">${i + 1}</span>
       `;
       card.addEventListener('click', () => this.choose(i));
@@ -73,7 +95,7 @@ export class UpgradeScreen {
   }
 
   private choose(index: number): void {
-    if (this.choosing) return;
+    if (this.choosing || this.revealLocked) return;
     this.choosing = true;
     const cards = this.cardsWrap.children;
     for (let i = 0; i < cards.length; i++) {
@@ -88,6 +110,8 @@ export class UpgradeScreen {
 
   hide(): void {
     window.clearTimeout(this.chooseTimeout);
+    window.clearTimeout(this.revealTimeout);
+    this.revealLocked = false;
     if (this.keyHandler) {
       window.removeEventListener('keydown', this.keyHandler);
       this.keyHandler = null;

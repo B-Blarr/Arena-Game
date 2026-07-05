@@ -126,6 +126,21 @@
 .hud-combo.c2 { color: var(--accent-2); }
 .hud-combo.c3 { color: var(--gold); }
 
+/* Max-Combo: langsamer Gold-Puls (kein Strobe) */
+.hud-combo.c3 .hud-combo-ring {
+  box-shadow: 0 0 12px currentColor;
+  animation: combo-max 0.8s ease-in-out infinite;
+}
+
+@keyframes combo-max {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+
+body.reduce-fx .hud-combo.c3 .hud-combo-ring {
+  animation: none;
+}
+
 /* Combo-Timer als sich leerender Kreisring */
 .hud-combo-ring {
   width: 22px;
@@ -346,11 +361,13 @@
   transform: translate(-50%, -50%);
   font-family: var(--font-display);
   font-size: clamp(2rem, 5vw, 3.25rem);
+  /* Lange Banner (Goldene Welle) brechen zentriert um statt zu clippen */
+  max-width: 92vw;
+  text-align: center;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   text-shadow: var(--glow-text);
-  white-space: nowrap;
   visibility: hidden;
 }
 
@@ -362,12 +379,24 @@
 .banner.boss-banner { color: #ff5a70; text-shadow: 0 0 18px rgba(255, 46, 76, 0.9); }
 .banner.gold-banner { color: var(--gold); text-shadow: 0 0 18px rgba(255, 200, 61, 0.9); }
 
+/* Boss-Banner: dramatischer Zoom mit zusammenlaufender Sperrung */
+.banner.boss-banner.show {
+  animation: banner-boss-in 1.8s ease forwards;
+}
+
 @keyframes banner-in {
   0% { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
   12% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
   18% { transform: translate(-50%, -50%) scale(1); }
   80% { opacity: 1; }
   100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+}
+
+@keyframes banner-boss-in {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(1.3); letter-spacing: 0.4em; }
+  15% { opacity: 1; transform: translate(-50%, -50%) scale(1); letter-spacing: 0.12em; }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1); letter-spacing: 0.12em; }
 }
 
 /* ---------- Onboarding-Prompts ---------- */

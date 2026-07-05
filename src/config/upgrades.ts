@@ -1,11 +1,21 @@
 /**
- * Upgrade-Pool (Roguelite): 17 stapelbare Upgrades + 3 Fallback-Karten,
- * damit die Auswahl NIE leer ist. Namen/Beschreibungen in strings.de.ts.
+ * Upgrade-Pool (Roguelite): 17 stapelbare Upgrades, 6 Legendaere +
+ * 3 Fallback-Karten, damit die Auswahl NIE leer ist.
+ * Namen/Beschreibungen in strings.de.ts.
  */
 
-export type Rarity = 'common' | 'rare' | 'epic';
+export type Rarity = 'common' | 'rare' | 'epic' | 'legendary';
 
-export const RARITY_WEIGHTS: Record<Rarity, number> = { common: 60, rare: 30, epic: 10 };
+export const RARITY_WEIGHTS: Record<Rarity, number> = { common: 60, rare: 30, epic: 10, legendary: 2 };
+
+/** Legendaer-Regeln: extrem selten, unsichtbarer Pity gegen Pechstraehnen. */
+export const LEGENDARY = {
+  /** Effektives Gewicht = min(base + pity, weightCap); pity +1 pro Angebot ohne Fund. */
+  pityPerOffer: 1,
+  weightCap: 12,
+  /** Erst ab der Wahl NACH dieser Welle im Pool (erste Wahl bleibt simpel). */
+  minWave: 2,
+};
 
 export interface UpgradeDef {
   id: string;
@@ -37,6 +47,13 @@ export const UPGRADES: readonly UpgradeDef[] = [
   { id: 'nova', icon: '💥', rarity: 'epic', maxStacks: 3, instant: false },
   { id: 'doubleDash', icon: '🌀', rarity: 'epic', maxStacks: 1, instant: false },
   { id: 'ricochet', icon: '↩️', rarity: 'epic', maxStacks: 2, instant: false },
+  // Legendary (build-definierend, jeweils nur 1x pro Lauf)
+  { id: 'mirrorClone', icon: '👥', rarity: 'legendary', maxStacks: 1, instant: false },
+  { id: 'chainReaction', icon: '🧨', rarity: 'legendary', maxStacks: 1, instant: false },
+  { id: 'orbitalLaser', icon: '🛰️', rarity: 'legendary', maxStacks: 1, instant: false },
+  { id: 'blackHoleDash', icon: '🕳️', rarity: 'legendary', maxStacks: 1, instant: false },
+  { id: 'overcharge', icon: '🚨', rarity: 'legendary', maxStacks: 1, instant: false },
+  { id: 'megaShots', icon: '🌕', rarity: 'legendary', maxStacks: 1, instant: false },
 ];
 
 /** Fallback-Karten, wenn der regulaere Pool ausgeschoepft ist. */
@@ -79,6 +96,24 @@ export const UPGRADE_VALUES = {
   novaChainDepth: 3,
   ricochetRange: 6,
   ricochetDamageMult: 0.7,
+  // Legendaere Upgrades (alle maxStacks 1, build-definierend)
+  /** Spiegelklon: Geist feuert jede Salve mit diesem Schadensanteil. */
+  mirrorCloneDamageFrac: 0.5,
+  mirrorCloneOffset: 1.5,
+  /** Orbital-Laser: alle X s auf den Gegner mit den meisten HP (oder Boss). */
+  orbitalLaserInterval: 5,
+  orbitalLaserDamage: 120,
+  /** Schwarzes Loch: Dash saugt Gegner an (Beschleunigung in u/s^2). */
+  blackHoleRadius: 5,
+  blackHolePull: 45,
+  /** Ueberladung: unter dieser HP-Schwelle +50 % Schaden. */
+  overchargeHpFrac: 0.3,
+  overchargeDamageBonus: 0.5,
+  /** Mega-Kugeln: groessere, staerkere, durchschlagende Projektile. */
+  megaShotsDamageBonus: 0.3,
+  megaShotsRadiusMult: 2.2,
+  megaShotsPierce: 2,
+  projectileRadiusBase: 0.15,
   // Fallback-Karten
   corePackAmount: 15,
   repairFrac: 0.3,

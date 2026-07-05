@@ -8,6 +8,7 @@ import type { Boss } from '../entities/Boss';
 import {
   ARENA_RADIUS,
   DIFFICULTIES,
+  SURPRISE,
   enemyDamageFactor,
   enemyHpFactor,
   enemySpeedFactor,
@@ -15,7 +16,7 @@ import {
   type DifficultyMods,
 } from '../config/balance';
 import type { HeroDef } from '../config/heroes';
-import { makeRng, Rng, RNG_STREAM_DROPS, RNG_STREAM_SUMMONS, RNG_STREAM_UPGRADES, RNG_STREAM_WAVES } from './Rng';
+import { makeRng, Rng, RNG_STREAM_DROPS, RNG_STREAM_EVENTS, RNG_STREAM_SUMMONS, RNG_STREAM_UPGRADES, RNG_STREAM_WAVES } from './Rng';
 import type { EventBus } from './EventBus';
 
 /**
@@ -39,6 +40,9 @@ export class World {
   rngUpgrades: Rng = new Rng(2);
   rngDrops: Rng = new Rng(3);
   rngSummons: Rng = new Rng(4);
+  rngEvents: Rng = new Rng(5);
+  /** Goldene Welle aktiv: doppelte Kern-Drops (SurpriseDirector setzt das Flag). */
+  goldenWave = false;
   /** In diesem Lauf gesammelte Kerne. */
   runCores = 0;
   /** Spielzeit im Lauf (fuer Bob-Animationen etc.). */
@@ -76,6 +80,8 @@ export class World {
     this.rngUpgrades = makeRng(seed, RNG_STREAM_UPGRADES);
     this.rngDrops = makeRng(seed, RNG_STREAM_DROPS);
     this.rngSummons = makeRng(seed, RNG_STREAM_SUMMONS);
+    this.rngEvents = makeRng(seed, RNG_STREAM_EVENTS);
+    this.goldenWave = false;
     this.runCores = 0;
     this.elapsed = 0;
     this.isDaily = isDaily;
@@ -84,9 +90,12 @@ export class World {
   }
 
   scalingForWave(w: number): EnemyScaling {
+    // Goldene Welle: auf Normal/Schwer flottere Gegner als Gegengewicht —
+    // auf Einfach reine Belohnung (Kindermodus).
+    const goldenSpeed = this.goldenWave && this.difficulty !== 'easy' ? SURPRISE.goldenSpeedMult : 1;
     return {
       hp: enemyHpFactor(w) * this.mods.enemyHp,
-      speed: enemySpeedFactor(w) * this.mods.enemySpeed,
+      speed: enemySpeedFactor(w) * this.mods.enemySpeed * goldenSpeed,
       damage: enemyDamageFactor(w) * this.mods.enemyDamage,
     };
   }

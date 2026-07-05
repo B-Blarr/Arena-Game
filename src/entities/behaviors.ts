@@ -1,9 +1,18 @@
 import {
+  AFFIX_RAGE,
+  BOMBER_AI,
+  ELITE,
+  ENEMY_BOMBER,
+  ENEMY_PHANTOM,
   ENEMY_SHOOTER,
+  ENEMY_THIEF,
+  PHANTOM_AI,
   SEPARATION,
   SHOOTER_AI,
+  THIEF_AI,
 } from '../config/enemies';
 import { ARENA_RADIUS } from '../config/balance';
+import { PICKUP_CORE } from './Pickup';
 import type { World } from '../core/World';
 import type { EventBus } from '../core/EventBus';
 import type { Enemy } from './Enemy';
@@ -41,18 +50,32 @@ export function updateEnemies(world: World, dt: number, events: EventBus): void 
     const dist = Math.hypot(dx, dz);
     const nx = dist > 0.001 ? dx / dist : 0;
     const nz = dist > 0.001 ? dz / dist : 1;
-    const speed = e.speed * e.slowFactor;
+    let speed = e.speed * e.slowFactor;
+    // Elite-Affix "Wut": unter 50 % HP deutlich schneller
+    if (e.eliteAffix === AFFIX_RAGE && e.hp < e.maxHp * ELITE.rageThreshold) {
+      speed *= ELITE.rageSpeedMult;
+    }
 
     if (e.type === ENEMY_SHOOTER) {
       updateShooter(e, dt, dist, nx, nz, speed, world, events);
+    } else if (e.type === ENEMY_BOMBER) {
+      updateBomber(e, dt, dist, nx, nz, speed, world, events);
+    } else if (e.type === ENEMY_THIEF) {
+      updateThief(e, dt, dist, nx, nz, speed, world, events);
+    } else if (e.type === ENEMY_PHANTOM) {
+      updatePhantom(e, dt, dist, nx, nz, speed, world, events);
     } else {
       // Verfolger / Schwarm / Tank / Splitter: direkt auf den Spieler zu
       e.x += nx * speed * dt;
       e.z += nz * speed * dt;
     }
 
+    // Zuendender Bomber steht fest — sonst schieben Knockback/Sog/Separation
+    // den Blast aus dem angezeigten Warn-Ring (unfair fuer den Spieler)
+    const fusing = e.type === ENEMY_BOMBER && e.telegraphTimer > 0;
+
     // Knockback (exponentiell gedaempft), Tank (mass 0) ist immun
-    if (e.mass > 0 && (e.kvx !== 0 || e.kvz !== 0)) {
+    if (!fusing && e.mass > 0 && (e.kvx !== 0 || e.kvz !== 0)) {
       e.x += e.kvx * dt;
       e.z += e.kvz * dt;
       const dampF = Math.exp(-8 * dt);
@@ -64,7 +87,7 @@ export function updateEnemies(world: World, dt: number, events: EventBus): void 
       }
     }
 
-    separate(e, world, dt);
+    if (!fusing) separate(e, world, dt);
 
     // Kreis-Arena-Clamp
     const maxR = ARENA_RADIUS - e.radius;
@@ -130,6 +153,169 @@ function updateShooter(
       e.telegraphTimer = ai.telegraphTime;
     }
   }
+}
+
+/**
+ * Bomber "Zuender": rennt heran, STOPPT bei Naehe und zuendet nach
+ * Telegraph (roter Boden-Ring). telegraphTimer dient als Zuendschnur;
+ * die Detonation selbst passiert in CombatSystem.processKill.
+ */
+function updateBomber(
+  e: Enemy,
+  dt: number,
+  dist: number,
+  nx: number,
+  nz: number,
+  speed: number,
+  world: World,
+  events: EventBus,
+): void {
+  if (e.telegraphTimer > 0) {
+    // Zuendung laeuft: stillstehen (der Warn-Ring bleibt akkurat), Glimmen
+    e.flashTimer = Math.max(e.flashTimer, 0.03);
+    e.telegraphTimer -= dt;
+    if (e.telegraphTimer <= 0) {
+      // Sentinel bleibt > 0 — processKill erkennt daran die aktive Zuendung
+      e.telegraphTimer = 0.001;
+      e.hp = 0; // sweepDead detoniert ihn im selben Step
+    }
+    return;
+  }
+  if (dist < BOMBER_AI.triggerRange) {
+    const fuse = BOMBER_AI.fuseTime * (world.difficulty === 'easy' ? BOMBER_AI.easyFuseMult : 1);
+    e.telegraphTimer = fuse;
+    // Rest-Knockback aus dem Anlauf verwerfen — Ring und Blast bleiben deckungsgleich
+    e.kvx = 0;
+    e.kvz = 0;
+    events.emit('enemyFuse', { x: e.x, z: e.z, radius: BOMBER_AI.blastRadius, duration: fuse });
+    return;
+  }
+  e.x += nx * speed * dt;
+  e.z += nz * speed * dt;
+}
+
+/**
+ * Kern-Dieb: frisst liegende Kerne, flieht mit der Beute und entkommt
+ * nach Ablauf des Fluchttimers (fireTimer). Kill gibt alles zurueck.
+ * Komplett deterministisch — kein RNG.
+ */
+function updateThief(
+  e: Enemy,
+  dt: number,
+  dist: number,
+  nx: number,
+  nz: number,
+  speed: number,
+  world: World,
+  events: EventBus,
+): void {
+  const isEasy = world.difficulty === 'easy';
+  const maxCarry = isEasy ? THIEF_AI.maxCarryEasy : THIEF_AI.maxCarry;
+
+  // Fluchttimer laeuft ab dem ersten Diebstahl
+  if (e.carriedCores > 0) {
+    e.fireTimer -= dt;
+    if (e.fireTimer <= 0) {
+      // Entkommen: escaped-Flag laesst sweepDead die KOMPLETTE Kill-Pipeline
+      // ueberspringen (kein Loot, kein Combo-Kill, kein Lifesteal, keine Nova)
+      events.emit('thiefEscaped', { x: e.x, z: e.z, cores: e.carriedCores });
+      e.carriedCores = 0;
+      e.escaped = true;
+      e.hp = 0;
+      return;
+    }
+  }
+
+  // Naechsten liegenden Kern suchen (Pool <= 256, max. 2 Diebe — billig)
+  let targetIdx = -1;
+  let bestD2 = Infinity;
+  const pickups = world.pickups;
+  if (e.carriedCores < maxCarry) {
+    for (let i = 0; i < pickups.count; i++) {
+      const p = pickups.get(i);
+      if (p.kind !== PICKUP_CORE) continue;
+      const ddx = p.x - e.x;
+      const ddz = p.z - e.z;
+      const d2 = ddx * ddx + ddz * ddz;
+      if (d2 < bestD2) {
+        bestD2 = d2;
+        targetIdx = i;
+      }
+    }
+  }
+
+  if (targetIdx >= 0) {
+    // Zum Kern laufen und fressen
+    const p = pickups.get(targetIdx);
+    const d = Math.sqrt(bestD2);
+    if (d < THIEF_AI.stealDistance) {
+      pickups.despawn(targetIdx);
+      if (e.carriedCores === 0) {
+        e.fireTimer = isEasy ? THIEF_AI.escapeTimeEasy : THIEF_AI.escapeTime;
+      }
+      e.carriedCores++;
+      e.scalePop = 0.3;
+      events.emit('coreStolen', { x: e.x, z: e.z, carried: e.carriedCores });
+    } else {
+      e.x += ((p.x - e.x) / d) * speed * dt;
+      e.z += ((p.z - e.z) / d) * speed * dt;
+    }
+    return;
+  }
+
+  if (e.carriedCores > 0) {
+    // Fliehen: weg vom Spieler (Arena-Clamp laesst ihn am Rand entlangrutschen)
+    e.x -= nx * speed * dt;
+    e.z -= nz * speed * dt;
+    return;
+  }
+
+  // Nichts zu stehlen: seitlicher Orbit in Auto-Aim-Reichweite (kein Patt)
+  if (dist > THIEF_AI.orbitRange + 1) {
+    e.x += nx * speed * dt;
+    e.z += nz * speed * dt;
+  } else if (dist < THIEF_AI.orbitRange - 1) {
+    e.x -= nx * speed * dt;
+    e.z -= nz * speed * dt;
+  } else {
+    const side = e.uid % 2 === 0 ? 1 : -1;
+    e.x += -nz * side * speed * 0.5 * dt;
+    e.z += nx * side * speed * 0.5 * dt;
+  }
+}
+
+/**
+ * Phantom: naehert sich normal, blinkt aber zur Flanke, sobald der
+ * Spieler zu nah ist — bestraft stures Rueckwaerts-Kiten.
+ * Blink-Richtung deterministisch ueber uid (kein RNG).
+ */
+function updatePhantom(
+  e: Enemy,
+  dt: number,
+  dist: number,
+  nx: number,
+  nz: number,
+  speed: number,
+  world: World,
+  events: EventBus,
+): void {
+  void world;
+  e.fireTimer -= dt;
+  if (e.fireTimer <= 0 && dist < PHANTOM_AI.blinkRange) {
+    const side = e.uid % 2 === 0 ? 1 : -1;
+    const fromX = e.x;
+    const fromZ = e.z;
+    e.x += -nz * side * PHANTOM_AI.blinkDistance;
+    e.z += nx * side * PHANTOM_AI.blinkDistance;
+    // kein Interpolations-Schlieren ueber die Blink-Distanz
+    e.prevX = e.x;
+    e.prevZ = e.z;
+    e.fireTimer = PHANTOM_AI.blinkInterval;
+    events.emit('phantomBlink', { fromX, fromZ, toX: e.x, toZ: e.z });
+    return;
+  }
+  e.x += nx * speed * dt;
+  e.z += nz * speed * dt;
 }
 
 /** Weiche Abstossung ueberlappender Gegner — Schwaerme kollabieren nicht. */

@@ -67,6 +67,32 @@ und Rot heißt immer: ausweichen! „Schwer" schaltest du frei, wenn du auf
 „Normal" Welle 10 erreichst. In der **Tages-Arena** spielen alle weltweit
 dieselben Wellen — jeden Tag neue.
 
+## ✨ Was ist neu (Update „Viel cooler")
+
+- **Legendäre Upgrades** 🌟 — eine vierte, extrem seltene Karten-Stufe über
+  „Episch". Sechs Stück gibt es: Spiegelklon, Kettenreaktion, Orbital-Laser,
+  Schwarzes Loch, Überladung und Mega-Kugeln. Wenn eine goldene Karte
+  auftaucht, ist das ein Ereignis — greif zu!
+- **Neue Gegner:** der rote **Zünder** (wegrennen, wenn er blinkt!), der
+  silberne **Kern-Dieb** (klaut liegende Kerne — erwisch ihn, bevor er
+  entkommt, dann gibt's alles plus Bonus zurück) und das violette
+  **Phantom** (teleportiert sich an deine Flanke).
+- **Elite-Gegner** ★ — seltene, größere Varianten mit goldenem Ring am Boden.
+  Manche haben einen Schild (erster Treffer prallt ab), manche werden
+  wütend und schneller. Dafür lassen sie garantiert Extra-Beute fallen.
+- **Überraschungen:** ab und zu kommt eine **Goldene Welle** (doppelte
+  Kerne!) oder eine **Versorgungskapsel** landet in der Arena — einsammeln
+  lohnt sich (Kern-Regen, Extra-Herzen, Magnet oder Turbofeuer).
+- **Neue Optik:** die Arena wechselt alle 5 Wellen ihre Farbwelt
+  (Cyan-Nacht, Magenta-Dämmerung, Matrix-Smaragd, Blau-Eis, Gold-Inferno),
+  Projektile ziehen Leuchtspuren, Bosse bekommen einen dramatischen Auftritt,
+  und dein Dash hinterlässt Geisterbilder.
+- **Für Tüftler:** der „Runde vorbei"-Bildschirm zeigt jetzt deinen Build,
+  Schaden pro Sekunde, stärksten Treffer und beste Combo.
+
+Auf „Einfach" bleibt alles kindertauglich: neue Gegner kommen dort später
+und sanfter, Überraschungen sind fast nur Belohnungen.
+
 ## 🧰 Technik-Überblick
 
 - **60-FPS-Architektur:** Fixed-Timestep-Simulation (60 Hz) mit Render-Interpolation, Objekt-Pools, InstancedMesh-Rendering, Spatial-Hash-Kollisionen — keine Allokationen im Spiel-Loop, keine Memory-Leaks bei langen Sitzungen.

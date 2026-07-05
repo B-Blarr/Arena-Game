@@ -1,6 +1,7 @@
 export const PICKUP_CORE = 0;
 export const PICKUP_HEART = 1;
 export const PICKUP_MAGNET = 2;
+export const PICKUP_CAPSULE = 3;
 
 export interface Pickup {
   kind: number;

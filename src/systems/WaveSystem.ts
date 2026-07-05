@@ -7,14 +7,16 @@ import {
   isBossWave,
   waveBudget,
 } from '../config/balance';
-import { ENEMIES, ENEMY_CHASER, type EnemyDef } from '../config/enemies';
+import { AFFIX_RAGE, AFFIX_SHIELD, ELITE, ENEMIES, ENEMY_CHASER, type EnemyDef } from '../config/enemies';
 import { bossForWave, bossHp } from '../config/bosses';
 import type { EventBus } from '../core/EventBus';
 import type { World } from '../core/World';
+import { applyElite } from '../entities/Enemy';
 import { Boss } from '../entities/Boss';
 
 interface PendingTelegraph {
   type: number;
+  affix: number;
   x: number;
   z: number;
   timer: number;
@@ -24,6 +26,7 @@ interface PendingTelegraph {
  * Wellen-Komposition per Budget-System, gestaffelte Portal-Spawns mit
  * Telegraph, Gleichzeitig-Limit mit Warteschlange, Boss-Spawns alle 5 Wellen.
  * Nutzt ausschliesslich rngWaves — Daily Seed ergibt identische Wellen.
+ * pending-Eintraege kodieren `type | (eliteAffix << 8)`.
  */
 export class WaveSystem {
   private pending: number[] = [];
@@ -66,7 +69,7 @@ export class WaveSystem {
     this.bossInstance.init(def, tier, hp, projDamage);
     this.world.boss = this.bossInstance;
     this.bossActive = true;
-    this.events.emit('bossSpawned', { name: def.id, maxHp: hp });
+    this.events.emit('bossSpawned', { name: def.id, maxHp: hp, x: this.bossInstance.x, z: this.bossInstance.z });
   }
 
   bossDefeated(): void {
@@ -81,15 +84,36 @@ export class WaveSystem {
   private compose(w: number): void {
     const world = this.world;
     const rng = world.rngWaves;
+    const isEasy = world.difficulty === 'easy';
     const total = Math.round(waveBudget(w) * world.mods.budget) + this.carryover;
     let remaining = total;
     const spent = new Array<number>(ENEMIES.length).fill(0);
+
+    // Elite-Roll: seltene verstaerkte Einzel-Gegner (max. 2 pro Welle).
+    // Laeuft ueber rngWaves — Daily Seed ergibt identische Elite-Plaene.
+    const eliteMinWave = isEasy ? ELITE.minWaveEasy : ELITE.minWave;
+    const eliteChance = Math.min(
+      ELITE.baseChance + ELITE.chancePerWave * (w - eliteMinWave),
+      ELITE.maxChance,
+    ) * world.mods.eliteChanceMult;
+    let elitesThisWave = 0;
 
     const buy = (type: number): void => {
       const def = ENEMIES[type] as EnemyDef;
       remaining -= def.budgetCost;
       spent[type] = (spent[type] as number) + def.budgetCost;
-      for (let g = 0; g < def.groupSize; g++) this.pending.push(type);
+      let affix = 0;
+      if (
+        w >= eliteMinWave &&
+        elitesThisWave < ELITE.maxPerWave &&
+        ELITE.eligible.includes(type) &&
+        rng.chance(eliteChance)
+      ) {
+        affix = rng.chance(0.5) ? AFFIX_SHIELD : AFFIX_RAGE;
+        elitesThisWave++;
+      }
+      // Affix im pending-Eintrag kodiert (Typ bleibt in den unteren 8 Bit)
+      for (let g = 0; g < def.groupSize; g++) this.pending.push(type | (affix << 8));
     };
 
     // Lesbarkeit fuer Einsteiger: W1-7 mindestens 30 % Verfolger
@@ -103,7 +127,8 @@ export class WaveSystem {
       const candidates: number[] = [];
       for (let t = 0; t < ENEMIES.length; t++) {
         const def = ENEMIES[t] as EnemyDef;
-        if (def.budgetCost <= 0 || def.minWave > w) continue;
+        const minWave = isEasy ? (def.minWaveEasy ?? def.minWave) : def.minWave;
+        if (def.budgetCost <= 0 || minWave > w) continue;
         if (def.budgetCost > remaining) continue;
         if ((spent[t] as number) + def.budgetCost > total * def.budgetShare) continue;
         candidates.push(t);
@@ -131,7 +156,13 @@ export class WaveSystem {
       if (t.timer <= 0) {
         const scaling = this.world.scalingForWave(this.world.wave);
         const e = this.world.spawnEnemy(t.type, t.x, t.z, scaling);
-        if (e) e.spawnProtection = 0.3;
+        if (e) {
+          e.spawnProtection = 0.3;
+          if (t.affix > 0) {
+            applyElite(e, t.affix);
+            this.events.emit('eliteSpawned', { x: e.x, z: e.z, enemyType: e.type, affix: t.affix });
+          }
+        }
         this.telegraphs.splice(i, 1);
       }
     }
@@ -159,7 +190,10 @@ export class WaveSystem {
     let attempts = 0;
     while (this.pending.length > 0 && cost < SPAWN.packBudget && spawned < headroom && attempts < 50) {
       attempts++;
-      const type = this.pending[0] as number;
+      // Eintraege sind kodiert: Typ in Bit 0-7, Elite-Affix ab Bit 8
+      const raw = this.pending[0] as number;
+      const type = raw & 0xff;
+      const affix = raw >> 8;
       const def = ENEMIES[type] as EnemyDef;
 
       // Gleichzeitig-Limit pro Typ (Tank max. 3)
@@ -171,7 +205,7 @@ export class WaveSystem {
       this.pending.shift();
 
       const portal = this.pickPortal();
-      this.telegraphs.push({ type, x: portal.x, z: portal.z, timer: SPAWN.telegraphTime });
+      this.telegraphs.push({ type, affix, x: portal.x, z: portal.z, timer: SPAWN.telegraphTime });
       this.events.emit('portalOpened', { x: portal.x, z: portal.z });
       cost += this.costPerUnit(def);
       spawned++;
