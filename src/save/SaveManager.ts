@@ -26,6 +26,8 @@ export interface SaveSettings {
   muted: boolean;
   reduceFx: boolean;
   damageNumbers: boolean;
+  /** Gamepad-Rumble. */
+  vibration: boolean;
   difficulty: Difficulty;
   heroId: string;
   /** 'default' = Startwaffe des Helden, sonst 'laser' | 'star'. */
@@ -80,6 +82,7 @@ function defaults(): SaveData {
       muted: false,
       reduceFx: false,
       damageNumbers: true,
+      vibration: true,
       difficulty: 'normal',
       heroId: 'volt',
       weaponId: 'default',
@@ -133,6 +136,7 @@ function sanitize(raw: unknown): SaveData {
     if (typeof s.muted === 'boolean') d.settings.muted = s.muted;
     if (typeof s.reduceFx === 'boolean') d.settings.reduceFx = s.reduceFx;
     if (typeof s.damageNumbers === 'boolean') d.settings.damageNumbers = s.damageNumbers;
+    if (typeof s.vibration === 'boolean') d.settings.vibration = s.vibration;
     if (isDifficulty(s.difficulty)) d.settings.difficulty = s.difficulty;
     if (typeof s.heroId === 'string') d.settings.heroId = s.heroId;
     if (typeof s.weaponId === 'string') d.settings.weaponId = s.weaponId;

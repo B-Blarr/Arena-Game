@@ -75,6 +75,11 @@ export interface GameEvents {
   comboBroken: Record<string, never>;
   coresChanged: { runCores: number };
 
+  // Eingabe
+  padConnected: { index: number };
+  /** slot -1 = Pad war keinem Spieler zugeordnet. */
+  padDisconnected: { index: number; slot: number };
+
   // Ablauf / UI
   runStarted: Record<string, never>;
   gameOver: { score: number; wave: number; coresEarned: number; isRecord: boolean };

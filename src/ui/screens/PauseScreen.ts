@@ -28,7 +28,7 @@ export class PauseScreen {
     `;
   }
 
-  private toggle(label: string, key: 'reduceFx' | 'damageNumbers' | 'autoAim'): string {
+  private toggle(label: string, key: 'reduceFx' | 'damageNumbers' | 'autoAim' | 'vibration'): string {
     return `
       <div class="toggle-row"><span class="option-label">${label}</span>
         <span class="segmented" data-toggle="${key}">
@@ -42,7 +42,7 @@ export class PauseScreen {
     this.root.innerHTML = `
       <div class="panel pause-panel">
         <h2 class="title-glow pause-title">${STR.pause}</h2>
-        <button class="btn btn-primary pause-resume">${STR.resume}</button>
+        <button class="btn btn-primary pause-resume" data-nav-default data-nav-back>${STR.resume}</button>
         <div class="options-grid">
           ${this.slider(STR.volumeMaster, 'masterVolume')}
           ${this.slider(STR.volumeSfx, 'sfxVolume')}
@@ -50,6 +50,7 @@ export class PauseScreen {
           ${this.toggle(STR.reduceFx, 'reduceFx')}
           ${this.toggle(STR.damageNumbers, 'damageNumbers')}
           ${this.toggle(STR.autoAim, 'autoAim')}
+          ${this.toggle(STR.vibration, 'vibration')}
         </div>
         <button class="btn pause-restart">${STR.restart}</button>
         <button class="btn pause-menu">${STR.mainMenu}</button>
@@ -70,7 +71,7 @@ export class PauseScreen {
       seg.addEventListener('click', (e) => {
         const btn = (e.target as HTMLElement).closest('button');
         if (!btn) return;
-        const key = seg.dataset.toggle as 'reduceFx' | 'damageNumbers' | 'autoAim';
+        const key = seg.dataset.toggle as 'reduceFx' | 'damageNumbers' | 'autoAim' | 'vibration';
         this.save.data.settings[key] = btn.dataset.val === '1';
         this.cb.onSettingsChanged();
         this.refresh();
@@ -85,7 +86,7 @@ export class PauseScreen {
       input.value = String(Math.round(s[key] * 100));
     }
     for (const seg of this.root.querySelectorAll<HTMLElement>('[data-toggle]')) {
-      const key = seg.dataset.toggle as 'reduceFx' | 'damageNumbers' | 'autoAim';
+      const key = seg.dataset.toggle as 'reduceFx' | 'damageNumbers' | 'autoAim' | 'vibration';
       const val = s[key];
       seg.querySelectorAll('button').forEach((btn) => {
         btn.classList.toggle('active', (btn.dataset.val === '1') === val);

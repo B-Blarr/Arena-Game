@@ -3,6 +3,12 @@ import './ui/styles/hud.css';
 import './ui/styles/screens.css';
 import { Game } from './core/Game';
 
+// Gamepad-Mock fuer Browser-Tests (?padmock) — Pads werden dynamisch
+// gepollt, deshalb darf der Patch auch kurz nach Spielstart landen
+if (import.meta.env.DEV && location.search.includes('padmock')) {
+  void import('./debug/padMock').then((m) => m.installPadMock());
+}
+
 const canvas = document.getElementById('game') as HTMLCanvasElement;
 const game = new Game(canvas);
 game.start();

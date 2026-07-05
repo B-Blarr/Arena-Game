@@ -54,7 +54,7 @@ export class ShopScreen {
       <div class="hero-row shop-weapons"></div>
       <div class="shop-section-title">${STR.boniSection}</div>
       <div class="shop-bonus-list"></div>
-      <button class="btn shop-back">← ${STR.back}</button>
+      <button class="btn shop-back" data-nav-back data-key="shop-back">← ${STR.back}</button>
     `;
     (this.wrap.querySelector('.shop-back') as HTMLButtonElement).addEventListener('click', () => this.cb.onBack());
 

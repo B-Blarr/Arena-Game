@@ -235,6 +235,24 @@ input[type='range'] {
   cursor: pointer;
 }
 
+/* ---------- Gamepad-Fokus-Ring (UiNav) ---------- */
+/* #screens-Spezifitaet schlaegt .btn:focus-visible — ohne !important */
+#screens .nav-focus {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+  box-shadow: 0 0 22px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+
+body.reduce-fx #screens .nav-focus {
+  box-shadow: none;
+}
+
+/* Koop-Upgrade: fremde Maus darf nicht fuer den Waehler klicken */
+.screen.input-locked .upgrade-card,
+.screen.input-locked .upgrade-reroll {
+  pointer-events: none;
+}
+
 /* ---------- Key-Cap-Optik (Tasten-Hinweise) ---------- */
 .keycap {
   display: inline-flex;

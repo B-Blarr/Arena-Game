@@ -40,7 +40,7 @@ export class ProfilesScreen {
         <button class="btn profile-create-btn">${STR.createProfile}</button>
       </div>
       <div class="profile-hint text-dim"></div>
-      <button class="btn profiles-back">${STR.back}</button>
+      <button class="btn profiles-back" data-nav-back>${STR.back}</button>
     `;
     this.listEl = this.root.querySelector('.profile-list') as HTMLElement;
     this.inputEl = this.root.querySelector('.profile-name-input') as HTMLInputElement;
@@ -96,12 +96,12 @@ export class ProfilesScreen {
       const card = document.createElement('div');
       card.className = `profile-card panel${isActive ? ' active' : ''}`;
       card.innerHTML = `
-        <button class="profile-select">
+        <button class="profile-select" data-key="profil-${meta.id}">
           <span class="profile-name">${escapeHtml(meta.name)}</span>
           <span class="profile-stats">⬡ ${data.cores} · ${STR.bestScore}: ${best}</span>
           ${isActive ? `<span class="profile-badge">${STR.activeBadge}</span>` : ''}
         </button>
-        ${canDelete ? `<button class="btn profile-delete">🗑</button>` : ''}
+        ${canDelete ? `<button class="btn profile-delete" data-key="profil-del-${meta.id}">🗑</button>` : ''}
       `;
       (card.querySelector('.profile-select') as HTMLButtonElement).addEventListener('click', () => {
         if (isActive) {

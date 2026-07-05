@@ -60,10 +60,10 @@ export class MenuScreen {
       <div class="menu-subtitle">${STR.subtitle}</div>
       <div class="hero-row"></div>
       <div class="menu-buttons">
-        <button class="btn btn-primary menu-play">${STR.play}</button>
+        <button class="btn btn-primary menu-play" data-nav-default data-key="menu-play">${STR.play}</button>
         <div class="menu-buttons-row">
-          <button class="btn menu-shop">🛠 ${STR.shop}</button>
-          <button class="btn btn-gold menu-leaderboard">🏆 ${STR.leaderboard}</button>
+          <button class="btn menu-shop" data-key="menu-shop">🛠 ${STR.shop}</button>
+          <button class="btn btn-gold menu-leaderboard" data-key="menu-lb">🏆 ${STR.leaderboard}</button>
         </div>
       </div>
       <div class="menu-options">
@@ -76,6 +76,11 @@ export class MenuScreen {
         <span><span class="keycap">Leertaste</span> Dash</span>
         <span><span class="keycap">P</span>/<span class="keycap">Esc</span> Pause</span>
       </div>
+      <div class="menu-hint menu-hint-pad">
+        <span>${STR.padHint}</span>
+        <span>${STR.padNavHint}</span>
+      </div>
+      <div class="menu-sound-hint">${STR.padSoundHint}</div>
       <div class="menu-warn text-dim" style="position:absolute; bottom:64px; font-size:1rem; color:#ffb84d;"></div>
     `;
     this.heroRow = this.root.querySelector('.hero-row') as HTMLElement;
@@ -115,6 +120,7 @@ export class MenuScreen {
       const info = STR.heroes[hero.id] ?? { name: hero.id, trait: '' };
       const card = document.createElement('button');
       card.className = `hero-card${selected ? ' selected' : ''}${unlocked ? '' : ' locked'}`;
+      card.dataset.key = `hero-${hero.id}`;
       card.style.color = HERO_COLORS[hero.id] ?? '#00e5ff';
       card.innerHTML = `
         <span class="hero-avatar">${HERO_GLYPHS[hero.id] ?? '▲'}</span>
@@ -139,6 +145,7 @@ export class MenuScreen {
     const diffs: Difficulty[] = ['easy', 'normal', 'hard'];
     for (const d of diffs) {
       const btn = document.createElement('button');
+      btn.dataset.key = `diff-${d}`;
       btn.textContent = STR.difficulties[d] ?? d;
       const lockedHard = d === 'hard' && !save.hardUnlocked;
       if (lockedHard) {
@@ -159,6 +166,7 @@ export class MenuScreen {
     this.aimSeg.innerHTML = '';
     for (const on of [true, false]) {
       const btn = document.createElement('button');
+      btn.dataset.key = `aim-${on ? 1 : 0}`;
       btn.textContent = on ? STR.on : STR.off;
       btn.classList.toggle('active', save.settings.autoAim === on);
       btn.addEventListener('click', () => {
@@ -173,6 +181,7 @@ export class MenuScreen {
     this.dailySeg.innerHTML = '';
     for (const on of [false, true]) {
       const btn = document.createElement('button');
+      btn.dataset.key = `daily-${on ? 1 : 0}`;
       btn.textContent = on ? STR.on : STR.off;
       btn.classList.toggle('active', this.dailyMode === on);
       btn.addEventListener('click', () => {

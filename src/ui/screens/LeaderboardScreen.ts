@@ -25,7 +25,7 @@ export class LeaderboardScreen {
     this.root.innerHTML = `
       <h2 class="title-glow leaderboard-title">🏆 ${STR.leaderboardTitle}</h2>
       <div class="leaderboard-wrap panel"></div>
-      <button class="btn leaderboard-back">${STR.back}</button>
+      <button class="btn leaderboard-back" data-nav-default data-nav-back>${STR.back}</button>
     `;
     this.tableWrap = this.root.querySelector('.leaderboard-wrap') as HTMLElement;
     (this.root.querySelector('.leaderboard-back') as HTMLButtonElement)

@@ -75,6 +75,13 @@ export const STR = {
   volumeMusic: 'Musik',
   reduceFx: 'Effekte reduzieren',
   damageNumbers: 'Schadenszahlen',
+  vibration: 'Vibration',
+
+  // Gamepad
+  padDisconnected: 'Gamepad getrennt — Pause!',
+  padHint: '🎮 Stick: Laufen · A: Dash · Start: Pause',
+  padNavHint: '🎮 Steuerkreuz: Auswählen · A: Bestätigen · B: Zurück',
+  padSoundHint: '🔇 Einmal klicken oder Taste drücken, dann gibt es Sound — das Gamepad ist schon bereit!',
 
   // Game Over
   gameOverTitle: 'Runde vorbei!',

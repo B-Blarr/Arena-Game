@@ -56,8 +56,8 @@ export class GameOverScreen {
       <div class="gameover-build"></div>
       <div class="gameover-teaser"></div>
       <div class="gameover-buttons">
-        <button class="btn btn-primary pulse-soft go-again">${STR.again}</button>
-        <button class="btn go-menu">${STR.toMenu}</button>
+        <button class="btn btn-primary pulse-soft go-again" data-nav-default>${STR.again}</button>
+        <button class="btn go-menu" data-nav-back>${STR.toMenu}</button>
       </div>
       <div class="gameover-sub" style="margin-top:1rem">${STR.restartHint}</div>
     `;

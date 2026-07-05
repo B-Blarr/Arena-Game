@@ -1,5 +1,6 @@
 import { Scene } from 'three';
 import { DIFFICULTIES, META, type Difficulty } from '../config/balance';
+import { RUMBLE } from '../config/input';
 import { getHero, HEROES, PERMA_BONI, UNLOCKABLE_WEAPONS } from '../config/heroes';
 import { STR } from '../config/strings.de';
 import { AudioEngine } from '../audio/AudioEngine';
@@ -17,6 +18,7 @@ import { CombatSystem } from '../systems/CombatSystem';
 import { JuiceDirector } from '../systems/JuiceDirector';
 import { ParticleSystem } from '../systems/ParticleSystem';
 import { PickupSystem } from '../systems/PickupSystem';
+import { RumbleSystem } from '../systems/RumbleSystem';
 import { RunStats } from '../systems/RunStats';
 import { ScoreSystem } from '../systems/ScoreSystem';
 import { SurpriseDirector } from '../systems/SurpriseDirector';
@@ -25,6 +27,7 @@ import { WaveSystem } from '../systems/WaveSystem';
 import { Hud } from '../ui/Hud';
 import { Popups } from '../ui/Popups';
 import { UiManager } from '../ui/UiManager';
+import { UiNav } from '../ui/UiNav';
 import { GameOverScreen } from '../ui/screens/GameOverScreen';
 import { LeaderboardScreen } from '../ui/screens/LeaderboardScreen';
 import { MenuScreen } from '../ui/screens/MenuScreen';
@@ -63,7 +66,7 @@ export class Game {
   readonly instRenderer: InstancedRenderer;
   readonly particles: ParticleSystem;
 
-  readonly input = new InputManager();
+  readonly input = new InputManager(this.events);
   readonly audioEngine = new AudioEngine();
   readonly sfx: Sfx;
   readonly music: Music;
@@ -79,6 +82,8 @@ export class Game {
   readonly juice: JuiceDirector;
 
   readonly ui: UiManager;
+  readonly uiNav: UiNav;
+  readonly rumble: RumbleSystem;
   readonly hud: Hud;
   readonly popups: Popups;
   readonly menuScreen: MenuScreen;
@@ -128,6 +133,9 @@ export class Game {
 
     // UI
     this.ui = new UiManager(this.events);
+    this.uiNav = new UiNav(this.events, this.input);
+    this.ui.onScreenShown = (el) => this.uiNav.setScreen(el);
+    this.rumble = new RumbleSystem(this.events, this.input);
     this.hud = new Hud(this.events, this.sfx);
     this.popups = new Popups(document.getElementById('popup-layer') as HTMLElement, this.events, this.world);
 
@@ -202,8 +210,12 @@ export class Game {
         this.input.endStep();
       },
       (alpha, rawDt) => {
+        // Pads genau 1x pro Frame pollen; UI-Navigation VOR den Screens
+        this.input.pollPads();
+        this.uiNav.update(rawDt);
         this.fsm.render(alpha, rawDt);
         this.renderer.render(rawDt);
+        this.input.endFrame();
       },
     );
 
@@ -211,13 +223,29 @@ export class Game {
   }
 
   private wireGlobalEvents(): void {
-    // AudioContext-Unlock bei erster Geste (Autoplay-Policy)
-    const unlock = (): void => this.audioEngine.unlock();
+    // AudioContext-Unlock bei erster Geste (Autoplay-Policy). Ein Gamepad-
+    // Button zaehlt NICHT als Geste — solange kein Unlock da ist, zeigt das
+    // Menue Pad-Nutzern einen Hinweis (body.audio-locked).
+    document.body.classList.add('audio-locked');
+    const unlock = (): void => {
+      this.audioEngine.unlock();
+      document.body.classList.remove('audio-locked');
+    };
     window.addEventListener('pointerdown', unlock);
     window.addEventListener('keydown', unlock);
     this.disposers.push(
       () => window.removeEventListener('pointerdown', unlock),
       () => window.removeEventListener('keydown', unlock),
+    );
+
+    // Pad-Anzeige (Menue-Hints) ueber Body-Klasse, ohne Re-Render
+    this.disposers.push(
+      this.events.on('padConnected', () => {
+        document.body.classList.add('pad-connected');
+      }),
+      this.events.on('padDisconnected', () => {
+        if (!this.input.anyPadConnected()) document.body.classList.remove('pad-connected');
+      }),
     );
 
     // Tab-Wechsel -> Auto-Pause
@@ -259,6 +287,8 @@ export class Game {
     // CSS-Effekte (Shimmer/Pulse) daempfen sich ueber diese Klasse selbst
     document.body.classList.toggle('reduce-fx', s.reduceFx);
     this.combat.autoAimEnabled = s.autoAim;
+    this.rumble.enabled = s.vibration;
+    this.rumble.intensityMult = s.reduceFx ? RUMBLE.reduceFxMult : 1;
     this.hud.setMuted(s.muted);
     // Helden-Silhouette live: die Backdrop-Figur im Menue wechselt beim Klick
     this.instRenderer.setHero(getHero(s.heroId));
@@ -367,6 +397,8 @@ export class Game {
     this.sfx.dispose();
     this.audioEngine.dispose();
     this.juice.dispose();
+    this.rumble.dispose();
+    this.uiNav.dispose();
     this.runStats.dispose();
     this.score.dispose();
     this.particles.dispose();

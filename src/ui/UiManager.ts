@@ -16,6 +16,8 @@ export class UiManager {
   private readonly promptEl: HTMLElement;
   private lastHover: EventTarget | null = null;
   private readonly disposers: Array<() => void> = [];
+  /** Hook fuer die Fokus-Navigation (UiNav) — kriegt den aktiven Screen. */
+  onScreenShown: ((el: HTMLElement | null) => void) | null = null;
 
   constructor(events: EventBus) {
     for (const id of SCREEN_IDS) {
@@ -58,6 +60,7 @@ export class UiManager {
     for (const [key, el] of this.screens) {
       el.classList.toggle('hidden', key !== id);
     }
+    this.onScreenShown?.(id ? (this.screens.get(id) ?? null) : null);
   }
 
   showPrompt(html: string): void {

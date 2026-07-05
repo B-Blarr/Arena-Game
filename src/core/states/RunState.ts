@@ -39,6 +39,10 @@ export class RunState implements GameState {
           this.phaseTimer = 1.9;
         }
       }),
+      // Pad eines Spielers abgezogen -> Auto-Pause (Kind stolpert ueber Kabel)
+      game.events.on('padDisconnected', (e) => {
+        if (e.slot >= 0) this.pauseIfActive();
+      }),
     );
   }
 
@@ -77,6 +81,8 @@ export class RunState implements GameState {
     this.isActive = true;
     this.phase = 'wave';
     this.pendingGuaranteeRare = false;
+    // Menue-Klick/A-Button darf nicht als erster Dash im Run feuern
+    g.input.resetTransient();
     g.events.emit('runStarted', {});
     this.startWave(1);
     this.initTutorial();
@@ -126,7 +132,7 @@ export class RunState implements GameState {
     } else {
       g.ui.showScreen(null);
       g.audioEngine.duckMusic(false);
-      g.input.keyboard.reset();
+      g.input.resetTransient();
     }
   }
 
@@ -155,11 +161,7 @@ export class RunState implements GameState {
       return;
     }
 
-    const input = g.input.sample(g.cameraRig.camera, player.x, player.z);
-    if (g.input.gamepad.pauseJustPressed) {
-      this.togglePause();
-      return;
-    }
+    const input = g.input.sample(0, g.cameraRig.camera, player.x, player.z);
 
     player.update(dt, input.moveX, input.moveZ, input.dashJustPressed);
     if (player.isDashing) g.particles.dashTrail(player.x, player.z);
@@ -231,7 +233,7 @@ export class RunState implements GameState {
     g.ui.showScreen(null);
     g.time.baseScale = 1;
     g.audioEngine.duckMusic(false);
-    g.input.keyboard.reset();
+    g.input.resetTransient();
     this.phase = 'wave';
     this.startWave(g.world.wave + 1);
   }
@@ -349,10 +351,8 @@ export class RunState implements GameState {
     g.hud.update(rawDt, g.world, g.score, g.world.enemies.count);
     g.popups.update(rawDt, g.cameraRig.camera);
 
-    // Gamepad kann auch im Pausen-Screen fortsetzen
-    if (this.paused) {
-      g.input.gamepad.poll();
-      if (g.input.gamepad.pauseJustPressed) this.togglePause();
-    }
+    // Pad-Start toggelt die Pause — laeuft ueber den UI-Edge-Puffer und
+    // funktioniert damit auch, waehrend die Simulation steht
+    if (this.isActive && g.input.uiStartPressed()) this.togglePause();
   }
 }

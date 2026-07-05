@@ -99,6 +99,10 @@ export class Popups {
       events.on('upgradeChosen', (e) => {
         if (e.rarity === 'legendary') this.banner(STR.legendaryFound, 'gold-banner');
       }),
+      // Pad eines Spielers weg -> RunState pausiert, wir erklaeren warum
+      events.on('padDisconnected', (e) => {
+        if (e.slot >= 0) this.banner(STR.padDisconnected, 'boss-banner');
+      }),
     );
   }
 
