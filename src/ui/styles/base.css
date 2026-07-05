@@ -1,0 +1,253 @@
+/* ============================================================
+   NEON ARENA – Design-System
+   Regeln: kein !important, keine Schrift unter 16px.
+   Farben/Groessen zentral als Custom Properties.
+   ============================================================ */
+
+:root {
+  font-size: 16px;
+
+  /* Palette */
+  --bg-deep: #07070f;
+  --panel-bg: rgba(10, 12, 30, 0.72);
+  --panel-border: rgba(0, 229, 255, 0.5);
+  --accent: #00e5ff;
+  --accent-2: #ff3df2;
+  --gold: #ffc83d;
+  --heal: #4dff88;
+  --danger: #ff3b30;
+  --text-1: #f2f4ff;
+  --text-2: #a8b0d0;
+
+  /* Seltenheiten */
+  --rarity-common: #9aa7c7;
+  --rarity-rare: #00e5ff;
+  --rarity-epic: #b14cff;
+
+  /* Glow-Rezepte */
+  --glow-text:
+    0 0 8px rgba(0, 229, 255, 0.8),
+    0 0 24px rgba(0, 229, 255, 0.4);
+  --glow-box:
+    0 0 16px rgba(0, 229, 255, 0.35),
+    inset 0 0 24px rgba(0, 229, 255, 0.08);
+
+  --font-display: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+  --font-body: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg-deep);
+  color: var(--text-1);
+  font-family: var(--font-body);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#game {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* UI-Layer-Struktur: Canvas (0) -> HUD (10) -> FX (20) -> Screens (30) */
+#ui {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+#hud { z-index: 10; }
+#fx-layer { z-index: 20; }
+#screens { z-index: 30; position: absolute; inset: 0; pointer-events: none; }
+
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  background: rgba(5, 6, 15, 0.75);
+  backdrop-filter: blur(6px);
+}
+
+.hidden {
+  display: none;
+}
+
+/* ---------- Panels ---------- */
+.panel {
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  box-shadow: var(--glow-box);
+  backdrop-filter: blur(8px);
+  padding: 1.5rem;
+}
+
+/* ---------- Buttons ---------- */
+.btn {
+  --glow: var(--accent);
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 56px;
+  padding: 0.75rem 2rem;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--glow);
+  background: rgba(10, 12, 30, 0.8);
+  border: 2px solid var(--glow);
+  border-radius: 10px;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--glow) 35%, transparent);
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+}
+
+.btn:hover,
+.btn:focus-visible {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 0 22px color-mix(in srgb, var(--glow) 60%, transparent);
+}
+
+.btn:focus-visible {
+  outline: 3px solid var(--text-1);
+  outline-offset: 2px;
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+  transform: none;
+}
+
+.btn-primary {
+  min-height: 64px;
+  font-size: 1.5rem;
+  color: #041418;
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 26px rgba(0, 229, 255, 0.55);
+}
+
+.btn-primary:hover,
+.btn-primary:focus-visible {
+  background: #4df0ff;
+  box-shadow: 0 0 36px rgba(0, 229, 255, 0.8);
+}
+
+.btn-gold { --glow: var(--gold); }
+.btn-magenta { --glow: var(--accent-2); }
+
+/* ---------- Typo-Helfer ---------- */
+.title-glow {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-1);
+  text-shadow: var(--glow-text);
+}
+
+.text-dim { color: var(--text-2); }
+
+/* ---------- Toggles / Segmented Control ---------- */
+.segmented {
+  display: inline-flex;
+  border: 2px solid var(--panel-border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.segmented button {
+  pointer-events: auto;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text-2);
+  background: transparent;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  min-height: 48px;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.segmented button:hover {
+  color: var(--text-1);
+}
+
+.segmented button.active {
+  background: var(--accent);
+  color: #041418;
+}
+
+.segmented button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  font-size: 1.125rem;
+}
+
+/* ---------- Slider ---------- */
+input[type='range'] {
+  pointer-events: auto;
+  accent-color: var(--accent);
+  width: 180px;
+  height: 24px;
+  cursor: pointer;
+}
+
+/* ---------- Key-Cap-Optik (Tasten-Hinweise) ---------- */
+.keycap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0 0.5rem;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-1);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-bottom-width: 3px;
+  border-radius: 6px;
+}

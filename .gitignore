@@ -1,0 +1,15 @@
+# Abhaengigkeiten (werden per "npm install" wiederhergestellt)
+node_modules/
+
+# Build-Output (wird per "npm run build" erzeugt)
+dist/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*

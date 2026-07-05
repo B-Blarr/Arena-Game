@@ -1,0 +1,138 @@
+import {
+  AdditiveBlending,
+  BoxGeometry,
+  BufferGeometry,
+  CircleGeometry,
+  Color,
+  ConeGeometry,
+  IcosahedronGeometry,
+  Material,
+  MeshBasicMaterial,
+  OctahedronGeometry,
+  RingGeometry,
+  SphereGeometry,
+  TetrahedronGeometry,
+  TorusGeometry,
+} from 'three';
+import { ENEMIES, type EnemyShape } from '../config/enemies';
+
+/**
+ * ALLE geteilten Geometrien und Materialien entstehen genau einmal hier.
+ * Waehrend des Gameplays wird nichts erzeugt oder disposed — zentrale
+ * dispose()-Methode fuer den Teardown (HMR/Seitenwechsel).
+ *
+ * HDR-Trick fuers Neon: MeshBasicMaterial (unlit) mit Farbwerten > 1
+ * ueberschreitet den Bloom-Luminanz-Threshold und glueht.
+ */
+export class AssetRegistry {
+  // MUSS vor den Material-Feldern stehen: makeGlow() pusht hierhin,
+  // und Klassenfelder initialisieren in Deklarations-Reihenfolge.
+  private extraMaterials: Material[] = [];
+
+  // Geometrien
+  readonly geoCube = new BoxGeometry(0.9, 0.9, 0.9);
+  readonly geoOctahedron = new OctahedronGeometry(0.65);
+  readonly geoTetrahedron = new TetrahedronGeometry(0.7);
+  readonly geoSphere = new SphereGeometry(0.55, 12, 8);
+  readonly geoPlayerProjectile = new SphereGeometry(0.15, 8, 6);
+  readonly geoEnemyProjectile = new SphereGeometry(0.19, 8, 6);
+  readonly geoCore = new OctahedronGeometry(0.22);
+  readonly geoHeart = new SphereGeometry(0.24, 10, 8);
+  readonly geoMagnet = new IcosahedronGeometry(0.26);
+  readonly geoOrb = new SphereGeometry(0.3, 10, 8);
+  readonly geoParticle = new BoxGeometry(0.14, 0.14, 0.14);
+  readonly geoRing = new RingGeometry(0.85, 1, 48);
+  readonly geoBlob = new CircleGeometry(0.6, 24);
+  readonly geoPlayerBody = new ConeGeometry(0.42, 1.1, 6);
+  readonly geoPlayerRing = new TorusGeometry(0.45, 0.06, 8, 24);
+  readonly geoTelegraphLine = new BoxGeometry(1, 0.05, 1);
+
+  // Gegner: weisses Material, Farbe kommt pro Instanz (instanceColor)
+  readonly matEnemy = new MeshBasicMaterial({ color: 0xffffff });
+
+  readonly matPlayerProjectile = this.makeGlow(0x00e5ff, 2.2);
+  readonly matEnemyProjectile = this.makeGlow(0xff3b30, 2.2);
+  readonly matCore = this.makeGlow(0x00e5ff, 2.0);
+  readonly matHeart = this.makeGlow(0x4dff88, 2.0);
+  readonly matMagnet = this.makeGlow(0xffc83d, 2.0);
+  readonly matOrb = this.makeGlow(0x00e5ff, 2.4);
+  readonly matParticle = new MeshBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    depthWrite: false,
+    blending: AdditiveBlending,
+  });
+  readonly matBlob = new MeshBasicMaterial({
+    color: 0x000000,
+    transparent: true,
+    opacity: 0.4,
+    depthWrite: false,
+  });
+  readonly matTelegraph = new MeshBasicMaterial({
+    color: new Color(0xff3b30).multiplyScalar(1.5),
+    transparent: true,
+    opacity: 0.5,
+    depthWrite: false,
+  });
+  readonly matPortal = new MeshBasicMaterial({
+    color: new Color(0x00e5ff).multiplyScalar(1.5),
+    transparent: true,
+    opacity: 0.6,
+    depthWrite: false,
+  });
+  readonly matShockwave = new MeshBasicMaterial({
+    color: new Color(0xffffff).multiplyScalar(1.6),
+    transparent: true,
+    opacity: 0.8,
+    depthWrite: false,
+  });
+
+  /** HDR-Farben pro Gegnertyp (fuer instanceColor), Faktor 1.8 -> bloomt. */
+  readonly enemyColors: Color[] = ENEMIES.map((def) => new Color(def.color).multiplyScalar(1.8));
+
+  geometryFor(shape: EnemyShape): BufferGeometry {
+    switch (shape) {
+      case 'cube':
+        return this.geoCube;
+      case 'octahedron':
+        return this.geoOctahedron;
+      case 'tetrahedron':
+        return this.geoTetrahedron;
+      case 'sphere':
+        return this.geoSphere;
+    }
+  }
+
+  makeGlow(hex: number, intensity: number): MeshBasicMaterial {
+    const m = new MeshBasicMaterial({ color: new Color(hex).multiplyScalar(intensity) });
+    this.extraMaterials.push(m);
+    return m;
+  }
+
+  makeGlowTransparent(hex: number, intensity: number, opacity: number): MeshBasicMaterial {
+    const m = new MeshBasicMaterial({
+      color: new Color(hex).multiplyScalar(intensity),
+      transparent: true,
+      opacity,
+      depthWrite: false,
+    });
+    this.extraMaterials.push(m);
+    return m;
+  }
+
+  dispose(): void {
+    const geos: BufferGeometry[] = [
+      this.geoCube, this.geoOctahedron, this.geoTetrahedron, this.geoSphere,
+      this.geoPlayerProjectile, this.geoEnemyProjectile, this.geoCore, this.geoHeart,
+      this.geoMagnet, this.geoOrb, this.geoParticle, this.geoRing, this.geoBlob,
+      this.geoPlayerBody, this.geoPlayerRing, this.geoTelegraphLine,
+    ];
+    for (const g of geos) g.dispose();
+    const mats: Material[] = [
+      this.matEnemy, this.matParticle, this.matBlob, this.matTelegraph,
+      this.matPortal, this.matShockwave, ...this.extraMaterials,
+    ];
+    for (const m of mats) m.dispose();
+    this.extraMaterials = [];
+  }
+}

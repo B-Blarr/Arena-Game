@@ -1,0 +1,61 @@
+import type { EventBus } from '../core/EventBus';
+import type { Time } from '../core/Time';
+import type { World } from '../core/World';
+import type { CameraRig } from '../render/CameraRig';
+
+/**
+ * Uebersetzt Gameplay-Events in Game-Feel: Trauma-Screenshake, Hitstop,
+ * Zeitlupe, Weissblitz. Bewusst EIN Blitz beim Boss-Tod, kein Strobe
+ * (Fotosensibilitaet, Kinder-Zielgruppe).
+ */
+export class JuiceDirector {
+  private readonly unsubs: Array<() => void> = [];
+  private readonly flashEl: HTMLElement | null;
+
+  constructor(
+    events: EventBus,
+    private readonly time: Time,
+    private readonly rig: CameraRig,
+    private readonly world: World,
+  ) {
+    this.flashEl = document.getElementById('screen-flash');
+
+    this.unsubs.push(
+      events.on('playerHit', () => this.rig.addTrauma(0.4)),
+      events.on('enemyKilled', () => this.rig.addTrauma(0.06)),
+      events.on('explosion', (e) => {
+        const d = Math.hypot(e.x - this.world.player.x, e.z - this.world.player.z);
+        this.rig.addTrauma(0.3 * Math.max(0, 1 - d / 15));
+      }),
+      events.on('bossStomp', () => this.rig.addTrauma(0.5)),
+      events.on('enemyHit', (e) => {
+        if (e.crit) this.time.hitstop(0.04);
+      }),
+      events.on('playerDashed', () => this.rig.dashKick()),
+      events.on('bossDied', () => {
+        // Mega-Event: Hitstop -> Zeitlupe -> EIN Weissblitz -> Trauma
+        this.time.hitstop(0.12);
+        this.time.slowmo(0.25, 0.8, 0.4);
+        this.flash();
+        this.rig.addTrauma(0.7);
+      }),
+      events.on('playerDied', () => {
+        this.time.slowmo(0.3, 1.0, 0.5);
+        this.rig.addTrauma(0.6);
+      }),
+      events.on('playerRevived', () => this.flash()),
+    );
+  }
+
+  private flash(): void {
+    const el = this.flashEl;
+    if (!el) return;
+    el.classList.remove('flash');
+    void el.offsetWidth; // Reflow erzwingen -> Animation startet neu
+    el.classList.add('flash');
+  }
+
+  dispose(): void {
+    for (const u of this.unsubs) u();
+  }
+}

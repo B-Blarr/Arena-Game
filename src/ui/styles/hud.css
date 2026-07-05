@@ -1,0 +1,396 @@
+/* ============================================================
+   HUD: HP-Balken, Welle, Punkte/Combo, Dash, Kerne, Boss-Leiste
+   Gross und ikonisch — muss fuer einen 7-Jaehrigen lesbar sein.
+   ============================================================ */
+
+#hud {
+  font-family: var(--font-display);
+}
+
+/* ---------- HP-Balken (unten mittig) ---------- */
+.hud-hp {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hud-hp-icon {
+  font-size: 1.5rem;
+  filter: drop-shadow(0 0 6px rgba(255, 80, 100, 0.8));
+}
+
+.hud-hp-bar {
+  position: relative;
+  width: 320px;
+  height: 22px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 2px solid rgba(0, 229, 255, 0.45);
+  border-radius: 11px;
+  overflow: hidden;
+}
+
+.hud-hp-chunk,
+.hud-hp-fill {
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  transform-origin: left center;
+}
+
+/* Delayed-Damage-Chunk: weisses Segment schrumpft verzoegert nach */
+.hud-hp-chunk {
+  background: rgba(255, 255, 255, 0.85);
+  transition: transform 0.5s ease 0.3s;
+}
+
+.hud-hp-fill {
+  background: linear-gradient(90deg, #00b8d4, var(--accent));
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.6);
+  transition: transform 0.15s ease;
+}
+
+.hud-hp.low .hud-hp-fill {
+  background: linear-gradient(90deg, #d4003c, var(--danger));
+  box-shadow: 0 0 12px rgba(255, 59, 48, 0.8);
+  animation: hp-pulse 1.1s ease-in-out infinite;
+}
+
+@keyframes hp-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+.hud-hp-text {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-1);
+  text-shadow: 0 0 6px rgba(0, 0, 0, 0.9);
+  min-width: 72px;
+}
+
+/* ---------- Welle (oben mittig) ---------- */
+.hud-wave {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+}
+
+.hud-wave-label {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-shadow: var(--glow-text);
+}
+
+.hud-wave-enemies {
+  font-size: 1rem;
+  color: var(--text-2);
+  margin-top: 2px;
+}
+
+/* ---------- Punkte + Combo (oben rechts) ---------- */
+.hud-score {
+  position: absolute;
+  top: 20px;
+  right: 28px;
+  text-align: right;
+}
+
+.hud-score-value {
+  font-size: 1.75rem;
+  font-weight: 800;
+  text-shadow: var(--glow-text);
+  transition: transform 0.15s ease;
+}
+
+.hud-score-value.pop { transform: scale(1.15); }
+
+.hud-combo {
+  display: none;
+  margin-top: 4px;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+.hud-combo.visible { display: flex; }
+.hud-combo.c1 { color: var(--accent); }
+.hud-combo.c2 { color: var(--accent-2); }
+.hud-combo.c3 { color: var(--gold); }
+
+/* Combo-Timer als sich leerender Kreisring */
+.hud-combo-ring {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: conic-gradient(currentColor calc(var(--combo-t) * 360deg), rgba(255, 255, 255, 0.12) 0deg);
+}
+
+/* ---------- Kerne (oben links) ---------- */
+.hud-cores {
+  position: absolute;
+  top: 20px;
+  left: 28px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--accent);
+  text-shadow: var(--glow-text);
+}
+
+.hud-cores .core-icon { font-size: 1.25rem; }
+
+.hud-cores.pop { animation: counter-pop 0.15s ease; }
+
+@keyframes counter-pop {
+  50% { transform: scale(1.3); }
+}
+
+/* ---------- Dash-Cooldown (unten rechts) ---------- */
+.hud-dash {
+  position: absolute;
+  bottom: 24px;
+  right: 28px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.375rem;
+  background:
+    conic-gradient(var(--accent) calc(var(--dash-t) * 360deg), rgba(255, 255, 255, 0.1) 0deg);
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.35);
+  transition: transform 0.15s ease;
+}
+
+.hud-dash-inner {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: rgba(7, 7, 15, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hud-dash.ready { transform: scale(1.12); box-shadow: 0 0 22px rgba(0, 229, 255, 0.8); }
+
+/* Zweite Dash-Ladung (Doppel-Dash-Upgrade) */
+.hud-dash-charges {
+  position: absolute;
+  bottom: 88px;
+  right: 44px;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--accent);
+  text-shadow: var(--glow-text);
+}
+
+/* ---------- Boss-Leiste ---------- */
+.hud-boss {
+  position: absolute;
+  top: 76px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60%;
+  max-width: 640px;
+  text-align: center;
+}
+
+.hud-boss-name {
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: #ff5a70;
+  text-shadow: 0 0 10px rgba(255, 46, 76, 0.8);
+  margin-bottom: 4px;
+}
+
+.hud-boss-bar {
+  height: 16px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 2px solid rgba(255, 46, 76, 0.6);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.hud-boss-fill {
+  height: 100%;
+  transform-origin: left center;
+  background: linear-gradient(90deg, #ff2e4c, var(--accent-2));
+  box-shadow: 0 0 14px rgba(255, 46, 76, 0.7);
+  transition: transform 0.2s ease;
+}
+
+/* ---------- Mute-Button (oben rechts unter Score) ---------- */
+.hud-mute {
+  position: absolute;
+  top: 96px;
+  right: 28px;
+  pointer-events: auto;
+  width: 44px;
+  height: 44px;
+  font-size: 1.25rem;
+  background: rgba(10, 12, 30, 0.6);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  color: var(--text-1);
+  cursor: pointer;
+}
+
+/* ---------- FX-Layer ---------- */
+#vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(255, 40, 60, 0.35) 100%);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+#vignette.active {
+  animation: vignette-pulse 1.1s ease-in-out infinite;
+}
+
+@keyframes vignette-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+#screen-flash {
+  position: absolute;
+  inset: 0;
+  background: #ffffff;
+  opacity: 0;
+}
+
+#screen-flash.flash {
+  animation: white-flash 0.3s ease-out;
+}
+
+@keyframes white-flash {
+  0% { opacity: 0.85; }
+  100% { opacity: 0; }
+}
+
+/* ---------- Popups (Schadenszahlen, Combo, Banner) ---------- */
+#popup-layer { overflow: hidden; }
+
+.dmg-popup {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  font-weight: 800;
+  color: var(--text-1);
+  text-shadow: 0 0 8px rgba(0, 229, 255, 0.8);
+  will-change: transform, opacity;
+  visibility: hidden;
+}
+
+.dmg-popup.crit {
+  font-size: 1.625rem;
+  color: var(--gold);
+  text-shadow: 0 0 10px rgba(255, 200, 61, 0.9);
+}
+
+.dmg-popup.heal-pop {
+  color: var(--heal);
+  text-shadow: 0 0 8px rgba(77, 255, 136, 0.9);
+}
+
+.combo-popup {
+  position: absolute;
+  top: 18%;
+  left: 50%;
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  visibility: hidden;
+  will-change: transform, opacity;
+}
+
+.combo-popup.show {
+  visibility: visible;
+  animation: combo-in 1s ease forwards;
+}
+
+.combo-popup.t1 { color: var(--accent); text-shadow: 0 0 12px rgba(0, 229, 255, 0.8); }
+.combo-popup.t2 { color: var(--accent-2); text-shadow: 0 0 12px rgba(255, 61, 242, 0.8); }
+.combo-popup.t3 { color: var(--gold); text-shadow: 0 0 12px rgba(255, 200, 61, 0.8); }
+
+@keyframes combo-in {
+  0% { opacity: 0; transform: translateX(-50%) scale(0.6); }
+  20% { opacity: 1; transform: translateX(-50%) scale(1.15); }
+  32% { transform: translateX(-50%) scale(1); }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(-50%) scale(1); }
+}
+
+.banner {
+  position: absolute;
+  top: 30%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5vw, 3.25rem);
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-shadow: var(--glow-text);
+  white-space: nowrap;
+  visibility: hidden;
+}
+
+.banner.show {
+  visibility: visible;
+  animation: banner-in 1.8s ease forwards;
+}
+
+.banner.boss-banner { color: #ff5a70; text-shadow: 0 0 18px rgba(255, 46, 76, 0.9); }
+.banner.gold-banner { color: var(--gold); text-shadow: 0 0 18px rgba(255, 200, 61, 0.9); }
+
+@keyframes banner-in {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
+  12% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
+  18% { transform: translate(-50%, -50%) scale(1); }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+}
+
+/* ---------- Onboarding-Prompts ---------- */
+.prompt {
+  position: absolute;
+  left: 50%;
+  bottom: 18%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-1);
+  text-shadow: 0 0 8px rgba(0, 0, 0, 0.9);
+  background: rgba(10, 12, 30, 0.7);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  padding: 0.75rem 1.25rem;
+  animation: prompt-float 1.6s ease-in-out infinite;
+}
+
+@keyframes prompt-float {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50% { transform: translateX(-50%) translateY(-6px); }
+}
