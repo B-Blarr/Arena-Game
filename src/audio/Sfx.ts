@@ -55,7 +55,21 @@ export class Sfx {
       events.on('coreStolen', () => this.stolenBlip()),
       events.on('thiefEscaped', () => this.thiefWhoosh()),
       events.on('blackHole', () => this.blackHoleRumble()),
+      events.on('stickerUnlocked', () => this.stickerFanfare()),
     );
+  }
+
+  /**
+   * Sticker freigeschaltet: kurzes helles Dreiklang-Arpeggio — deutlich
+   * leiser/kuerzer als die Legendaer-Fanfare (kein Gameplay-Moment).
+   * Public: der Album-Screen nutzt sie auch fuer Belohnungs-Claims.
+   */
+  stickerFanfare(): void {
+    if (!this.engine.acquireVoice('sticker', 800, 0.6)) return;
+    this.tone('triangle', 1047, 1047, 0.12, 0.16); // C6
+    this.tone('triangle', 1319, 1319, 0.12, 0.16, 0.09); // E6
+    this.tone('triangle', 1568, 1568, 0.22, 0.18, 0.18); // G6
+    this.noise(0.25, 0.05, 'highpass', 6000, 9000, 1, 0.18);
   }
 
   // ------------------------------------------------ Bausteine

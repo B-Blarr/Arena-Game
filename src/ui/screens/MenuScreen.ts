@@ -1,5 +1,6 @@
 import { STR } from '../../config/strings.de';
 import { HEROES } from '../../config/heroes';
+import { COLORWAYS } from '../../config/stickers';
 import type { Difficulty } from '../../config/balance';
 import type { SaveManager } from '../../save/SaveManager';
 
@@ -8,6 +9,7 @@ export interface MenuCallbacks {
   onShop: () => void;
   onProfiles: () => void;
   onLeaderboard: () => void;
+  onAlbum: () => void;
   onSettingChanged: () => void;
 }
 
@@ -59,11 +61,13 @@ export class MenuScreen {
       <h1 class="title-glow menu-title"><span class="accent">NEON</span> ARENA</h1>
       <div class="menu-subtitle">${STR.subtitle}</div>
       <div class="hero-row"></div>
+      <div class="menu-colorways"></div>
       <div class="menu-buttons">
         <button class="btn btn-primary menu-play" data-nav-default data-key="menu-play">${STR.play}</button>
         <div class="menu-buttons-row">
           <button class="btn menu-shop" data-key="menu-shop">🛠 ${STR.shop}</button>
           <button class="btn btn-gold menu-leaderboard" data-key="menu-lb">🏆 ${STR.leaderboard}</button>
+          <button class="btn btn-magenta menu-album" data-key="menu-album">📔 ${STR.album}<span class="menu-album-new"></span></button>
         </div>
       </div>
       <div class="menu-options">
@@ -100,6 +104,9 @@ export class MenuScreen {
     (this.root.querySelector('.menu-leaderboard') as HTMLButtonElement).addEventListener('click', () => {
       this.cb.onLeaderboard();
     });
+    (this.root.querySelector('.menu-album') as HTMLButtonElement).addEventListener('click', () => {
+      this.cb.onAlbum();
+    });
     (this.root.querySelector('.menu-profile') as HTMLButtonElement).addEventListener('click', () => {
       this.cb.onProfiles();
     });
@@ -111,6 +118,10 @@ export class MenuScreen {
     this.bestEl.textContent = String(save.bestScores[save.settings.difficulty]);
     this.warnEl.textContent = this.save.storageAvailable ? '' : STR.saveWarning;
     (this.root.querySelector('.menu-profile-name') as HTMLElement).textContent = this.save.activeName;
+    // Gold-Punkt am Album-Button, wenn es neue Sticker seit dem letzten Besuch gibt
+    const seen = save.lastAlbumSeen;
+    const hasNews = Object.values(save.stickers).some((at) => seen === '' || at > seen);
+    (this.root.querySelector('.menu-album-new') as HTMLElement).classList.toggle('show', hasNews);
 
     // Helden-Karten
     this.heroRow.innerHTML = '';
@@ -138,6 +149,38 @@ export class MenuScreen {
         this.refresh();
       });
       this.heroRow.appendChild(card);
+    }
+
+    // Farbvarianten-Chips (nur sichtbar, wenn im Album welche freigeschaltet sind)
+    const cwRow = this.root.querySelector('.menu-colorways') as HTMLElement;
+    cwRow.innerHTML = '';
+    if (save.unlockedColorways.length > 0) {
+      const label = document.createElement('span');
+      label.className = 'menu-colorways-label';
+      label.textContent = `${STR.colorLabel}:`;
+      cwRow.appendChild(label);
+      const heroColor = HEROES.find((h) => h.id === save.settings.heroId)?.color ?? 0x00e5ff;
+      const options: Array<{ id: string; color: number; name: string }> = [
+        { id: 'default', color: heroColor, name: STR.colorDefault },
+      ];
+      for (const cw of COLORWAYS) {
+        if (save.unlockedColorways.includes(cw.id)) {
+          options.push({ id: cw.id, color: cw.body, name: STR.colorways[cw.id] ?? cw.id });
+        }
+      }
+      for (const opt of options) {
+        const chip = document.createElement('button');
+        chip.className = `color-chip-btn${save.settings.colorwayId === opt.id ? ' active' : ''}`;
+        chip.dataset.key = `colorway-${opt.id}`;
+        chip.title = opt.name;
+        chip.style.setProperty('--chip', `#${opt.color.toString(16).padStart(6, '0')}`);
+        chip.addEventListener('click', () => {
+          save.settings.colorwayId = opt.id;
+          this.cb.onSettingChanged();
+          this.refresh();
+        });
+        cwRow.appendChild(chip);
+      }
     }
 
     // Schwierigkeit

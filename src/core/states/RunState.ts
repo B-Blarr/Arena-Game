@@ -1,5 +1,6 @@
 import { HARD_UNLOCK_WAVE, META, isBossWave } from '../../config/balance';
 import { getHero } from '../../config/heroes';
+import { getColorway } from '../../config/stickers';
 import { STR } from '../../config/strings.de';
 import { PICKUP_CORE } from '../../entities/Pickup';
 import { updateEnemies } from '../../entities/behaviors';
@@ -60,7 +61,7 @@ export class RunState implements GameState {
     g.upgrades.reset();
     g.particles.reset();
     g.instRenderer.reset();
-    g.instRenderer.setHero(hero);
+    g.instRenderer.setHero(hero, getColorway(s.colorwayId, g.save.data.unlockedColorways));
     g.instRenderer.heroPreview = false;
     g.time.reset();
     g.cameraRig.reset();
@@ -248,7 +249,7 @@ export class RunState implements GameState {
   private handleBossDeath(boss: Boss): void {
     const g = this.game;
     const bossNr = Math.max(1, Math.floor(g.world.wave / 5));
-    g.events.emit('bossDied', { x: boss.x, z: boss.z, color: boss.def.color });
+    g.events.emit('bossDied', { x: boss.x, z: boss.z, color: boss.def.color, id: boss.def.id });
     g.score.bossBonus(bossNr);
     // Belohnung: Kern-Fontaene + Heilung + garantiert Rare-Upgrade danach
     g.pickupSystem.spawnCoreFountain(boss.x, boss.z, META.bossCoresBase + META.bossCoresPerNr * bossNr);

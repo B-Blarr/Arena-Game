@@ -19,13 +19,13 @@ import type { World } from '../core/World';
 import type { EventBus } from '../core/EventBus';
 import type { AssetRegistry } from './AssetRegistry';
 import { HERO_SHAPES, type HeroPartGeo, type HeroShape } from './heroShapes';
+import type { ColorwayDef } from '../config/stickers';
 import { lerp } from '../utils/math';
 
 const dummy = new Object3D();
 const flashColor = new Color(5, 5, 5);
 /** Elite-Schild aktiv: kalt-weisse Tönung statt Typfarbe. */
 const shieldColor = new Color(2.2, 3.2, 3.8);
-const streakColorPlayer = new Color(0x00e5ff).multiplyScalar(1.8);
 const streakColorEnemy = new Color(0xff3b30).multiplyScalar(1.6);
 const MAX_ORBS = 3;
 const STREAK_CAP = 384;
@@ -66,6 +66,8 @@ export class InstancedRenderer {
   private readonly cloneBodyMat: MeshBasicMaterial;
   /** Helden-abhaengige Render-Parameter (setHero). */
   private ringBase = 1;
+  /** Trail-Farbe der Spieler-Projektile (folgt Held/Farbvariante). */
+  private readonly streakPlayerColor = new Color(0x00e5ff).multiplyScalar(1.8);
   private ghostRotX = Math.PI / 2;
   private ghostY = 0.55;
   private readonly bossGroups = new Map<string, Group>();
@@ -114,7 +116,7 @@ export class InstancedRenderer {
     // Projektil-Streaks: EIN additives Mesh fuer Spieler (cyan) + Gegner (rot)
     this.streaks = new InstancedMesh(assets.geoStreak, assets.matStreak, STREAK_CAP);
     this.streaks.instanceMatrix.setUsage(DynamicDrawUsage);
-    this.streaks.setColorAt(0, streakColorPlayer);
+    this.streaks.setColorAt(0, this.streakPlayerColor);
     this.streaks.instanceColor?.setUsage(DynamicDrawUsage);
     this.streaks.frustumCulled = false;
     this.streaks.count = 0;
@@ -260,14 +262,20 @@ export class InstancedRenderer {
 
   /**
    * Held setzen: eigene Silhouette (Part-Slots) + Farben fuer Figur,
-   * Spiegelklon und Dash-Geister — alles allokationsfrei (Geometrie-Tausch).
+   * Spiegelklon, Dash-Geister, Projektil-Trails und Muzzle — alles
+   * allokationsfrei (Geometrie-Tausch). Optionale Farbvariante aus dem
+   * Sticker-Album uebersteuert Rumpf-/Trail-/Triebwerksfarbe.
    */
-  setHero(hero: HeroDef): void {
+  setHero(hero: HeroDef, colorway?: ColorwayDef): void {
     const shape = (HERO_SHAPES[hero.id] ?? HERO_SHAPES.volt) as HeroShape;
-    this.bodyMat.color.set(hero.color).multiplyScalar(1.9);
-    this.cloneBodyMat.color.set(hero.color).multiplyScalar(1.6);
-    for (const mat of this.ghostMats) mat.color.set(hero.color).multiplyScalar(1.6);
-    this.engineMat.color.set(shape.engineColor).multiplyScalar(shape.engineIntensity);
+    const body = colorway?.body ?? hero.color;
+    const engine = colorway?.engine ?? shape.engineColor;
+    this.bodyMat.color.set(body).multiplyScalar(1.9);
+    this.cloneBodyMat.color.set(body).multiplyScalar(1.6);
+    for (const mat of this.ghostMats) mat.color.set(body).multiplyScalar(1.6);
+    this.engineMat.color.set(engine).multiplyScalar(shape.engineIntensity);
+    this.streakPlayerColor.set(body).multiplyScalar(1.8);
+    this.muzzle.color.set(body);
     this.ringBase = shape.ringScale;
     this.playerBlob.scale.setScalar(shape.blobScale);
     this.ghostRotX = shape.hullRotX;
@@ -387,7 +395,7 @@ export class InstancedRenderer {
       if (!p.boomerang) dummy.rotation.y = Math.atan2(p.vx, p.vz);
       dummy.updateMatrix();
       this.playerProj.setMatrixAt(i, dummy.matrix);
-      streakIdx = this.writeStreak(streakIdx, p.vx, p.vz, x, z, rScale, streakColorPlayer);
+      streakIdx = this.writeStreak(streakIdx, p.vx, p.vz, x, z, rScale, this.streakPlayerColor);
     }
     this.playerProj.count = pp.count;
     this.playerProj.instanceMatrix.needsUpdate = true;

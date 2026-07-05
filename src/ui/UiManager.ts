@@ -2,7 +2,7 @@ import type { EventBus } from '../core/EventBus';
 
 const SCREEN_IDS = [
   'screen-menu', 'screen-upgrade', 'screen-pause', 'screen-gameover',
-  'screen-shop', 'screen-profiles', 'screen-leaderboard',
+  'screen-shop', 'screen-profiles', 'screen-leaderboard', 'screen-album',
 ] as const;
 export type ScreenId = (typeof SCREEN_IDS)[number];
 

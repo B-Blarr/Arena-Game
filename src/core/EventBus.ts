@@ -7,7 +7,7 @@ export interface GameEvents {
   // Kampf
   shotFired: { x: number; z: number; dirX: number; dirZ: number };
   enemyHit: { x: number; z: number; damage: number; crit: boolean; enemyType: number };
-  enemyKilled: { x: number; z: number; enemyType: number; points: number; scale: number };
+  enemyKilled: { x: number; z: number; enemyType: number; points: number; scale: number; elite: boolean };
   explosion: { x: number; z: number; radius: number; color: number };
   projectileWallHit: { x: number; z: number };
   /** Bomber-Zuendung: roter Warn-Ring am Boden. */
@@ -26,6 +26,8 @@ export interface GameEvents {
   orbitalStrike: { x: number; z: number };
   /** Schwarzes Loch (legendaer): Singularitaet erscheint am Dash-Ende. */
   blackHole: { x: number; z: number; radius: number; duration: number };
+  /** Schwarzes Loch kollabiert (Crunch-Explosion folgt im selben Tick). */
+  blackHoleCollapsed: { x: number; z: number };
   /** WIRBEL: rein kosmetischer Wiederhol-Ring waehrend des Sogs (KEIN Warnton). */
   vortexRing: { x: number; z: number; radius: number; duration: number };
 
@@ -36,6 +38,10 @@ export interface GameEvents {
   playerDashed: { x: number; z: number };
   dashReady: Record<string, never>;
   playerRevived: Record<string, never>;
+  /** Koop: Spieler geht zu Boden (statt zu sterben). */
+  playerDowned: { playerIndex: number; x: number; z: number };
+  /** Koop: Partner hat einen Spieler wiederbelebt. */
+  playerCoopRevived: { playerIndex: number; x: number; z: number };
 
   // Boss
   bossSpawned: { name: string; maxHp: number; x: number; z: number };
@@ -52,7 +58,7 @@ export interface GameEvents {
     duration: number;
   };
   bossStomp: { x: number; z: number; radius: number; speed: number };
-  bossDied: { x: number; z: number; color: number };
+  bossDied: { x: number; z: number; color: number; id: string };
   enemyShot: { x: number; z: number };
 
   // Wellen
@@ -84,6 +90,8 @@ export interface GameEvents {
   runStarted: Record<string, never>;
   gameOver: { score: number; wave: number; coresEarned: number; isRecord: boolean };
   upgradeChosen: { id: string; rarity: string };
+  /** Sticker-Album: neuer Sticker freigeschaltet (Toast + Fanfare). */
+  stickerUnlocked: { id: string };
   /** Ein legendaeres Upgrade liegt im Angebot (Zeremonie/Fanfare). */
   legendaryRevealed: { id: string };
   uiHover: Record<string, never>;

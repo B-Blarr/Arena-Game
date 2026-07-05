@@ -1,4 +1,5 @@
 import { STR } from '../../config/strings.de';
+import { STICKERS } from '../../config/stickers';
 import type { Sfx } from '../../audio/Sfx';
 import type { BuildEntry } from '../../systems/RunStats';
 
@@ -16,6 +17,8 @@ export interface GameOverResult {
   strongestHit: number;
   maxCombo: number;
   build: BuildEntry[];
+  /** In diesem Lauf freigeschaltete Sticker (Album). */
+  newStickers: string[];
 }
 
 export interface GameOverCallbacks {
@@ -36,6 +39,7 @@ export class GameOverScreen {
   private coresEl!: HTMLElement;
   private statsEl!: HTMLElement;
   private buildEl!: HTMLElement;
+  private stickersEl!: HTMLElement;
   private teaserEl!: HTMLElement;
   private keyHandler: ((e: KeyboardEvent) => void) | null = null;
   private animFrame = 0;
@@ -54,6 +58,7 @@ export class GameOverScreen {
       <div class="gameover-cores">⬡ <span class="cores-val">0</span> ${STR.coresEarned}</div>
       <div class="gameover-stats"></div>
       <div class="gameover-build"></div>
+      <div class="gameover-stickers"></div>
       <div class="gameover-teaser"></div>
       <div class="gameover-buttons">
         <button class="btn btn-primary pulse-soft go-again" data-nav-default>${STR.again}</button>
@@ -67,6 +72,7 @@ export class GameOverScreen {
     this.coresEl = this.root.querySelector('.cores-val') as HTMLElement;
     this.statsEl = this.root.querySelector('.gameover-stats') as HTMLElement;
     this.buildEl = this.root.querySelector('.gameover-build') as HTMLElement;
+    this.stickersEl = this.root.querySelector('.gameover-stickers') as HTMLElement;
     this.teaserEl = this.root.querySelector('.gameover-teaser') as HTMLElement;
     (this.root.querySelector('.go-again') as HTMLButtonElement).addEventListener('click', () => this.cb.onAgain());
     (this.root.querySelector('.go-menu') as HTMLButtonElement).addEventListener('click', () => this.cb.onMenu());
@@ -83,6 +89,27 @@ export class GameOverScreen {
       `⚔ ${result.dps} ${STR.runSummary.dps} · ` +
       `💥 ${STR.runSummary.strongestHit} ${result.strongestHit} · ` +
       `🔥 ${STR.runSummary.bestCombo} ×${result.maxCombo}`;
+    // Neue Sticker dieses Laufs — Chips mit Rarity-Rand, gestaffelt eingeblendet
+    this.stickersEl.innerHTML = '';
+    if (result.newStickers.length > 0) {
+      const label = document.createElement('span');
+      label.className = 'build-label';
+      label.textContent = `${STR.gameOverNewStickers} `;
+      this.stickersEl.appendChild(label);
+      const compact = result.newStickers.length >= 5;
+      result.newStickers.forEach((id, i) => {
+        const def = STICKERS.find((s) => s.id === id);
+        const info = STR.stickers[id];
+        const chip = document.createElement('span');
+        chip.className = 'sticker-chip';
+        chip.style.setProperty('--rarity', `var(--rarity-${def?.rarity ?? 'common'})`);
+        chip.style.animationDelay = `${1.2 + i * 0.15}s`;
+        chip.textContent = compact ? (def?.icon ?? '❔') : `${def?.icon ?? '❔'} ${info?.name ?? id}`;
+        if (compact) chip.title = info?.name ?? id;
+        this.stickersEl.appendChild(chip);
+      });
+    }
+
     this.buildEl.innerHTML = '';
     if (result.build.length > 0) {
       const label = document.createElement('span');

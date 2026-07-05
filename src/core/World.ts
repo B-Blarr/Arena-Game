@@ -55,6 +55,11 @@ export class World {
     this.player = new Player(events);
   }
 
+  /** true = 2-Spieler-Koop (kommt mit dem Koop-Umbau; solo immer false). */
+  get isCoop(): boolean {
+    return false;
+  }
+
   nextUid(): number {
     return ++this.uidCounter;
   }

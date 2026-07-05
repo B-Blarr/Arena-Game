@@ -1,7 +1,8 @@
 import { Scene } from 'three';
 import { DIFFICULTIES, META, type Difficulty } from '../config/balance';
 import { RUMBLE } from '../config/input';
-import { getHero, HEROES, PERMA_BONI, UNLOCKABLE_WEAPONS } from '../config/heroes';
+import { getHero, getWeapon, HEROES, PERMA_BONI, UNLOCKABLE_WEAPONS } from '../config/heroes';
+import { getColorway } from '../config/stickers';
 import { STR } from '../config/strings.de';
 import { AudioEngine } from '../audio/AudioEngine';
 import { Music } from '../audio/Music';
@@ -21,6 +22,7 @@ import { PickupSystem } from '../systems/PickupSystem';
 import { RumbleSystem } from '../systems/RumbleSystem';
 import { RunStats } from '../systems/RunStats';
 import { ScoreSystem } from '../systems/ScoreSystem';
+import { StickerSystem } from '../systems/StickerSystem';
 import { SurpriseDirector } from '../systems/SurpriseDirector';
 import { UpgradeSystem } from '../systems/UpgradeSystem';
 import { WaveSystem } from '../systems/WaveSystem';
@@ -28,6 +30,7 @@ import { Hud } from '../ui/Hud';
 import { Popups } from '../ui/Popups';
 import { UiManager } from '../ui/UiManager';
 import { UiNav } from '../ui/UiNav';
+import { AlbumScreen } from '../ui/screens/AlbumScreen';
 import { GameOverScreen } from '../ui/screens/GameOverScreen';
 import { LeaderboardScreen } from '../ui/screens/LeaderboardScreen';
 import { MenuScreen } from '../ui/screens/MenuScreen';
@@ -41,6 +44,7 @@ import { hashString } from './Rng';
 import { StateMachine } from './StateMachine';
 import { Time } from './Time';
 import { World } from './World';
+import { AlbumState } from './states/AlbumState';
 import { GameOverState } from './states/GameOverState';
 import { LeaderboardState } from './states/LeaderboardState';
 import { MenuState } from './states/MenuState';
@@ -79,6 +83,7 @@ export class Game {
   readonly upgrades: UpgradeSystem;
   readonly surprise: SurpriseDirector;
   readonly runStats: RunStats;
+  readonly stickers: StickerSystem;
   readonly juice: JuiceDirector;
 
   readonly ui: UiManager;
@@ -93,6 +98,7 @@ export class Game {
   readonly shopScreen: ShopScreen;
   readonly profilesScreen: ProfilesScreen;
   readonly leaderboardScreen: LeaderboardScreen;
+  readonly albumScreen: AlbumScreen;
 
   readonly fsm = new StateMachine();
   readonly loop: GameLoop;
@@ -102,6 +108,7 @@ export class Game {
   readonly shopState: ShopState;
   readonly profilesState: ProfilesState;
   readonly leaderboardState: LeaderboardState;
+  readonly albumState: AlbumState;
 
   runSeed = 1;
   runIsDaily = false;
@@ -129,6 +136,7 @@ export class Game {
     this.upgrades = new UpgradeSystem(this.world, this.events, this.score);
     this.surprise = new SurpriseDirector(this.world, this.events, this.pickupSystem);
     this.runStats = new RunStats(this.events);
+    this.stickers = new StickerSystem(this.events, this.save, this.world);
     this.juice = new JuiceDirector(this.events, this.time, this.cameraRig, this.world, this.renderer);
 
     // UI
@@ -147,6 +155,7 @@ export class Game {
       onShop: () => this.fsm.change(this.shopState),
       onProfiles: () => this.fsm.change(this.profilesState),
       onLeaderboard: () => this.fsm.change(this.leaderboardState),
+      onAlbum: () => this.fsm.change(this.albumState),
       onSettingChanged: () => {
         this.applySettings();
         this.save.save();
@@ -162,6 +171,10 @@ export class Game {
     });
     this.leaderboardScreen = new LeaderboardScreen(this.save, {
       onBack: () => this.fsm.change(this.menuState),
+    });
+    this.albumScreen = new AlbumScreen(this.save, this.sfx, {
+      onBack: () => this.fsm.change(this.menuState),
+      onClaimed: () => this.applySettings(),
     });
     this.upgradeScreen = new UpgradeScreen({
       onChoose: (i) => this.runState.chooseUpgrade(i),
@@ -203,6 +216,7 @@ export class Game {
     this.shopState = new ShopState(this);
     this.profilesState = new ProfilesState(this);
     this.leaderboardState = new LeaderboardState(this);
+    this.albumState = new AlbumState(this);
     this.loop = new GameLoop(
       this.time,
       (dt) => {
@@ -290,8 +304,9 @@ export class Game {
     this.rumble.enabled = s.vibration;
     this.rumble.intensityMult = s.reduceFx ? RUMBLE.reduceFxMult : 1;
     this.hud.setMuted(s.muted);
-    // Helden-Silhouette live: die Backdrop-Figur im Menue wechselt beim Klick
-    this.instRenderer.setHero(getHero(s.heroId));
+    // Helden-Silhouette + Farbvariante live: die Backdrop-Figur im Menue
+    // wechselt beim Klick auf Karte oder Farb-Chip sofort
+    this.instRenderer.setHero(getHero(s.heroId), getColorway(s.colorwayId, this.save.data.unlockedColorways));
   }
 
   startRun(daily: boolean): void {
@@ -330,6 +345,17 @@ export class Game {
         };
       }
     }
+
+    // Sticker: Kontext-Auswertung (Held/Waffe/Schwer/Daily) VOR dem Persist
+    const hero = getHero(save.settings.heroId);
+    const newStickers = this.stickers.finishRun({
+      difficulty: diff,
+      isDaily: this.runIsDaily,
+      wave,
+      heroId: hero.id,
+      weaponId: getWeapon(save.settings.weaponId, hero).id,
+      isCoop: this.world.isCoop,
+    });
     this.save.save();
 
     this.gameOverState.result = {
@@ -344,6 +370,7 @@ export class Game {
       strongestHit: this.runStats.strongestHit,
       maxCombo: this.runStats.maxComboMultiplier,
       build: this.runStats.build(this.world.player),
+      newStickers,
     };
     this.events.emit('gameOver', { score: finalScore, wave, coresEarned, isRecord });
     this.fsm.change(this.gameOverState);
@@ -399,6 +426,7 @@ export class Game {
     this.juice.dispose();
     this.rumble.dispose();
     this.uiNav.dispose();
+    this.stickers.dispose();
     this.runStats.dispose();
     this.score.dispose();
     this.particles.dispose();

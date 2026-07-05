@@ -240,6 +240,7 @@ export class CombatSystem {
     if (p.blackHoleTimer <= 0) {
       // Kollaps-Crunch: komplette Explosions-Pipeline gratis (Ring, Partikel,
       // Sfx, Trauma, Nova-Synergie); Knockback wirft den Knaeuel wieder auf
+      this.events.emit('blackHoleCollapsed', { x: hx, z: hz });
       this.explode(hx, hz, UV.blackHoleCrushRadius, UV.blackHoleCrushDamage, 1, 0x9b5cff);
       return;
     }
@@ -382,6 +383,7 @@ export class CombatSystem {
     this.events.emit('enemyKilled', {
       x: e.x, z: e.z, enemyType: def, points: e.points,
       scale: (def === ENEMY_TANK ? 1.8 : 1) * (e.eliteAffix > 0 ? ELITE.visualScale : 1),
+      elite: e.eliteAffix > 0,
     });
 
     if (p.stats.lifestealPerKill > 0) p.healFractional(p.stats.lifestealPerKill);

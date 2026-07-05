@@ -173,7 +173,7 @@ export class CollisionSystem {
           m.scalePop = 0.2;
           this.events.emit('enemyHit', { x: proj.x, z: proj.z, damage, crit, enemyType: -1 });
           if (m.hp <= 0) {
-            this.events.emit('enemyKilled', { x: m.x, z: m.z, enemyType: -1, points: 250, scale: 1.4 });
+            this.events.emit('enemyKilled', { x: m.x, z: m.z, enemyType: -1, points: 250, scale: 1.4, elite: false });
             m.active = false;
           }
           if (proj.pierceLeft > 0) {

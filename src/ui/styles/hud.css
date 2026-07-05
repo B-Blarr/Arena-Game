@@ -423,3 +423,52 @@ body.reduce-fx .hud-combo.c3 .hud-combo-ring {
   0%, 100% { transform: translateX(-50%) translateY(0); }
   50% { transform: translateX(-50%) translateY(-6px); }
 }
+
+/* ---------- Sticker-Toast (Album-Unlock, oben rechts, gequeued) ---------- */
+.sticker-toast {
+  --rarity: var(--rarity-common);
+  position: absolute;
+  top: 84px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 1rem;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-left: 4px solid var(--rarity);
+  border-radius: 10px;
+  box-shadow: 0 0 18px color-mix(in srgb, var(--rarity) 40%, transparent);
+  opacity: 0;
+  transform: translateX(40px);
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.sticker-toast.show {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.sticker-toast-icon {
+  font-size: 2rem;
+}
+
+.sticker-toast-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.sticker-toast-label {
+  font-size: 1rem;
+  color: var(--gold);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.sticker-toast-name {
+  font-size: 1.125rem;
+  color: var(--text-1);
+  font-weight: 700;
+}

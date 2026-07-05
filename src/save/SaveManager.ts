@@ -32,6 +32,8 @@ export interface SaveSettings {
   heroId: string;
   /** 'default' = Startwaffe des Helden, sonst 'laser' | 'star'. */
   weaponId: string;
+  /** Farbvariante der Figur ('default' = Heldenfarbe), aus dem Sticker-Album. */
+  colorwayId: string;
 }
 
 export interface SaveData {
@@ -48,6 +50,16 @@ export interface SaveData {
   settings: SaveSettings;
   stats: { totalKills: number; totalRuns: number };
   dailyBest: { date: string; score: number } | null;
+  /** Sticker-Album: stickerId -> Unlock-Zeitpunkt (ISO, fuer NEU-Badges). */
+  stickers: Record<string, string>;
+  /** Kumulative Album-Zaehler (cores, crits, boss:<id>, ...). */
+  stickerCounters: Record<string, number>;
+  /** Abgeholte Seiten-Belohnungen (Page-IDs + 'gold'). */
+  stickerPageRewards: string[];
+  /** Freigeschaltete Farbvarianten. */
+  unlockedColorways: string[];
+  /** Letzter Album-Besuch (ISO) — steuert die NEU-Badges. */
+  lastAlbumSeen: string;
 }
 
 export interface ProfileMeta {
@@ -86,9 +98,15 @@ function defaults(): SaveData {
       difficulty: 'normal',
       heroId: 'volt',
       weaponId: 'default',
+      colorwayId: 'default',
     },
     stats: { totalKills: 0, totalRuns: 0 },
     dailyBest: null,
+    stickers: {},
+    stickerCounters: {},
+    stickerPageRewards: [],
+    unlockedColorways: [],
+    lastAlbumSeen: '',
   };
 }
 
@@ -140,6 +158,7 @@ function sanitize(raw: unknown): SaveData {
     if (isDifficulty(s.difficulty)) d.settings.difficulty = s.difficulty;
     if (typeof s.heroId === 'string') d.settings.heroId = s.heroId;
     if (typeof s.weaponId === 'string') d.settings.weaponId = s.weaponId;
+    if (typeof s.colorwayId === 'string') d.settings.colorwayId = s.colorwayId;
   }
   if (typeof r.stats === 'object' && r.stats !== null) {
     const st = r.stats as Record<string, unknown>;
@@ -152,12 +171,34 @@ function sanitize(raw: unknown): SaveData {
       d.dailyBest = { date: db.date, score: Math.max(0, db.score) };
     }
   }
+  // Sticker-Album (neue Felder sind bei Alt-Saves einfach leer)
+  if (typeof r.stickers === 'object' && r.stickers !== null) {
+    for (const [k, v] of Object.entries(r.stickers as Record<string, unknown>)) {
+      if (typeof v === 'string') d.stickers[k] = v;
+    }
+  }
+  if (typeof r.stickerCounters === 'object' && r.stickerCounters !== null) {
+    for (const [k, v] of Object.entries(r.stickerCounters as Record<string, unknown>)) {
+      if (typeof v === 'number' && isFinite(v) && v > 0) d.stickerCounters[k] = Math.floor(v);
+    }
+  }
+  if (Array.isArray(r.stickerPageRewards)) {
+    d.stickerPageRewards = r.stickerPageRewards.filter((p): p is string => typeof p === 'string');
+  }
+  if (Array.isArray(r.unlockedColorways)) {
+    d.unlockedColorways = r.unlockedColorways.filter((c): c is string => typeof c === 'string');
+  }
+  if (typeof r.lastAlbumSeen === 'string') d.lastAlbumSeen = r.lastAlbumSeen;
+
   // Schwierigkeit "Schwer" nie ohne Freischaltung aktiv lassen
   if (d.settings.difficulty === 'hard' && !d.hardUnlocked) d.settings.difficulty = 'normal';
   // Auswahl darf nur auf tatsaechlich Freigeschaltetes zeigen (manipulierte Saves)
   if (!d.unlockedHeroes.includes(d.settings.heroId)) d.settings.heroId = 'volt';
   if (d.settings.weaponId !== 'default' && !d.unlockedWeapons.includes(d.settings.weaponId)) {
     d.settings.weaponId = 'default';
+  }
+  if (d.settings.colorwayId !== 'default' && !d.unlockedColorways.includes(d.settings.colorwayId)) {
+    d.settings.colorwayId = 'default';
   }
   return d;
 }
@@ -360,5 +401,16 @@ export class SaveManager {
   profileData(id: string): SaveData {
     if (id === this.activeId) return this.data;
     return this.loadPayload(id);
+  }
+
+  /** Fremdes Profil schreiben (Koop-Doppel-Credit am Run-Ende). */
+  writeProfile(id: string, data: SaveData): void {
+    if (id === this.activeId) {
+      this.data = data;
+      this.save();
+      return;
+    }
+    if (!this.profiles.some((p) => p.id === id)) return;
+    this.writePayload(id, data);
   }
 }

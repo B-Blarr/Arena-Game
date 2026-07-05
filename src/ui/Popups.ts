@@ -1,5 +1,6 @@
 import { Vector3, type PerspectiveCamera } from 'three';
 import { STR } from '../config/strings.de';
+import { STICKERS } from '../config/stickers';
 import type { EventBus } from '../core/EventBus';
 import type { World } from '../core/World';
 
@@ -28,6 +29,11 @@ export class Popups {
   private poolIdx = 0;
   private readonly comboEl: HTMLElement;
   private readonly bannerEl: HTMLElement;
+  /** Sticker-Toast: EIGENES Element (das Banner ueberschreiben Wellen-Banner). */
+  private readonly stickerEl: HTMLElement;
+  private readonly stickerQueue: string[] = [];
+  private stickerBusy = false;
+  private stickerTimeout = 0;
   private readonly unsubs: Array<() => void> = [];
   private bannerTimeout = 0;
 
@@ -48,6 +54,9 @@ export class Popups {
     this.bannerEl = document.createElement('div');
     this.bannerEl.className = 'banner';
     layer.appendChild(this.bannerEl);
+    this.stickerEl = document.createElement('div');
+    this.stickerEl.className = 'sticker-toast';
+    layer.appendChild(this.stickerEl);
 
     this.unsubs.push(
       events.on('enemyHit', (e) => {
@@ -103,6 +112,11 @@ export class Popups {
       events.on('padDisconnected', (e) => {
         if (e.slot >= 0) this.banner(STR.padDisconnected, 'boss-banner');
       }),
+      // Sticker freigeschaltet: Toast oben rechts, gequeued (kein Gameplay-Stop)
+      events.on('stickerUnlocked', (e) => {
+        this.stickerQueue.push(e.id);
+        if (!this.stickerBusy) this.nextStickerToast();
+      }),
     );
   }
 
@@ -126,6 +140,34 @@ export class Popups {
     // Reflow erzwingen, damit die Animation neu startet
     void this.comboEl.offsetWidth;
     this.comboEl.classList.add('show');
+  }
+
+  /** Naechsten Sticker-Toast aus der Queue zeigen (2.6 s + kurze Pause). */
+  private nextStickerToast(): void {
+    const id = this.stickerQueue.shift();
+    if (!id) {
+      this.stickerBusy = false;
+      return;
+    }
+    this.stickerBusy = true;
+    const def = STICKERS.find((s) => s.id === id);
+    const info = STR.stickers[id];
+    this.stickerEl.innerHTML = `
+      <span class="sticker-toast-icon">${def?.icon ?? '❔'}</span>
+      <span class="sticker-toast-text">
+        <span class="sticker-toast-label">${STR.newSticker}</span>
+        <span class="sticker-toast-name">${info?.name ?? id}</span>
+      </span>
+    `;
+    this.stickerEl.style.setProperty('--rarity', `var(--rarity-${def?.rarity ?? 'common'})`);
+    this.stickerEl.classList.remove('show');
+    void this.stickerEl.offsetWidth;
+    this.stickerEl.classList.add('show');
+    window.clearTimeout(this.stickerTimeout);
+    this.stickerTimeout = window.setTimeout(() => {
+      this.stickerEl.classList.remove('show');
+      this.stickerTimeout = window.setTimeout(() => this.nextStickerToast(), 400);
+    }, 2600);
   }
 
   banner(text: string, extraClass: string): void {
@@ -166,10 +208,15 @@ export class Popups {
     }
     this.bannerEl.classList.remove('show');
     this.comboEl.classList.remove('show');
+    this.stickerQueue.length = 0;
+    this.stickerBusy = false;
+    this.stickerEl.classList.remove('show');
+    window.clearTimeout(this.stickerTimeout);
   }
 
   dispose(): void {
     for (const u of this.unsubs) u();
     window.clearTimeout(this.bannerTimeout);
+    window.clearTimeout(this.stickerTimeout);
   }
 }
