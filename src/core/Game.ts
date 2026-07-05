@@ -1,6 +1,6 @@
 import { Scene } from 'three';
 import { DIFFICULTIES, META, type Difficulty } from '../config/balance';
-import { HEROES, PERMA_BONI, UNLOCKABLE_WEAPONS } from '../config/heroes';
+import { getHero, HEROES, PERMA_BONI, UNLOCKABLE_WEAPONS } from '../config/heroes';
 import { STR } from '../config/strings.de';
 import { AudioEngine } from '../audio/AudioEngine';
 import { Music } from '../audio/Music';
@@ -26,8 +26,10 @@ import { Hud } from '../ui/Hud';
 import { Popups } from '../ui/Popups';
 import { UiManager } from '../ui/UiManager';
 import { GameOverScreen } from '../ui/screens/GameOverScreen';
+import { LeaderboardScreen } from '../ui/screens/LeaderboardScreen';
 import { MenuScreen } from '../ui/screens/MenuScreen';
 import { PauseScreen } from '../ui/screens/PauseScreen';
+import { ProfilesScreen } from '../ui/screens/ProfilesScreen';
 import { ShopScreen } from '../ui/screens/ShopScreen';
 import { UpgradeScreen } from '../ui/screens/UpgradeScreen';
 import { EventBus } from './EventBus';
@@ -37,7 +39,9 @@ import { StateMachine } from './StateMachine';
 import { Time } from './Time';
 import { World } from './World';
 import { GameOverState } from './states/GameOverState';
+import { LeaderboardState } from './states/LeaderboardState';
 import { MenuState } from './states/MenuState';
+import { ProfilesState } from './states/ProfilesState';
 import { RunState } from './states/RunState';
 import { ShopState } from './states/ShopState';
 
@@ -82,6 +86,8 @@ export class Game {
   readonly pauseScreen: PauseScreen;
   readonly gameOverScreen: GameOverScreen;
   readonly shopScreen: ShopScreen;
+  readonly profilesScreen: ProfilesScreen;
+  readonly leaderboardScreen: LeaderboardScreen;
 
   readonly fsm = new StateMachine();
   readonly loop: GameLoop;
@@ -89,6 +95,8 @@ export class Game {
   readonly runState: RunState;
   readonly gameOverState: GameOverState;
   readonly shopState: ShopState;
+  readonly profilesState: ProfilesState;
+  readonly leaderboardState: LeaderboardState;
 
   runSeed = 1;
   runIsDaily = false;
@@ -100,7 +108,7 @@ export class Game {
     // Rendering
     this.renderer = new Renderer(canvas, this.scene, this.cameraRig.camera);
     this.arena = new Arena(this.scene);
-    this.instRenderer = new InstancedRenderer(this.scene, this.assets, this.events, HEROES[0]?.color ?? 0x00e5ff);
+    this.instRenderer = new InstancedRenderer(this.scene, this.assets, this.events);
     this.particles = new ParticleSystem(this.scene, this.assets, this.events);
 
     // Audio
@@ -129,10 +137,23 @@ export class Game {
         this.startRun(daily);
       },
       onShop: () => this.fsm.change(this.shopState),
+      onProfiles: () => this.fsm.change(this.profilesState),
+      onLeaderboard: () => this.fsm.change(this.leaderboardState),
       onSettingChanged: () => {
         this.applySettings();
         this.save.save();
       },
+    });
+    this.profilesScreen = new ProfilesScreen(this.save, {
+      onBack: () => this.fsm.change(this.menuState),
+      onSwitched: () => {
+        // Neues Profil: Audio/FX/AutoAim/Held aus dessen Settings uebernehmen
+        this.applySettings();
+        this.fsm.change(this.menuState);
+      },
+    });
+    this.leaderboardScreen = new LeaderboardScreen(this.save, {
+      onBack: () => this.fsm.change(this.menuState),
     });
     this.upgradeScreen = new UpgradeScreen({
       onChoose: (i) => this.runState.chooseUpgrade(i),
@@ -172,6 +193,8 @@ export class Game {
     this.runState = new RunState(this);
     this.gameOverState = new GameOverState(this);
     this.shopState = new ShopState(this);
+    this.profilesState = new ProfilesState(this);
+    this.leaderboardState = new LeaderboardState(this);
     this.loop = new GameLoop(
       this.time,
       (dt) => {
@@ -237,6 +260,8 @@ export class Game {
     document.body.classList.toggle('reduce-fx', s.reduceFx);
     this.combat.autoAimEnabled = s.autoAim;
     this.hud.setMuted(s.muted);
+    // Helden-Silhouette live: die Backdrop-Figur im Menue wechselt beim Klick
+    this.instRenderer.setHero(getHero(s.heroId));
   }
 
   startRun(daily: boolean): void {

@@ -37,7 +37,7 @@ export interface PlayerStats {
   cloneDamageFrac: number;
   /** Orbital-Laser: Schaden pro Einschlag (0 = aus). */
   orbitalDamage: number;
-  /** Schwarzes Loch: Sog-Beschleunigung waehrend des Dashs (0 = aus). */
+  /** Schwarzes Loch: Sog-Geschwindigkeit der geworfenen Singularitaet (0 = aus). */
   blackHolePull: number;
   /** Ueberladung: Bonus-Schadensanteil unter 30 % HP (0 = aus). */
   overchargeBonus: number;
@@ -78,6 +78,12 @@ export class Player {
   orbitalTimer = 0;
   /** "Turbofeuer!"-Kapselbuff: Restzeit erhoehter Feuerrate. */
   rapidFireTimer = 0;
+  /** Lebensraub-Bruchteile sammeln sich, geheilt wird nur ganzzahlig. */
+  private healCarry = 0;
+  /** Schwarzes Loch: Restlebenszeit + Position der aktiven Singularitaet. */
+  blackHoleTimer = 0;
+  blackHoleX = 0;
+  blackHoleZ = 0;
 
   stats: PlayerStats = this.computeStats();
 
@@ -111,6 +117,8 @@ export class Player {
     this.orbAngle = 0;
     this.orbitalTimer = 0;
     this.rapidFireTimer = 0;
+    this.healCarry = 0;
+    this.blackHoleTimer = 0;
     this.reviveAvailable = (perma.secondChance ?? 0) > 0;
     this.recomputeStats();
     this.dashCooldowns = new Array<number>(this.stats.dashCharges).fill(0);
@@ -126,8 +134,9 @@ export class Player {
     this.stacks.set(id, this.stackOf(id) + 1);
     const oldMax = this.stats.maxHp;
     this.recomputeStats();
-    // Max-HP-Upgrade heilt sofort um den Zuwachs
-    if (this.stats.maxHp > oldMax) this.hp += this.stats.maxHp - oldMax;
+    // Max-HP-Upgrade heilt sofort um den HALBEN Zuwachs (voller Zuwachs
+    // machte die Karte zur Gratis-Vollheilung — Heil-Oekonomie-Nerf)
+    if (this.stats.maxHp > oldMax) this.hp += Math.round((this.stats.maxHp - oldMax) / 2);
     // Doppel-Dash: neue Ladung sofort einsatzbereit
     while (this.dashCooldowns.length < this.stats.dashCharges) this.dashCooldowns.push(0);
   }
@@ -274,6 +283,7 @@ export class Player {
 
     if (dashPressed) this.tryDash(moveX, moveZ);
 
+    const wasDashing = this.dashTimer > 0;
     if (this.dashTimer > 0) {
       this.dashTimer -= dt;
       const dashSpeed = DASH.distance / DASH.duration;
@@ -294,6 +304,28 @@ export class Player {
     if (d > maxR) {
       this.x = (this.x / d) * maxR;
       this.z = (this.z / d) * maxR;
+    }
+
+    // Schwarzes Loch (legendaer): am Dash-ENDE Singularitaet vorausschleudern
+    // (nicht auf die eigene Position — Gegner-Knaeuel + Kontaktschaden waere
+    // eine Falle; 2.5u voraus feuert der Auto-Aim automatisch hinein).
+    // Solange eines aktiv ist, wirft ein Doppel-Dash KEIN neues — sonst
+    // entfiele der zugesagte Kollaps-Crunch des ersten Lochs stumm.
+    if (wasDashing && this.dashTimer <= 0 && this.stats.blackHolePull > 0 && this.blackHoleTimer <= 0) {
+      let hx = this.x + this.dashDirX * UV.blackHoleThrowDist;
+      let hz = this.z + this.dashDirZ * UV.blackHoleThrowDist;
+      const hd = Math.hypot(hx, hz);
+      const hMax = ARENA_RADIUS - 1.5;
+      if (hd > hMax) {
+        hx = (hx / hd) * hMax;
+        hz = (hz / hd) * hMax;
+      }
+      this.blackHoleX = hx;
+      this.blackHoleZ = hz;
+      this.blackHoleTimer = UV.blackHoleDuration;
+      this.events.emit('blackHole', {
+        x: hx, z: hz, radius: UV.blackHoleRadius, duration: UV.blackHoleDuration,
+      });
     }
 
     this.velX = (this.x - this.prevX) / dt;
@@ -327,6 +359,16 @@ export class Player {
     const gained = this.hp - before;
     if (gained > 0) {
       this.events.emit('playerHealed', { amount: gained, hp: this.hp, maxHp: this.stats.maxHp });
+    }
+  }
+
+  /** Bruchteil-Heilung (Lebensraub 0.5/Kill): heilt erst bei vollen HP-Punkten. */
+  healFractional(amount: number): void {
+    this.healCarry += amount;
+    const whole = Math.floor(this.healCarry);
+    if (whole >= 1) {
+      this.healCarry -= whole;
+      this.heal(whole);
     }
   }
 }

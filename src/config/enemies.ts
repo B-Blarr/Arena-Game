@@ -15,7 +15,7 @@ export const ENEMY_THIEF = 7;
 export const ENEMY_PHANTOM = 8;
 export const ENEMY_TYPE_COUNT = 9;
 
-export type EnemyShape = 'cube' | 'octahedron' | 'tetrahedron' | 'sphere' | 'icosahedron';
+export type EnemyShape = 'cube' | 'octahedron' | 'tetrahedron' | 'sphere' | 'icosahedron' | 'torus';
 
 export interface EnemyDef {
   id: string;

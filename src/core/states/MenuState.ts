@@ -10,6 +10,9 @@ export class MenuState implements GameState {
     this.game.menuScreen.refresh();
     this.game.ui.showScreen('screen-menu');
     this.game.music.stop();
+    // Backdrop-Figur wird zur Helden-Vorschau: immer sichtbar (auch nach
+    // Tod im letzten Run), ohne Run-Reste wie Spiegelklon oder Orbs
+    this.game.instRenderer.heroPreview = true;
   }
 
   exit(): void {

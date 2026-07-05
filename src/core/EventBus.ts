@@ -24,6 +24,10 @@ export interface GameEvents {
   eliteShieldBroken: { x: number; z: number };
   /** Orbital-Laser (legendaeres Upgrade) schlaegt ein. */
   orbitalStrike: { x: number; z: number };
+  /** Schwarzes Loch (legendaer): Singularitaet erscheint am Dash-Ende. */
+  blackHole: { x: number; z: number; radius: number; duration: number };
+  /** WIRBEL: rein kosmetischer Wiederhol-Ring waehrend des Sogs (KEIN Warnton). */
+  vortexRing: { x: number; z: number; radius: number; duration: number };
 
   // Spieler
   playerHit: { damage: number; hp: number; maxHp: number };
@@ -38,7 +42,7 @@ export interface GameEvents {
   bossHpChanged: { hp: number; maxHp: number };
   bossPhase: { phase: number };
   bossTelegraph: {
-    kind: 'salvo' | 'charge' | 'shockwave' | 'summon';
+    kind: 'salvo' | 'charge' | 'shockwave' | 'summon' | 'vortex';
     x: number;
     z: number;
     dirX?: number;

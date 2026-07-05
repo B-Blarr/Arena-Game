@@ -85,6 +85,10 @@ export class ParticleSystem {
   private readonly rings: Ring[] = [];
   private readonly lines: Line[] = [];
   private readonly delayed: DelayedBurst[] = [];
+  /** Schwarzes Loch: solange > 0 spiralen Partikel einwaerts. */
+  private vortexTimer = 0;
+  private vortexX = 0;
+  private vortexZ = 0;
   private readonly unsubs: Array<() => void> = [];
 
   constructor(scene: Scene, assets: AssetRegistry, events: EventBus) {
@@ -181,7 +185,15 @@ export class ParticleSystem {
           this.spawnLine(e.x, e.z, e.dirX ?? 0, e.dirZ ?? 1, e.length ?? 30, e.duration);
         } else if (e.kind === 'salvo') {
           this.spawnRing(e.x, e.z, 0.8, 2.2, e.duration, 0.5, 0xff3df2, 'hold');
+        } else if (e.kind === 'vortex') {
+          // WIRBEL-Sog: einwaerts laufender BLAUER Ring (r0 > r1) —
+          // blau, weil der Sog selbst keinen Schaden macht (Rot = ausweichen)
+          this.spawnRing(e.x, e.z, (e.radius ?? 14) * 0.7, 1.2, e.duration, 0.5, 0x3355ff, 'expand');
         }
+      }),
+      // Kosmetische Sog-Wiederhol-Ringe (gleiche Optik, ohne Warnton)
+      events.on('vortexRing', (e) => {
+        this.spawnRing(e.x, e.z, e.radius * 0.7, 1.2, e.duration, 0.5, 0x3355ff, 'expand');
       }),
       events.on('bossStomp', (e) => {
         const dur = e.speed > 0 ? e.radius / e.speed : 0.35;
@@ -238,6 +250,15 @@ export class ParticleSystem {
       events.on('orbitalStrike', (e) => {
         this.burst(e.x, e.z, 0xffc83d, 24, { speedMin: 3, speedMax: 9 });
         this.spawnRing(e.x, e.z, 0.4, 3.2, 0.4, 0.85, 0xffc83d, 'expand');
+      }),
+      // Schwarzes Loch: violetter Einwaerts-Ring (r0 > r1) + Kern-Puls +
+      // Spiral-Partikel; der Kollaps-Crunch kommt ueber das explosion-Event
+      events.on('blackHole', (e) => {
+        this.spawnRing(e.x, e.z, e.radius * 1.15, 0.5, e.duration, 0.55, 0x9b5cff, 'expand');
+        this.spawnRing(e.x, e.z, 1.0, 1.0, e.duration, 0.5, 0x6b2fd9, 'hold');
+        this.vortexTimer = e.duration;
+        this.vortexX = e.x;
+        this.vortexZ = e.z;
       }),
       // Dieb frisst einen Kern: kleiner Cyan-Puff
       events.on('coreStolen', (e) => {
@@ -343,6 +364,35 @@ export class ParticleSystem {
       }
     }
 
+    // Schwarzes Loch: Spiral-Partikel (einwaerts + tangential = Strudel).
+    // burst() kann nur auswaerts — hier direkt in den Pool schreiben.
+    if (this.vortexTimer > 0) {
+      this.vortexTimer -= dt;
+      for (let k = 0; k < 3 && this.count < MAX_PARTICLES; k++) {
+        const p = this.particles[this.count++] as Particle;
+        const a = Math.random() * Math.PI * 2;
+        const r = 2 + Math.random() * 3;
+        p.x = this.vortexX + Math.cos(a) * r;
+        p.y = 0.3 + Math.random() * 0.6;
+        p.z = this.vortexZ + Math.sin(a) * r;
+        // 6 u/s einwaerts + 4 u/s tangential
+        p.vx = -Math.cos(a) * 6 - Math.sin(a) * 4;
+        p.vz = -Math.sin(a) * 6 + Math.cos(a) * 4;
+        p.vy = 0;
+        p.maxLife = 0.4 + Math.random() * 0.2;
+        p.life = p.maxLife;
+        p.size = 0.06 + Math.random() * 0.06;
+        p.gravity = 0;
+        p.rot = Math.random() * Math.PI;
+        p.rotV = (Math.random() - 0.5) * 10;
+        if (Math.random() < 0.3) {
+          p.r = 2; p.g = 2; p.b = 2;
+        } else {
+          p.r = 1.2; p.g = 0.7; p.b = 2.0; // violett
+        }
+      }
+    }
+
     // Partikel (swap-remove)
     for (let i = this.count - 1; i >= 0; i--) {
       const p = this.particles[i] as Particle;
@@ -429,6 +479,7 @@ export class ParticleSystem {
     this.count = 0;
     this.mesh.count = 0;
     this.delayed.length = 0;
+    this.vortexTimer = 0;
     for (const ring of this.rings) {
       ring.active = false;
       ring.mesh.visible = false;

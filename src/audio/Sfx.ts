@@ -54,6 +54,7 @@ export class Sfx {
       events.on('capsuleReward', () => this.reward()),
       events.on('coreStolen', () => this.stolenBlip()),
       events.on('thiefEscaped', () => this.thiefWhoosh()),
+      events.on('blackHole', () => this.blackHoleRumble()),
     );
   }
 
@@ -355,6 +356,14 @@ export class Sfx {
     if (!this.engine.acquireVoice('thief', 500, 0.5)) return;
     this.noise(0.35, 0.25, 'bandpass', 2600, 300, 2);
     this.tone('sine', 600, 150, 0.3, 0.15);
+  }
+
+  /** Schwarzes Loch: absteigendes Wummern + Sog-Rauschen. */
+  private blackHoleRumble(): void {
+    if (!this.engine.acquireVoice('bhole', 400, 0.9)) return;
+    this.tone('sine', 90, 28, 0.75, 0.4);
+    this.noise(0.8, 0.22, 'lowpass', 900, 120, 1);
+    this.tone('sine', 45, 45, 0.5, 0.25, 0.05);
   }
 
   /** Punktzahl-Countup-Tick im Game-Over-Screen. */

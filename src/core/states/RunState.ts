@@ -56,7 +56,8 @@ export class RunState implements GameState {
     g.upgrades.reset();
     g.particles.reset();
     g.instRenderer.reset();
-    g.instRenderer.setHeroColor(hero.color);
+    g.instRenderer.setHero(hero);
+    g.instRenderer.heroPreview = false;
     g.time.reset();
     g.cameraRig.reset();
     g.cameraRig.snapTo(0, 0);

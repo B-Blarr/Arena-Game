@@ -50,6 +50,8 @@ export class AssetRegistry {
   readonly geoTelegraphLine = new BoxGeometry(1, 0.05, 1);
   /** Kern-Dieb: silberner Kristall. */
   readonly geoIcosahedron = new IcosahedronGeometry(0.6);
+  /** Boss MINOS: aufrecht rotierender Ring. */
+  readonly geoTorusBoss = new TorusGeometry(0.6, 0.22, 10, 24);
   /** Versorgungskapsel: goldener Wuerfel. */
   readonly geoCapsule = new BoxGeometry(0.5, 0.5, 0.5);
   /** Orbital-Laser: Saeulen-Beam (Einheit, wird gestreckt). */
@@ -57,6 +59,14 @@ export class AssetRegistry {
   /** Projektil-Streak: gestreckte Box mit gebackenem Vertex-Gradient
    *  (Kopf weiss, Heck schwarz) — bei additivem Blending gratis-Fade. */
   readonly geoStreak = AssetRegistry.makeStreakGeometry();
+  // Helden-Silhouetten (heroShapes.ts): Rumpf-/Anbau-Teile
+  readonly geoHeroDartHull = new ConeGeometry(0.26, 1.4, 4);
+  /** 3 Radialsegmente = flaches Dreiecks-Prisma — der Panzer-Keil. */
+  readonly geoHeroWedgeHull = new CylinderGeometry(0.58, 0.66, 0.42, 3);
+  readonly geoHeroFin = new BoxGeometry(0.5, 0.06, 0.34);
+  readonly geoHeroWing = new BoxGeometry(0.72, 0.05, 0.2);
+  readonly geoHeroShoulder = new BoxGeometry(0.26, 0.42, 0.52);
+  readonly geoHeroEngine = new SphereGeometry(0.12, 8, 6);
 
   // Gegner: weisses Material, Farbe kommt pro Instanz (instanceColor)
   readonly matEnemy = new MeshBasicMaterial({ color: 0xffffff });
@@ -129,6 +139,8 @@ export class AssetRegistry {
         return this.geoSphere;
       case 'icosahedron':
         return this.geoIcosahedron;
+      case 'torus':
+        return this.geoTorusBoss;
     }
   }
 
@@ -172,6 +184,9 @@ export class AssetRegistry {
       this.geoMagnet, this.geoOrb, this.geoParticle, this.geoRing, this.geoBlob,
       this.geoPlayerBody, this.geoPlayerRing, this.geoTelegraphLine,
       this.geoIcosahedron, this.geoCapsule, this.geoBeam, this.geoStreak,
+      this.geoTorusBoss,
+      this.geoHeroDartHull, this.geoHeroWedgeHull, this.geoHeroFin,
+      this.geoHeroWing, this.geoHeroShoulder, this.geoHeroEngine,
     ];
     for (const g of geos) g.dispose();
     const mats: Material[] = [

@@ -67,7 +67,32 @@ und Rot heißt immer: ausweichen! „Schwer" schaltest du frei, wenn du auf
 „Normal" Welle 10 erreichst. In der **Tages-Arena** spielen alle weltweit
 dieselben Wellen — jeden Tag neue.
 
-## ✨ Was ist neu (Update „Viel cooler")
+## ✨ Was ist neu (Update 2 „Bosse, Spieler, Balance")
+
+- **Zwei neue Bosse:** **MINOS**, der Minenkönig (Welle 15) — ein rasender
+  oranger Ring, der die Arena mit tickenden Sprengzonen pflastert; und
+  **WIRBEL** (Welle 25) — ein blauer Strudel, der dich ansaugt, während
+  Spiralen nach außen fliegen. HYDRA-KERN rückt auf Welle 20.
+- **GOLIATH aufgemotzt:** Jeder Wandaufprall schleudert jetzt Trümmersteine
+  zurück, in Phase 2 prallt sein Sturmangriff wie eine Billardkugel von der
+  Wand ab und die Schockwelle kommt doppelt. Dafür lohnt sich das
+  Betäubungsfenster mehr (doppelter Schaden).
+- **Spieler-Profile** 👤 — oben links im Menü auf den Namen klicken:
+  Jeder am Rechner bekommt sein eigenes Spielstand-Profil (Kerne,
+  Freischaltungen, Bestwerte). Dazu die **Bestenliste** 🏆, die alle
+  Spieler vergleicht.
+- **Jeder Held sieht jetzt anders aus:** VOLT als Pfeiljäger mit Flossen,
+  BLITZ als schlanker Speeder mit Pfeilflügeln, BROCKEN als breiter
+  Panzer-Keil mit Schulterplatten — inklusive Triebwerks-Glühen, das beim
+  Dash aufflammt. Die Vorschau im Menü wechselt live.
+- **Schwarzes Loch neu:** Der Dash schleudert jetzt eine sichtbare
+  Singularität voraus, die Gegner in einen Knäuel saugt und dann explodiert.
+- **Balance:** Legendäre Karten sind seltener (dafür bleibt jeder Fund ein
+  Fest), und Heilung ist knapper — Lebensraub, Herzen und Boss-Heilung
+  wurden gestutzt, damit die Lebensleiste wieder etwas bedeutet.
+  Auf „Einfach" bleibt alles so gnädig wie vorher.
+
+## ✨ Update 1 („Viel cooler")
 
 - **Legendäre Upgrades** 🌟 — eine vierte, extrem seltene Karten-Stufe über
   „Episch". Sechs Stück gibt es: Spiegelklon, Kettenreaktion, Orbital-Laser,

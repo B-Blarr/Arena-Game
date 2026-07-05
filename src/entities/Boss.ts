@@ -26,6 +26,20 @@ function makeMini(): BossMini {
   };
 }
 
+/** MINOS: gelegte Sprengzone (roter Warn-Ring via enemyFuse-Event). */
+export interface BossBomb {
+  active: boolean;
+  x: number;
+  z: number;
+  fuseLeft: number;
+}
+
+function makeBomb(): BossBomb {
+  return { active: false, x: 0, z: 0, fuseLeft: 0 };
+}
+
+export const MAX_BOSS_BOMBS = 8;
+
 export type BossState = 'chase' | 'telegraph' | 'charging' | 'stunned';
 
 /**
@@ -79,6 +93,27 @@ export class Boss {
   splitIndex = 0;
   readonly minis: BossMini[] = [makeMini(), makeMini()];
 
+  // GOLIATH v2: Billard-Abpraller + Doppel-Schockwelle
+  bouncesLeft = 0;
+  /** > 0 = zweite Schockwelle steht aus (Countdown bis zum Ausloesen). */
+  shock2Countdown = 0;
+  shock2Active = false;
+  shock2R = 0;
+  shock2HitDone = false;
+
+  // MINOS: Bomben-Zonen + Orbit
+  readonly bombs: BossBomb[] = Array.from({ length: MAX_BOSS_BOMBS }, makeBomb);
+  plantTimer = 0;
+  strafeTimer = 0;
+  strafeSign = 1;
+
+  // WIRBEL: Sog-Zyklus
+  suctionTimer = 0;
+  suctionLeft = 0;
+  suctionTelegraphed = false;
+  spiralTimer = 0;
+  collapseTelegraphed = false;
+
   /** "+"-Varianten: alle Cooldowns x0.8^tier (Deckel 0.5), Projektile schneller. */
   cdMult = 1;
   projSpeedMult = 1;
@@ -124,6 +159,23 @@ export class Boss {
     this.shockX = 0;
     this.shockZ = 0;
     for (const m of this.minis) m.active = false;
+    // GOLIATH v2 (Phantom-Bounce/-Schock2 verhindern)
+    this.bouncesLeft = 0;
+    this.shock2Countdown = 0;
+    this.shock2Active = false;
+    this.shock2R = 0;
+    this.shock2HitDone = false;
+    // MINOS (Phantom-Bomben verhindern)
+    for (const b of this.bombs) b.active = false;
+    this.plantTimer = (def.plantInterval ?? 0) * this.cdMult * 0.6;
+    this.strafeTimer = def.strafeFlip ?? 0;
+    this.strafeSign = 1;
+    // WIRBEL (Phantom-Sog verhindern)
+    this.suctionTimer = (def.suctionInterval ?? 0) * this.cdMult * 0.7;
+    this.suctionLeft = 0;
+    this.suctionTelegraphed = false;
+    this.spiralTimer = 0;
+    this.collapseTelegraphed = false;
 
     // Spawn am Rand gegenueber der Mitte
     this.x = 0;

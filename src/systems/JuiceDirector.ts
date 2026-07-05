@@ -40,6 +40,11 @@ export class JuiceDirector {
         this.rig.dashKick();
         this.renderer.kickAberration(0.35);
       }),
+      // Schwarzes Loch: kurzes Beben, der Kollaps laeuft ueber explosion
+      events.on('blackHole', () => {
+        this.rig.addTrauma(0.15);
+        this.renderer.kickAberration(0.4);
+      }),
       // Boss-Intro: kurzer Zeitlupen-Moment + Beben — KEIN Weissblitz
       // (der bleibt exklusiv beim Boss-Tod)
       events.on('bossSpawned', () => {

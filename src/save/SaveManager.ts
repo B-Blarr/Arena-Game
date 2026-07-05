@@ -5,9 +5,18 @@ import type { Difficulty } from '../config/balance';
  * In-Memory-Fallback (Safari privat / Quota / blockierte Cookies).
  * Es wird NIE im Frame-Loop gespeichert — nur bei Run-Ende,
  * Shop-Kauf und Settings-Aenderung.
+ *
+ * PROFILE (v2): Eine Registry (`neon-arena-profiles`) haelt die Spielerliste
+ * und das aktive Profil; pro Profil liegt ein eigener Payload-Key
+ * (`neon-arena-save:<id>`) im bewaehrten SaveData-Format. Der alte
+ * Einzel-Key `neon-arena-save` wird beim ersten Start zu "Spieler 1" migriert.
  */
 
-const SAVE_KEY = 'neon-arena-save';
+const LEGACY_SAVE_KEY = 'neon-arena-save';
+const PROFILES_KEY = 'neon-arena-profiles';
+const PROFILE_PREFIX = 'neon-arena-save:';
+export const MAX_PROFILES = 8;
+export const MAX_PROFILE_NAME_LEN = 16;
 
 export interface SaveSettings {
   autoAim: boolean;
@@ -37,6 +46,18 @@ export interface SaveData {
   settings: SaveSettings;
   stats: { totalKills: number; totalRuns: number };
   dailyBest: { date: string; score: number } | null;
+}
+
+export interface ProfileMeta {
+  id: string;
+  name: string;
+  createdAt: number;
+}
+
+interface ProfileRegistry {
+  version: 2;
+  activeId: string;
+  profiles: ProfileMeta[];
 }
 
 function defaults(): SaveData {
@@ -137,40 +158,203 @@ function sanitize(raw: unknown): SaveData {
   return d;
 }
 
+function sanitizeName(name: string): string {
+  const trimmed = name.trim().slice(0, MAX_PROFILE_NAME_LEN);
+  return trimmed.length > 0 ? trimmed : 'Spieler';
+}
+
 export class SaveManager {
+  /** Payload des AKTIVEN Profils — alle Screens lesen hierueber live. */
   data: SaveData;
+  profiles: ProfileMeta[] = [];
+  activeId = '';
   /** false, wenn localStorage nicht verfuegbar ist (dann In-Memory + UI-Hinweis). */
   storageAvailable = true;
+  /** In-Memory-Fallback fuer Profil-Payloads bei blockiertem Storage. */
+  private readonly memoryPayloads = new Map<string, SaveData>();
 
   constructor() {
-    this.data = this.load();
+    this.data = defaults();
+    this.initProfiles();
   }
 
-  private load(): SaveData {
+  get activeName(): string {
+    return this.profiles.find((p) => p.id === this.activeId)?.name ?? 'Spieler';
+  }
+
+  // ------------------------------------------------ Registry & Migration
+
+  private initProfiles(): void {
+    let registry = this.loadRegistry();
+
+    if (!registry) {
+      // Erststart oder Legacy: Migration des alten Einzel-Keys zu "Spieler 1"
+      const id = this.newId();
+      registry = {
+        version: 2,
+        activeId: id,
+        profiles: [{ id, name: 'Spieler 1', createdAt: Date.now() }],
+      };
+      const legacy = this.readRaw(LEGACY_SAVE_KEY);
+      this.writePayload(id, sanitize(legacy));
+      if (legacy !== null) this.removeRaw(LEGACY_SAVE_KEY);
+      this.profiles = registry.profiles;
+      this.activeId = id;
+      this.saveRegistry();
+    } else {
+      this.profiles = registry.profiles;
+      this.activeId = registry.activeId;
+    }
+
+    this.data = this.loadPayload(this.activeId);
+  }
+
+  private loadRegistry(): ProfileRegistry | null {
+    const raw = this.readRaw(PROFILES_KEY);
+    if (raw === null || typeof raw !== 'object') return null;
+    const r = raw as Record<string, unknown>;
+    if (!Array.isArray(r.profiles)) return null;
+    const profiles: ProfileMeta[] = [];
+    for (const p of r.profiles as unknown[]) {
+      if (typeof p !== 'object' || p === null) continue;
+      const pm = p as Record<string, unknown>;
+      if (typeof pm.id === 'string' && typeof pm.name === 'string') {
+        profiles.push({
+          id: pm.id,
+          name: sanitizeName(pm.name),
+          createdAt: typeof pm.createdAt === 'number' ? pm.createdAt : 0,
+        });
+      }
+    }
+    if (profiles.length === 0) return null;
+    const activeId = typeof r.activeId === 'string' && profiles.some((p) => p.id === r.activeId)
+      ? r.activeId
+      : (profiles[0] as ProfileMeta).id;
+    return { version: 2, activeId, profiles };
+  }
+
+  private saveRegistry(): void {
+    this.writeRaw(PROFILES_KEY, {
+      version: 2,
+      activeId: this.activeId,
+      profiles: this.profiles,
+    });
+  }
+
+  private newId(): string {
+    return `p${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`;
+  }
+
+  // ------------------------------------------------ Payload-IO
+
+  private loadPayload(id: string): SaveData {
+    // In-Memory-Stand ist immer der frischste (Write-Fallback); ansonsten
+    // IMMER localStorage lesen — ein reiner Write-Fehler (Quota) macht
+    // Reads nicht kaputt, storageAvailable darf Lesen nicht blockieren.
+    const mem = this.memoryPayloads.get(id);
+    if (mem) return mem;
+    return sanitize(this.readRaw(PROFILE_PREFIX + id));
+  }
+
+  private writePayload(id: string, data: SaveData): void {
+    // Schlaegt der Write fehl (Quota/blockiert), MUSS der Stand in den
+    // Memory-Fallback — sonst verschwaende er beim Profilwechsel komplett.
+    if (!this.storageAvailable || !this.writeRaw(PROFILE_PREFIX + id, data)) {
+      this.memoryPayloads.set(id, data);
+    }
+  }
+
+  private readRaw(key: string): unknown {
     try {
-      const raw = localStorage.getItem(SAVE_KEY);
-      if (raw === null) return defaults();
-      const parsed: unknown = JSON.parse(raw);
-      // Migration: bei unbekannter Version Felder retten, Rest auf Default
-      return sanitize(parsed);
+      const raw = localStorage.getItem(key);
+      if (raw === null) return null;
+      return JSON.parse(raw) as unknown;
     } catch (err) {
       if (err instanceof SyntaxError) {
-        console.warn('Neon Arena: Save-Daten kaputt, starte mit Defaults.', err);
-        return defaults();
+        console.warn(`Neon Arena: Daten unter "${key}" kaputt, ignoriere sie.`, err);
+        return null;
       }
       console.warn('Neon Arena: localStorage nicht verfuegbar, Fortschritt nur im Speicher.', err);
       this.storageAvailable = false;
-      return defaults();
+      return null;
     }
   }
 
-  save(): void {
-    if (!this.storageAvailable) return;
+  /** true = erfolgreich geschrieben; false = Aufrufer braucht Memory-Fallback. */
+  private writeRaw(key: string, value: unknown): boolean {
+    if (!this.storageAvailable) return false;
     try {
-      localStorage.setItem(SAVE_KEY, JSON.stringify(this.data));
+      localStorage.setItem(key, JSON.stringify(value));
+      return true;
     } catch (err) {
       console.warn('Neon Arena: Speichern fehlgeschlagen, Fortschritt nur im Speicher.', err);
       this.storageAvailable = false;
+      return false;
     }
+  }
+
+  private removeRaw(key: string): void {
+    if (!this.storageAvailable) return;
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // egal — Key bleibt als Waise liegen
+    }
+  }
+
+  // ------------------------------------------------ Oeffentliche Profil-API
+
+  /** Speichert das aktive Profil (wie bisher `save()`). */
+  save(): void {
+    this.writePayload(this.activeId, this.data);
+  }
+
+  switchProfile(id: string): boolean {
+    if (id === this.activeId) return false;
+    if (!this.profiles.some((p) => p.id === id)) return false;
+    // aktuellen Stand sichern, dann umschalten
+    this.save();
+    this.activeId = id;
+    this.data = this.loadPayload(id);
+    this.saveRegistry();
+    return true;
+  }
+
+  createProfile(name: string): ProfileMeta | null {
+    if (this.profiles.length >= MAX_PROFILES) return null;
+    const meta: ProfileMeta = { id: this.newId(), name: sanitizeName(name), createdAt: Date.now() };
+    this.profiles.push(meta);
+    this.writePayload(meta.id, defaults());
+    this.saveRegistry();
+    return meta;
+  }
+
+  renameProfile(id: string, name: string): void {
+    const meta = this.profiles.find((p) => p.id === id);
+    if (!meta) return;
+    meta.name = sanitizeName(name);
+    this.saveRegistry();
+  }
+
+  /** Loescht ein Profil samt Payload; das letzte Profil ist unloeschbar. */
+  deleteProfile(id: string): boolean {
+    if (this.profiles.length <= 1) return false;
+    const idx = this.profiles.findIndex((p) => p.id === id);
+    if (idx < 0) return false;
+    this.profiles.splice(idx, 1);
+    this.removeRaw(PROFILE_PREFIX + id);
+    this.memoryPayloads.delete(id);
+    if (this.activeId === id) {
+      this.activeId = (this.profiles[0] as ProfileMeta).id;
+      this.data = this.loadPayload(this.activeId);
+    }
+    this.saveRegistry();
+    return true;
+  }
+
+  /** Fuer die Bestenliste: Payload eines beliebigen Profils lesen (sanitized). */
+  profileData(id: string): SaveData {
+    if (id === this.activeId) return this.data;
+    return this.loadPayload(id);
   }
 }

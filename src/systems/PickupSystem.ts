@@ -46,7 +46,7 @@ export class PickupSystem {
 
     // Herz mit Mitleids-Regel und Anti-Unsterblichkeits-Nerf
     let heartChance = world.mods.heartChance;
-    if (player.hp < player.stats.maxHp * PICKUPS.heartPityHpFrac) heartChance *= 2;
+    if (player.hp < player.stats.maxHp * PICKUPS.heartPityHpFrac) heartChance *= PICKUPS.heartPityMult;
     if (world.wave >= PICKUPS.heartNerfWave) heartChance *= 0.5;
     if (this.countHearts() < PICKUPS.maxHearts && rng.chance(heartChance)) {
       this.spawn(PICKUP_HEART, e.x - 0.3, e.z + 0.3);

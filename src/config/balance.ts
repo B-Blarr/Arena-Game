@@ -50,8 +50,8 @@ export interface DifficultyMods {
 
 export const DIFFICULTIES: Record<Difficulty, DifficultyMods> = {
   easy: { playerHp: 1.5, enemySpeed: 0.85, enemyHp: 0.8, enemyDamage: 0.75, budget: 0.85, heartChance: 0.07, coreMult: 0.8, eliteChanceMult: 0.5 },
-  normal: { playerHp: 1.0, enemySpeed: 1.0, enemyHp: 1.0, enemyDamage: 1.0, budget: 1.0, heartChance: 0.04, coreMult: 1.0, eliteChanceMult: 1.0 },
-  hard: { playerHp: 1.0, enemySpeed: 1.1, enemyHp: 1.25, enemyDamage: 1.25, budget: 1.15, heartChance: 0.03, coreMult: 1.5, eliteChanceMult: 1.3 },
+  normal: { playerHp: 1.0, enemySpeed: 1.0, enemyHp: 1.0, enemyDamage: 1.0, budget: 1.0, heartChance: 0.03, coreMult: 1.0, eliteChanceMult: 1.0 },
+  hard: { playerHp: 1.0, enemySpeed: 1.1, enemyHp: 1.25, enemyDamage: 1.25, budget: 1.15, heartChance: 0.02, coreMult: 1.5, eliteChanceMult: 1.3 },
 };
 
 /** "Schwer" wird freigeschaltet, wenn Welle 10 auf Normal erreicht wurde. */
@@ -92,12 +92,13 @@ export const SPAWN = {
 // ---------- Pickups ----------
 
 export const PICKUPS = {
-  heartHeal: 20,
+  heartHeal: 15,
   heartLifetime: 12,
   heartBlinkTime: 3,
   maxHearts: 2,
-  /** Mitleids-Regel: unter 30 % HP verdoppelt sich die Herz-Chance. */
+  /** Mitleids-Regel: unter 30 % HP steigt die Herz-Chance (x heartPityMult). */
   heartPityHpFrac: 0.3,
+  heartPityMult: 1.5,
   /** Anti-Unsterblichkeit: ab Welle 20 halbiert sich die Herz-Chance. */
   heartNerfWave: 20,
   magnetChance: 0.015,
@@ -139,7 +140,7 @@ export const SURPRISE = {
       hard: { cores: 0.4, hearts: 0.25, magnet: 0.15, rapidFire: 0.2 },
     } as Record<Difficulty, { cores: number; hearts: number; magnet: number; rapidFire: number }>,
     rewardCores: 8,
-    rewardHearts: 2,
+    rewardHearts: 1,
     /** "Turbofeuer!": kurzzeitig +67 % Feuerrate (Cooldown x0.6). */
     rapidFireDuration: 8,
     rapidFireCooldownMult: 0.6,
@@ -173,5 +174,5 @@ export const META = {
   coresPerWave: 3,
   bossCoresBase: 15,
   bossCoresPerNr: 5,
-  bossHealFrac: 0.3,
+  bossHealFrac: 0.15,
 };

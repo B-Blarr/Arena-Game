@@ -1,5 +1,5 @@
-import { ARENA_RADIUS } from '../config/balance';
-import { ENEMY_SPLITTER, ENEMY_SWARM } from '../config/enemies';
+import { ARENA_RADIUS, PLAYER } from '../config/balance';
+import { ENEMY_BOMBER, ENEMY_SPLITTER, ENEMY_SWARM } from '../config/enemies';
 import type { EventBus } from '../core/EventBus';
 import type { World } from '../core/World';
 import type { Boss } from './Boss';
@@ -23,8 +23,14 @@ export function updateBoss(boss: Boss, dt: number, world: World, events: EventBu
     case 'goliath':
       updateGoliath(boss, dt, world, events);
       break;
+    case 'minos':
+      updateMinos(boss, dt, world, events);
+      break;
     case 'hydra':
       updateHydra(boss, dt, world, events);
+      break;
+    case 'vortex':
+      updateVortex(boss, dt, world, events);
       break;
   }
 
@@ -58,6 +64,62 @@ function checkPhase2(boss: Boss, threshold: number, events: EventBus): void {
   }
 }
 
+/**
+ * Gezielte Einzelschuesse in kurzen Abstaenden (PRISMA-Trio, MINOS-Funken,
+ * WIRBEL-Doppelschuss). Nutzt trioTimer/trioShotsLeft/trioGapTimer.
+ */
+function updateTrioShots(boss: Boss, dt: number, world: World, events: EventBus): void {
+  const def = boss.def;
+  if (def.trioInterval === undefined) return;
+  if (boss.trioShotsLeft > 0) {
+    boss.trioGapTimer -= dt;
+    if (boss.trioGapTimer <= 0) {
+      boss.trioShotsLeft--;
+      boss.trioGapTimer = def.trioShotGap ?? 0.3;
+      const dx = world.player.x - boss.x;
+      const dz = world.player.z - boss.z;
+      const d = Math.hypot(dx, dz) || 1;
+      world.spawnEnemyProjectile(
+        boss.x, boss.z, dx / d, dz / d,
+        (def.trioProjectileSpeed ?? 8) * boss.projSpeedMult,
+        Math.round(boss.projectileDamage * 1.2), 40,
+      );
+      events.emit('enemyShot', { x: boss.x, z: boss.z });
+    }
+  } else {
+    boss.trioTimer -= dt;
+    if (boss.trioTimer <= 0) {
+      boss.trioTimer = def.trioInterval * boss.cdMult;
+      boss.trioShotsLeft = def.trioShots ?? 3;
+      boss.trioGapTimer = def.trioTelegraph ?? 0.5;
+      boss.telegraphGlow = def.trioTelegraph ?? 0.5;
+    }
+  }
+}
+
+/**
+ * Expandierender Schockwellen-Ring: trifft den Spieler an der Ringkante,
+ * per Dash-i-Frames ueberspringbar. Gibt true zurueck, solange aktiv.
+ */
+function tickShockRing(
+  rActual: { r: number; hitDone: boolean },
+  centerX: number, centerZ: number,
+  maxRadius: number, ringSpeed: number, damage: number,
+  dt: number, world: World,
+): boolean {
+  rActual.r += ringSpeed * dt;
+  const player = world.player;
+  const pd = Math.hypot(player.x - centerX, player.z - centerZ);
+  if (!rActual.hitDone && Math.abs(pd - rActual.r) < 0.6) {
+    rActual.hitDone = true;
+    player.takeDamage(damage);
+  }
+  return rActual.r < maxRadius;
+}
+
+// Wiederverwendete Puffer fuer tickShockRing (allokationsfrei)
+const shockBuf = { r: 0, hitDone: false };
+
 // ---------------------------------------------------------------- PRISMA
 
 function updatePrisma(boss: Boss, dt: number, world: World, events: EventBus): void {
@@ -87,34 +149,27 @@ function updatePrisma(boss: Boss, dt: number, world: World, events: EventBus): v
     events.emit('enemyShot', { x: boss.x, z: boss.z });
   }
 
-  // Ziel-Trio: 3 gezielte Schuesse in kurzen Abstaenden
-  if (boss.trioShotsLeft > 0) {
-    boss.trioGapTimer -= dt;
-    if (boss.trioGapTimer <= 0) {
-      boss.trioShotsLeft--;
-      boss.trioGapTimer = def.trioShotGap ?? 0.3;
-      const dx = world.player.x - boss.x;
-      const dz = world.player.z - boss.z;
-      const d = Math.hypot(dx, dz) || 1;
-      world.spawnEnemyProjectile(
-        boss.x, boss.z, dx / d, dz / d,
-        (def.trioProjectileSpeed ?? 8) * boss.projSpeedMult,
-        Math.round(boss.projectileDamage * 1.2), 40,
-      );
-      events.emit('enemyShot', { x: boss.x, z: boss.z });
-    }
-  } else {
-    boss.trioTimer -= dt;
-    if (boss.trioTimer <= 0) {
-      boss.trioTimer = (def.trioInterval ?? 6) * boss.cdMult;
-      boss.trioShotsLeft = 3;
-      boss.trioGapTimer = def.trioTelegraph ?? 0.5;
-      boss.telegraphGlow = def.trioTelegraph ?? 0.5;
-    }
-  }
+  updateTrioShots(boss, dt, world, events);
 }
 
 // ---------------------------------------------------------------- GOLIATH
+
+/** Truemmer-Faecher beim Wandaufprall: Steine fliegen zurueck in die Arena. */
+function goliathStompRocks(boss: Boss, world: World, events: EventBus): void {
+  const def = boss.def;
+  const count = boss.phase2 ? (def.stompRockCountP2 ?? 5) : (def.stompRockCount ?? 3);
+  const d = Math.hypot(boss.x, boss.z) || 1;
+  // Richtung Arenamitte (dorthin, wo der Spieler dem Charge ausgewichen ist)
+  const nx = -boss.x / d;
+  const nz = -boss.z / d;
+  fireFan(
+    world, boss.x, boss.z, nx, nz,
+    count, def.stompRockSpread ?? 1.75,
+    (def.stompRockSpeed ?? 4.5) * world.mods.enemySpeed,
+    boss.projectileDamage,
+  );
+  events.emit('enemyShot', { x: boss.x, z: boss.z });
+}
 
 function updateGoliath(boss: Boss, dt: number, world: World, events: EventBus): void {
   const def = boss.def;
@@ -122,7 +177,7 @@ function updateGoliath(boss: Boss, dt: number, world: World, events: EventBus): 
 
   switch (boss.state) {
     case 'chase': {
-      moveTowardPlayer(boss, dt, world, def.speed);
+      moveTowardPlayer(boss, dt, world, boss.phase2 ? (def.speedP2 ?? def.speed) : def.speed);
       boss.contactDamageNow = def.contactDamage;
       boss.damageTakenMult = 1;
 
@@ -133,6 +188,8 @@ function updateGoliath(boss: Boss, dt: number, world: World, events: EventBus): 
         boss.chargeTimer = chargeInterval;
         boss.state = 'telegraph';
         boss.stateTimer = def.chargeTelegraph ?? 1.2;
+        // Phase 2: ein Billard-Abpraller pro Charge
+        boss.bouncesLeft = boss.phase2 ? (def.chargeBouncesP2 ?? 1) : 0;
         const dx = world.player.x - boss.x;
         const dz = world.player.z - boss.z;
         const d = Math.hypot(dx, dz) || 1;
@@ -188,12 +245,42 @@ function updateGoliath(boss: Boss, dt: number, world: World, events: EventBus): 
       boss.z += boss.chargeDirZ * speed * dt;
       const maxR = ARENA_RADIUS - boss.def.radius;
       if (Math.hypot(boss.x, boss.z) >= maxR - 0.05) {
-        // Wand getroffen: betaeubt + verwundbar
-        boss.state = 'stunned';
-        boss.stateTimer = def.chargeStunTime ?? 1.5;
-        boss.damageTakenMult = def.stunDamageTakenMult ?? 1.5;
-        boss.contactDamageNow = 0;
+        // Wandaufprall: immer Stomp + Truemmer-Steine
         events.emit('bossStomp', { x: boss.x, z: boss.z, radius: 3, speed: 14 });
+        goliathStompRocks(boss, world, events);
+
+        if (boss.bouncesLeft > 0) {
+          // Phase 2: Billard-Abpraller — Richtung an der Wandnormalen
+          // spiegeln, kurz telegrafieren, dann weiter (Stun erst am Ende)
+          boss.bouncesLeft--;
+          const d = Math.hypot(boss.x, boss.z) || 1;
+          const nx = boss.x / d;
+          const nz = boss.z / d;
+          const dot = boss.chargeDirX * nx + boss.chargeDirZ * nz;
+          boss.chargeDirX -= 2 * dot * nx;
+          boss.chargeDirZ -= 2 * dot * nz;
+          // leicht von der Wand loesen, sonst triggert der Aufprall sofort erneut
+          boss.x = nx * (maxR - 0.3);
+          boss.z = nz * (maxR - 0.3);
+          boss.state = 'telegraph';
+          boss.stateTimer = def.bounceTelegraph ?? 0.8;
+          // waehrend des Bounce-Telegraphs kein Charge-Kontaktschaden
+          boss.contactDamageNow = def.contactDamage;
+          boss.telegraphGlow = boss.stateTimer;
+          events.emit('bossTelegraph', {
+            kind: 'charge', x: boss.x, z: boss.z,
+            dirX: boss.chargeDirX, dirZ: boss.chargeDirZ,
+            length: ARENA_RADIUS * 2, duration: boss.stateTimer,
+          });
+        } else {
+          // Betaeubt + verwundbar: das Belohnungsfenster
+          boss.state = 'stunned';
+          boss.stateTimer = boss.phase2
+            ? (def.chargeStunTimeP2 ?? def.chargeStunTime ?? 1.5)
+            : (def.chargeStunTime ?? 1.5);
+          boss.damageTakenMult = def.stunDamageTakenMult ?? 1.5;
+          boss.contactDamageNow = 0;
+        }
       }
       break;
     }
@@ -220,20 +307,177 @@ function updateGoliath(boss: Boss, dt: number, world: World, events: EventBus): 
         x: boss.shockX, z: boss.shockZ,
         radius: def.shockRadius ?? 6, speed: def.shockRingSpeed ?? 10,
       });
+      // Phase 2: zweite Welle nach kurzer Pause (Einfach: laengere Pause).
+      // Der Konter ist "raus aus dem Kreis" — der Dash ueberspringt bewusst
+      // nur EINEN Ring (i-Frames 0.3 s decken den Abstand nie ab).
+      if (boss.phase2) {
+        boss.shock2Countdown = world.difficulty === 'easy'
+          ? (def.shock2DelayEasy ?? 1.1)
+          : (def.shock2Delay ?? 0.8);
+      }
     }
   }
 
+  const shockDamage = Math.round((def.shockDamage ?? 20) * world.mods.enemyDamage);
+
   // Expandierender Schockwellen-Ring (laeuft in jedem State weiter)
   if (boss.shockActive) {
-    boss.shockR += (def.shockRingSpeed ?? 10) * dt;
-    const player = world.player;
-    const pd = Math.hypot(player.x - boss.shockX, player.z - boss.shockZ);
-    if (!boss.shockHitDone && Math.abs(pd - boss.shockR) < 0.6) {
-      boss.shockHitDone = true;
-      // Per Dash-i-Frames ueberspringbar — lehrt Dash-Timing
-      player.takeDamage(Math.round((def.shockDamage ?? 20) * world.mods.enemyDamage));
+    shockBuf.r = boss.shockR;
+    shockBuf.hitDone = boss.shockHitDone;
+    boss.shockActive = tickShockRing(
+      shockBuf, boss.shockX, boss.shockZ,
+      def.shockRadius ?? 6, def.shockRingSpeed ?? 10, shockDamage, dt, world,
+    );
+    boss.shockR = shockBuf.r;
+    boss.shockHitDone = shockBuf.hitDone;
+  }
+
+  // Zweite Schockwelle (Phase 2)
+  if (boss.shock2Countdown > 0) {
+    boss.shock2Countdown -= dt;
+    if (boss.shock2Countdown <= 0) {
+      boss.shock2Active = true;
+      boss.shock2R = 0;
+      boss.shock2HitDone = false;
+      events.emit('bossStomp', {
+        x: boss.shockX, z: boss.shockZ,
+        radius: def.shockRadius ?? 6, speed: def.shockRingSpeed ?? 10,
+      });
     }
-    if (boss.shockR >= (def.shockRadius ?? 6)) boss.shockActive = false;
+  }
+  if (boss.shock2Active) {
+    shockBuf.r = boss.shock2R;
+    shockBuf.hitDone = boss.shock2HitDone;
+    boss.shock2Active = tickShockRing(
+      shockBuf, boss.shockX, boss.shockZ,
+      def.shockRadius ?? 6, def.shockRingSpeed ?? 10, shockDamage, dt, world,
+    );
+    boss.shock2R = shockBuf.r;
+    boss.shock2HitDone = shockBuf.hitDone;
+  }
+}
+
+// ---------------------------------------------------------------- MINOS
+
+/** Legt eine Bombe (roter Warn-Ring + Ticken via enemyFuse-Event). */
+function minosPlantBomb(boss: Boss, events: EventBus, x: number, z: number, fuse: number): void {
+  const def = boss.def;
+  // Hartes Limit: schuetzt den Ring-Pool der FX vor Verdraengung aktiver Warnringe
+  let planted = 0;
+  for (const b of boss.bombs) if (b.active) planted++;
+  if (planted >= (def.maxBombs ?? 6)) return;
+  const bomb = boss.bombs.find((b) => !b.active);
+  if (!bomb) return;
+  // In die Arena clampen (Teppich-Linien koennen ueber den Rand ragen)
+  let bx = x;
+  let bz = z;
+  const d = Math.hypot(bx, bz);
+  const maxR = ARENA_RADIUS - 1;
+  if (d > maxR) {
+    bx = (bx / d) * maxR;
+    bz = (bz / d) * maxR;
+  }
+  bomb.active = true;
+  bomb.x = bx;
+  bomb.z = bz;
+  bomb.fuseLeft = fuse;
+  events.emit('enemyFuse', { x: bx, z: bz, radius: def.bombRadius ?? 3, duration: fuse });
+}
+
+function updateMinos(boss: Boss, dt: number, world: World, events: EventBus): void {
+  const def = boss.def;
+  checkPhase2(boss, 0.45, events);
+  const player = world.player;
+
+  // Orbit-Movement: Abstand halten und um den Spieler tanzen
+  const dx = player.x - boss.x;
+  const dz = player.z - boss.z;
+  const dist = Math.hypot(dx, dz) || 1;
+  const nx = dx / dist;
+  const nz = dz / dist;
+  boss.strafeTimer -= dt;
+  if (boss.strafeTimer <= 0) {
+    boss.strafeTimer = def.strafeFlip ?? 6;
+    boss.strafeSign *= -1;
+  }
+  if (dist > (def.orbitApproach ?? 8)) {
+    boss.x += nx * def.speed * dt;
+    boss.z += nz * def.speed * dt;
+  } else if (dist < (def.orbitRetreat ?? 5)) {
+    boss.x -= nx * def.speed * 0.85 * dt;
+    boss.z -= nz * def.speed * 0.85 * dt;
+  } else {
+    const s = (def.strafeSpeed ?? 1.8) * boss.strafeSign;
+    boss.x += -nz * s * dt;
+    boss.z += nx * s * dt;
+  }
+  boss.contactDamageNow = def.contactDamage;
+
+  // Bomben legen
+  const fuseMult = world.difficulty === 'easy' ? 1.5 : 1;
+  boss.plantTimer -= dt;
+  if (boss.plantTimer <= 0) {
+    const interval = (boss.phase2 ? (def.plantIntervalP2 ?? 4.5) : (def.plantInterval ?? 5.5)) * boss.cdMult;
+    boss.plantTimer = interval;
+    boss.telegraphGlow = 0.4;
+    const fuse = (def.bombFuse ?? 2.5) * fuseMult;
+    // Querachse: senkrecht zur Boss->Spieler-Linie
+    const qx = -nz;
+    const qz = nx;
+    if (boss.phase2) {
+      // Bomben-Teppich: 5er-Linie quer durch die Spielerposition, gestaffelt
+      // gezuendet — das Domino zeigt die Fluchtrichtung (parallel zur Boss-Achse)
+      const size = def.bombLineSizeP2 ?? 5;
+      const spacing = def.bombLineSpacing ?? 3.5;
+      const stagger = def.bombLineStagger ?? 0.2;
+      for (let i = 0; i < size; i++) {
+        const t = i - (size - 1) / 2;
+        minosPlantBomb(
+          boss, events,
+          player.x + qx * t * spacing, player.z + qz * t * spacing,
+          fuse + (i * stagger) * fuseMult,
+        );
+      }
+    } else {
+      // Cluster: eine auf den Spieler, zwei quer daneben (leichter Jitter)
+      const spread = 4;
+      minosPlantBomb(boss, events, player.x, player.z, fuse);
+      for (const side of [-1, 1]) {
+        const jx = (world.rngSummons.next() - 0.5) * 1.6;
+        const jz = (world.rngSummons.next() - 0.5) * 1.6;
+        minosPlantBomb(
+          boss, events,
+          player.x + qx * side * spread + jx, player.z + qz * side * spread + jz,
+          fuse,
+        );
+      }
+    }
+  }
+
+  // Bomben ticken + detonieren
+  const bombRadius = def.bombRadius ?? 3;
+  const bombDamage = Math.round(boss.projectileDamage * (def.bombDamageMult ?? 1.4));
+  for (const b of boss.bombs) {
+    if (!b.active) continue;
+    b.fuseLeft -= dt;
+    if (b.fuseLeft > 0) continue;
+    b.active = false;
+    events.emit('explosion', { x: b.x, z: b.z, radius: bombRadius, color: 0xff8c1a });
+    const pd = Math.hypot(player.x - b.x, player.z - b.z);
+    if (player.alive && pd < bombRadius + PLAYER.radius) {
+      player.takeDamage(bombDamage);
+    }
+  }
+
+  updateTrioShots(boss, dt, world, events);
+
+  // Phase 2: der Minenkoenig ruft seine Zuender
+  if (boss.phase2) {
+    boss.summonTimer -= dt;
+    if (boss.summonTimer <= 0) {
+      boss.summonTimer = (def.summonIntervalP2 ?? 12) * boss.cdMult;
+      summonAtEdge(world, ENEMY_BOMBER, 2, events);
+    }
   }
 }
 
@@ -335,6 +579,126 @@ function updateHydra(boss: Boss, dt: number, world: World, events: EventBus): vo
     boss.callTimer = (def.callInterval ?? 10) * boss.cdMult;
     summonAtEdge(world, ENEMY_SPLITTER, 2, events);
   }
+}
+
+// ---------------------------------------------------------------- WIRBEL
+
+function updateVortex(boss: Boss, dt: number, world: World, events: EventBus): void {
+  const def = boss.def;
+  checkPhase2(boss, 0.5, events);
+  const player = world.player;
+
+  // Movement: beansprucht die Arena-Mitte (P2: jagt den Spieler)
+  if (boss.phase2) {
+    moveTowardPlayer(boss, dt, world, 2.2);
+  } else {
+    const d = Math.hypot(boss.x, boss.z);
+    if (d > 1) {
+      boss.x -= (boss.x / d) * def.speed * dt;
+      boss.z -= (boss.z / d) * def.speed * dt;
+    }
+  }
+  boss.contactDamageNow = def.contactDamage;
+  // Waehrend des Sogs dreht der Strudel sichtbar schneller
+  if (boss.suctionLeft > 0) boss.yRot += dt * 5;
+
+  // Sog-Zyklus
+  const telegraph = def.suctionTelegraph ?? 1.0;
+  if (boss.suctionLeft <= 0) {
+    boss.suctionTimer -= dt;
+    if (boss.suctionTimer <= telegraph && !boss.suctionTelegraphed) {
+      boss.suctionTelegraphed = true;
+      boss.telegraphGlow = telegraph;
+      events.emit('bossTelegraph', {
+        kind: 'vortex', x: boss.x, z: boss.z,
+        radius: boss.phase2 ? 16 : (def.suctionRange ?? 14), duration: telegraph,
+      });
+    }
+    if (boss.suctionTimer <= 0) {
+      boss.suctionTimer = ((boss.phase2 ? def.suctionIntervalP2 : def.suctionInterval) ?? 10) * boss.cdMult;
+      boss.suctionTelegraphed = false;
+      boss.suctionLeft = def.suctionDuration ?? 4.0;
+      boss.spiralTimer = 0;
+      boss.collapseTelegraphed = false;
+    }
+  } else {
+    boss.suctionLeft -= dt;
+
+    // Spieler-Pull: reine Positions-Spannung, macht selbst NULL Schaden.
+    // Der Dash bricht den Sog immer (waehrenddessen kein Pull).
+    // Stoppgrenze MIT Marge ueber der Kontakt-Hitbox (radius + 0.5 = 2.2) und
+    // geclampter Schritt — der Sog traegt den Spieler nie in den Kontaktschaden.
+    const range = boss.phase2 ? (def.suctionRangeP2 ?? 99) : (def.suctionRange ?? 14);
+    const pull = (boss.phase2 ? (def.suctionPullP2 ?? 3.2) : (def.suctionPull ?? 2.6)) * world.mods.enemySpeed;
+    if (player.alive && !player.isDashing) {
+      const pdx = boss.x - player.x;
+      const pdz = boss.z - player.z;
+      const pd = Math.hypot(pdx, pdz);
+      const stopR = boss.def.radius + 0.9;
+      if (pd > stopR && pd <= range) {
+        const step = Math.min(pull * dt, pd - stopR);
+        player.x += (pdx / pd) * step;
+        player.z += (pdz / pd) * step;
+      }
+    }
+
+    // Spiral-Salven waehrend des Sogs (+ kontinuierliche Einwaerts-Ringe)
+    boss.spiralTimer -= dt;
+    if (boss.spiralTimer <= 0) {
+      boss.spiralTimer = (boss.phase2 ? (def.spiralIntervalP2 ?? 0.7) : (def.spiralInterval ?? 0.8));
+      const count = boss.phase2 ? (def.spiralCountP2 ?? 8) : (def.spiralCount ?? 6);
+      boss.salvoAngle += 0.35;
+      const speed = (def.spiralProjectileSpeed ?? 4.5) * boss.projSpeedMult;
+      for (let i = 0; i < count; i++) {
+        const a = boss.salvoAngle + (i / count) * Math.PI * 2;
+        world.spawnEnemyProjectile(boss.x, boss.z, Math.cos(a), Math.sin(a), speed, boss.projectileDamage, 40);
+      }
+      events.emit('enemyShot', { x: boss.x, z: boss.z });
+      // Wiederhol-Ring ist reine Kosmetik — bossTelegraph wuerde jedes Mal
+      // den Gefahren-Warnton triggern ("Warnton = ausweichen" bliebe nicht lesbar)
+      events.emit('vortexRing', {
+        x: boss.x, z: boss.z,
+        radius: boss.phase2 ? 16 : (def.suctionRange ?? 14), duration: 0.9,
+      });
+    }
+
+    // Kollaps-Schockwelle am Sog-Ende (rot telegrafiert in den letzten 0.8 s)
+    const collapseRadius = boss.phase2 ? (def.collapseRadiusP2 ?? 6) : (def.collapseRadius ?? 5);
+    if (boss.suctionLeft <= 0.8 && !boss.collapseTelegraphed) {
+      boss.collapseTelegraphed = true;
+      boss.shockX = boss.x;
+      boss.shockZ = boss.z;
+      events.emit('bossTelegraph', {
+        kind: 'shockwave', x: boss.shockX, z: boss.shockZ,
+        radius: collapseRadius, duration: 0.8,
+      });
+    }
+    if (boss.suctionLeft <= 0) {
+      boss.shockActive = true;
+      boss.shockR = 0;
+      boss.shockHitDone = false;
+      events.emit('bossStomp', {
+        x: boss.shockX, z: boss.shockZ,
+        radius: collapseRadius, speed: def.collapseRingSpeed ?? 12,
+      });
+    }
+  }
+
+  // Kollaps-Ring (nutzt die generischen shock*-Felder)
+  if (boss.shockActive) {
+    const collapseRadius = boss.phase2 ? (def.collapseRadiusP2 ?? 6) : (def.collapseRadius ?? 5);
+    shockBuf.r = boss.shockR;
+    shockBuf.hitDone = boss.shockHitDone;
+    boss.shockActive = tickShockRing(
+      shockBuf, boss.shockX, boss.shockZ,
+      collapseRadius, def.collapseRingSpeed ?? 12,
+      Math.round(boss.projectileDamage * 1.2), dt, world,
+    );
+    boss.shockR = shockBuf.r;
+    boss.shockHitDone = shockBuf.hitDone;
+  }
+
+  updateTrioShots(boss, dt, world, events);
 }
 
 // ---------------------------------------------------------------- Helfer

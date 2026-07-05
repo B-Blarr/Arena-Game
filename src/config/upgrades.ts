@@ -6,15 +6,15 @@
 
 export type Rarity = 'common' | 'rare' | 'epic' | 'legendary';
 
-export const RARITY_WEIGHTS: Record<Rarity, number> = { common: 60, rare: 30, epic: 10, legendary: 2 };
+export const RARITY_WEIGHTS: Record<Rarity, number> = { common: 60, rare: 30, epic: 10, legendary: 1 };
 
 /** Legendaer-Regeln: extrem selten, unsichtbarer Pity gegen Pechstraehnen. */
 export const LEGENDARY = {
   /** Effektives Gewicht = min(base + pity, weightCap); pity +1 pro Angebot ohne Fund. */
   pityPerOffer: 1,
-  weightCap: 12,
+  weightCap: 8,
   /** Erst ab der Wahl NACH dieser Welle im Pool (erste Wahl bleibt simpel). */
-  minWave: 2,
+  minWave: 3,
 };
 
 export interface UpgradeDef {
@@ -77,7 +77,8 @@ export const UPGRADE_VALUES = {
   multishotSpreadAngle: (8 * Math.PI) / 180,
   critPerStack: 0.1,
   critCap: 0.45,
-  lifestealPerKill: 1,
+  /** 0.5 statt 1: Lebensraub war der staerkste "Dauervollleben"-Treiber. */
+  lifestealPerKill: 0.5,
   orbRadius: 2.2,
   orbRotationsPerSec: 0.8,
   orbDamage: 15,
@@ -103,9 +104,22 @@ export const UPGRADE_VALUES = {
   /** Orbital-Laser: alle X s auf den Gegner mit den meisten HP (oder Boss). */
   orbitalLaserInterval: 5,
   orbitalLaserDamage: 120,
-  /** Schwarzes Loch: Dash saugt Gegner an (Beschleunigung in u/s^2). */
+  /** Schwarzes Loch: Dash schleudert eine Singularitaet voraus, die Gegner
+   *  per direktem Positions-Versatz einsaugt und am Ende explodiert. */
   blackHoleRadius: 5,
-  blackHolePull: 45,
+  /** Sog-GESCHWINDIGKEIT in u/s (direkter Versatz, keine Beschleunigung). */
+  blackHolePull: 12,
+  blackHoleDuration: 0.8,
+  /** Wurfweite in Dash-Richtung ueber den Endpunkt hinaus. */
+  blackHoleThrowDist: 2.5,
+  /** Fangring: Gegner werden nie naeher als hierhin gezogen (kein Durchfliegen). */
+  blackHoleCaptureRadius: 0.35,
+  /** Innerhalb dieses Radius wird der Sog gedaempft (stabiler Knaeuel). */
+  blackHoleSlowRadius: 1.5,
+  blackHoleMinPullFrac: 0.35,
+  /** Kollaps-Crunch am Lebensende. */
+  blackHoleCrushRadius: 2.2,
+  blackHoleCrushDamage: 20,
   /** Ueberladung: unter dieser HP-Schwelle +50 % Schaden. */
   overchargeHpFrac: 0.3,
   overchargeDamageBonus: 0.5,
@@ -116,6 +130,6 @@ export const UPGRADE_VALUES = {
   projectileRadiusBase: 0.15,
   // Fallback-Karten
   corePackAmount: 15,
-  repairFrac: 0.3,
+  repairFrac: 0.25,
   scoreBoostPerWave: 500,
 };

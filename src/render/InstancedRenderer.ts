@@ -11,12 +11,14 @@ import {
 } from 'three';
 import { ELITE, ENEMIES, type EnemyDef } from '../config/enemies';
 import { BOSS_ROTATION } from '../config/bosses';
+import { HEROES, type HeroDef } from '../config/heroes';
 import { ARENA_RADIUS, PICKUPS } from '../config/balance';
 import { UPGRADE_VALUES as UV } from '../config/upgrades';
 import { PICKUP_CORE } from '../entities/Pickup';
 import type { World } from '../core/World';
 import type { EventBus } from '../core/EventBus';
 import type { AssetRegistry } from './AssetRegistry';
+import { HERO_SHAPES, type HeroPartGeo, type HeroShape } from './heroShapes';
 import { lerp } from '../utils/math';
 
 const dummy = new Object3D();
@@ -31,6 +33,8 @@ const ELITE_RING_CAP = 64;
 const GHOST_COUNT = 3;
 const GHOST_LIFE = 0.25;
 const BEAM_TIME = 0.35;
+/** Part-Slots pro Helden-Figur (Rumpf + 2 Anbauten + Triebwerk). */
+const HERO_PART_SLOTS = 4;
 
 /**
  * Schreibt pro Frame die Optik aller dynamischen Entities:
@@ -41,6 +45,8 @@ const BEAM_TIME = 0.35;
 export class InstancedRenderer {
   /** "Effekte reduzieren" daempft Ghost-/Klon-Transparenzen. */
   fxIntensity = 1;
+  /** Menue-Modus: Figur ist Helden-Vorschau (immer sichtbar, ohne Klon/Orbs). */
+  heroPreview = false;
 
   private readonly enemyMeshes: InstancedMesh[] = [];
   private readonly playerProj: InstancedMesh;
@@ -50,10 +56,18 @@ export class InstancedRenderer {
   private readonly pickupMeshes: InstancedMesh[] = [];
   private readonly orbMeshes: Mesh[] = [];
   private readonly playerGroup: Group;
+  private readonly playerParts: Mesh[] = [];
   private readonly playerRing: Mesh;
   private readonly playerBlob: Mesh;
   private readonly cloneGroup: Group;
+  private readonly cloneParts: Mesh[] = [];
+  private readonly bodyMat: MeshBasicMaterial;
+  private readonly engineMat: MeshBasicMaterial;
   private readonly cloneBodyMat: MeshBasicMaterial;
+  /** Helden-abhaengige Render-Parameter (setHero). */
+  private ringBase = 1;
+  private ghostRotX = Math.PI / 2;
+  private ghostY = 0.55;
   private readonly bossGroups = new Map<string, Group>();
   private readonly bossWireMats = new Map<string, MeshBasicMaterial>();
   private readonly miniMeshes: Mesh[] = [];
@@ -73,7 +87,6 @@ export class InstancedRenderer {
     private readonly scene: Scene,
     private readonly assets: AssetRegistry,
     events: EventBus,
-    heroColor: number,
   ) {
     // Gegner: ein InstancedMesh pro Typ (eigene Form, Farbe via instanceColor)
     for (const def of ENEMIES) {
@@ -133,15 +146,20 @@ export class InstancedRenderer {
       this.orbMeshes.push(orb);
     }
 
-    // Spieler: Pfeilspitze + Neon-Ring + Blob-Schatten
+    // Spieler: Part-Slot-Figur (pro Held eigene Silhouette) + Ring + Blob
+    this.bodyMat = assets.makeGlow(0x00e5ff, 1.9);
+    this.engineMat = assets.makeGlowTransparent(0xbff8ff, 2.6, 0.8, true);
     this.playerGroup = new Group();
-    const body = new Mesh(assets.geoPlayerBody, assets.makeGlow(heroColor, 1.9));
-    body.rotation.x = Math.PI / 2;
-    body.position.y = 0.55;
+    for (let i = 0; i < HERO_PART_SLOTS; i++) {
+      const part = new Mesh(assets.geoPlayerBody, this.bodyMat);
+      part.visible = false;
+      this.playerGroup.add(part);
+      this.playerParts.push(part);
+    }
     this.playerRing = new Mesh(assets.geoPlayerRing, assets.makeGlow(0xffffff, 1.4));
     this.playerRing.rotation.x = Math.PI / 2;
     this.playerRing.position.y = 0.25;
-    this.playerGroup.add(body, this.playerRing);
+    this.playerGroup.add(this.playerRing);
     scene.add(this.playerGroup);
     this.playerBlob = new Mesh(assets.geoBlob, assets.matBlob);
     this.playerBlob.rotation.x = -Math.PI / 2;
@@ -150,14 +168,17 @@ export class InstancedRenderer {
 
     // Spiegelklon (legendaeres Upgrade): transluzenter Geist hinter dem Spieler
     this.cloneGroup = new Group();
-    this.cloneBodyMat = assets.makeGlowTransparent(heroColor, 1.6, 0.35, true);
-    const cloneBody = new Mesh(assets.geoPlayerBody, this.cloneBodyMat);
-    cloneBody.rotation.x = Math.PI / 2;
-    cloneBody.position.y = 0.55;
+    this.cloneBodyMat = assets.makeGlowTransparent(0x00e5ff, 1.6, 0.35, true);
+    for (let i = 0; i < HERO_PART_SLOTS; i++) {
+      const part = new Mesh(assets.geoPlayerBody, this.cloneBodyMat);
+      part.visible = false;
+      this.cloneGroup.add(part);
+      this.cloneParts.push(part);
+    }
     const cloneRing = new Mesh(assets.geoPlayerRing, assets.makeGlowTransparent(0xffffff, 1.2, 0.22, true));
     cloneRing.rotation.x = Math.PI / 2;
     cloneRing.position.y = 0.25;
-    this.cloneGroup.add(cloneBody, cloneRing);
+    this.cloneGroup.add(cloneRing);
     this.cloneGroup.visible = false;
     scene.add(this.cloneGroup);
 
@@ -165,7 +186,7 @@ export class InstancedRenderer {
     // Euler-Order YXZ: erst Yaw, dann Kippen — wie die Spieler-Group-
     // Komposition; mit Default-XYZ zeigten die Kegel immer nach Welt-+Z.
     for (let i = 0; i < GHOST_COUNT; i++) {
-      const mat = assets.makeGlowTransparent(heroColor, 1.6, 0.5, true);
+      const mat = assets.makeGlowTransparent(0x00e5ff, 1.6, 0.5, true);
       const ghost = new Mesh(assets.geoPlayerBody, mat);
       ghost.rotation.order = 'YXZ';
       ghost.rotation.x = Math.PI / 2;
@@ -191,9 +212,6 @@ export class InstancedRenderer {
       const wire = new Mesh(assets.geometryFor(def.shape), wireMat);
       wire.scale.setScalar(def.scale * 1.02);
       (wire.material as MeshBasicMaterial).wireframe = true;
-      const blob = new Mesh(assets.geoBlob, assets.matBlob);
-      blob.rotation.x = -Math.PI / 2;
-      blob.scale.setScalar(def.radius * 2.2);
       group.add(main, wire);
       group.visible = false;
       scene.add(group);
@@ -221,14 +239,69 @@ export class InstancedRenderer {
         this.beamMesh.position.set(e.x, 12, e.z);
       }),
     );
+
+    // Default-Silhouette (Menue-Backdrop zeigt sonst nichts)
+    const firstHero = HEROES[0];
+    if (firstHero) this.setHero(firstHero);
   }
 
-  /** Heldenfarbe beim Runstart setzen (Spieler, Klon, Dash-Geister). */
-  setHeroColor(color: number): void {
-    const body = this.playerGroup.children[0] as Mesh;
-    (body.material as MeshBasicMaterial).color.set(color).multiplyScalar(1.9);
-    this.cloneBodyMat.color.set(color).multiplyScalar(1.6);
-    for (const mat of this.ghostMats) mat.color.set(color).multiplyScalar(1.6);
+  private heroGeo(key: HeroPartGeo) {
+    const a = this.assets;
+    switch (key) {
+      case 'coneHull': return a.geoPlayerBody;
+      case 'dartHull': return a.geoHeroDartHull;
+      case 'wedgeHull': return a.geoHeroWedgeHull;
+      case 'fin': return a.geoHeroFin;
+      case 'wing': return a.geoHeroWing;
+      case 'shoulder': return a.geoHeroShoulder;
+      case 'engine': return a.geoHeroEngine;
+    }
+  }
+
+  /**
+   * Held setzen: eigene Silhouette (Part-Slots) + Farben fuer Figur,
+   * Spiegelklon und Dash-Geister — alles allokationsfrei (Geometrie-Tausch).
+   */
+  setHero(hero: HeroDef): void {
+    const shape = (HERO_SHAPES[hero.id] ?? HERO_SHAPES.volt) as HeroShape;
+    this.bodyMat.color.set(hero.color).multiplyScalar(1.9);
+    this.cloneBodyMat.color.set(hero.color).multiplyScalar(1.6);
+    for (const mat of this.ghostMats) mat.color.set(hero.color).multiplyScalar(1.6);
+    this.engineMat.color.set(shape.engineColor).multiplyScalar(shape.engineIntensity);
+    this.ringBase = shape.ringScale;
+    this.playerBlob.scale.setScalar(shape.blobScale);
+    this.ghostRotX = shape.hullRotX;
+    this.ghostY = shape.hullY;
+
+    // Dash-Geister zeigen nur den Rumpf (parts[0]) des aktiven Helden
+    const hull = shape.parts[0];
+    if (hull) {
+      const hullGeo = this.heroGeo(hull.geo);
+      for (const ghost of this.ghostMeshes) ghost.geometry = hullGeo;
+    }
+
+    const apply = (slots: Mesh[], isClone: boolean): void => {
+      for (let i = 0; i < slots.length; i++) {
+        const slot = slots[i] as Mesh;
+        const part = shape.parts[i];
+        // Der Geist braucht kein Triebwerk (spart ein Material)
+        if (!part || (isClone && part.mat === 'engine')) {
+          slot.visible = false;
+          continue;
+        }
+        slot.visible = true;
+        slot.geometry = this.heroGeo(part.geo);
+        slot.position.set(part.x, part.y, part.z);
+        slot.rotation.set(part.rotX ?? 0, part.rotY ?? 0, part.rotZ ?? 0);
+        if (part.sx !== undefined) slot.scale.set(part.sx, part.sy ?? 1, part.sz ?? 1);
+        else slot.scale.setScalar(part.scale ?? 1);
+        slot.material = part.mat === 'engine'
+          ? this.engineMat
+          : (isClone ? this.cloneBodyMat : this.bodyMat);
+      }
+    };
+    apply(this.playerParts, false);
+    apply(this.cloneParts, true);
   }
 
   /** simRunning=false (Pause/Upgrade/Menue): keine neuen Dash-Ghosts spawnen. */
@@ -404,21 +477,25 @@ export class InstancedRenderer {
     // Dash: Streckung in Bewegungsrichtung
     const stretch = p.isDashing ? 1.35 : 1;
     this.playerGroup.scale.set(1, 1, stretch);
-    // dezenter Idle-Puls des Neon-Rings
-    this.playerRing.scale.setScalar(1 + 0.04 * Math.sin(world.elapsed * 3));
+    // dezenter Idle-Puls des Neon-Rings (ringBase = Helden-Skalierung)
+    this.playerRing.scale.setScalar(this.ringBase * (1 + 0.04 * Math.sin(world.elapsed * 3)));
+    // Triebwerks-Flackern: beim Dash volle Flamme
+    this.engineMat.opacity = p.isDashing ? 1.0 : 0.6 + 0.2 * Math.sin(world.elapsed * 22);
 
-    // Unverwundbarkeits-Blinken: 8 Hz, 60 % sichtbar
-    let visible = p.alive;
-    if (p.alive && p.iFrames > 0 && !p.isDashing) {
+    // Unverwundbarkeits-Blinken: 8 Hz, 60 % sichtbar.
+    // Helden-Vorschau im Menue: immer sichtbar (alive vom letzten Run egal)
+    let visible = this.heroPreview || p.alive;
+    if (!this.heroPreview && p.alive && p.iFrames > 0 && !p.isDashing) {
       visible = (world.elapsed * 8) % 1 < 0.6;
     }
     this.playerGroup.visible = visible;
     this.playerBlob.position.set(x, 0.02, z);
-    this.playerBlob.visible = p.alive;
+    this.playerBlob.visible = this.heroPreview || p.alive;
 
     // Spiegelklon: Geist spiegelverkehrt hinter dem Spieler
-    // (in die Arena geclampt, wie der Feuer-Ursprung im CombatSystem)
-    const hasClone = p.alive && p.stats.cloneDamageFrac > 0;
+    // (in die Arena geclampt, wie der Feuer-Ursprung im CombatSystem);
+    // in der Menue-Vorschau nie (Run-Rest des letzten Builds)
+    const hasClone = !this.heroPreview && p.alive && p.stats.cloneDamageFrac > 0;
     this.cloneGroup.visible = hasClone;
     if (hasClone) {
       let cx = x - p.faceX * UV.mirrorCloneOffset;
@@ -439,8 +516,8 @@ export class InstancedRenderer {
     if (simRunning && p.alive && p.isDashing && this.ghostSpawnTimer <= 0) {
       this.ghostSpawnTimer = 0.04;
       const ghost = this.ghostMeshes[this.ghostCursor] as Mesh;
-      ghost.position.set(x, 0.55, z);
-      ghost.rotation.set(Math.PI / 2, this.playerGroup.rotation.y, 0);
+      ghost.position.set(x, this.ghostY, z);
+      ghost.rotation.set(this.ghostRotX, this.playerGroup.rotation.y, 0);
       ghost.visible = true;
       this.ghostLife[this.ghostCursor] = GHOST_LIFE;
       this.ghostCursor = (this.ghostCursor + 1) % GHOST_COUNT;
@@ -458,8 +535,8 @@ export class InstancedRenderer {
       }
     }
 
-    // Schutz-Orbs
-    const orbCount = Math.min(p.stats.orbCount, MAX_ORBS);
+    // Schutz-Orbs (in der Menue-Vorschau ausgeblendet)
+    const orbCount = this.heroPreview ? 0 : Math.min(p.stats.orbCount, MAX_ORBS);
     for (let k = 0; k < MAX_ORBS; k++) {
       const orb = this.orbMeshes[k] as Mesh;
       if (k < orbCount && p.alive) {

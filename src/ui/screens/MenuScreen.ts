@@ -6,10 +6,29 @@ import type { SaveManager } from '../../save/SaveManager';
 export interface MenuCallbacks {
   onPlay: (daily: boolean) => void;
   onShop: () => void;
+  onProfiles: () => void;
+  onLeaderboard: () => void;
   onSettingChanged: () => void;
 }
 
-const HERO_GLYPHS: Record<string, string> = { volt: '▲', blitz: '⚡', brocken: '⬢' };
+// Mini-Silhouetten (Top-View) der Helden-Figuren; fill=currentColor erbt die Kartenfarbe
+const HERO_GLYPHS: Record<string, string> = {
+  volt: `<svg width="40" height="40" viewBox="0 0 48 48" fill="currentColor" aria-hidden="true">
+    <polygon points="24,4 31,34 24,28 17,34"/>
+    <polygon points="15,28 6,38 17,35"/>
+    <polygon points="33,28 42,38 31,35"/>
+  </svg>`,
+  blitz: `<svg width="40" height="40" viewBox="0 0 48 48" fill="currentColor" aria-hidden="true">
+    <polygon points="24,2 28,38 24,32 20,38"/>
+    <polygon points="19,24 2,42 20,34"/>
+    <polygon points="29,24 46,42 28,34"/>
+  </svg>`,
+  brocken: `<svg width="40" height="40" viewBox="0 0 48 48" fill="currentColor" aria-hidden="true">
+    <polygon points="24,8 40,36 8,36"/>
+    <rect x="2" y="26" width="9" height="14" rx="2"/>
+    <rect x="37" y="26" width="9" height="14" rx="2"/>
+  </svg>`,
+};
 const HERO_COLORS: Record<string, string> = { volt: '#00e5ff', blitz: '#ffe97a', brocken: '#ff8a5c' };
 
 /** Startmenue: Spielen, Heldenwahl, Schwierigkeit, Auto-Aim, Daily, Shop. */
@@ -36,12 +55,16 @@ export class MenuScreen {
     this.root.innerHTML = `
       <div class="menu-corner left"><span>⬡</span><span class="menu-cores">0</span></div>
       <div class="menu-corner right">${STR.bestScore}: <span class="menu-best">0</span></div>
+      <button class="menu-profile" title="${STR.profilesTitle}">👤 <span class="menu-profile-name"></span></button>
       <h1 class="title-glow menu-title"><span class="accent">NEON</span> ARENA</h1>
       <div class="menu-subtitle">${STR.subtitle}</div>
       <div class="hero-row"></div>
       <div class="menu-buttons">
         <button class="btn btn-primary menu-play">${STR.play}</button>
-        <button class="btn menu-shop">🛠 ${STR.shop}</button>
+        <div class="menu-buttons-row">
+          <button class="btn menu-shop">🛠 ${STR.shop}</button>
+          <button class="btn btn-gold menu-leaderboard">🏆 ${STR.leaderboard}</button>
+        </div>
       </div>
       <div class="menu-options">
         <div class="toggle-row"><span class="option-label">${STR.difficulty}</span><span class="segmented seg-diff"></span></div>
@@ -69,6 +92,12 @@ export class MenuScreen {
     (this.root.querySelector('.menu-shop') as HTMLButtonElement).addEventListener('click', () => {
       this.cb.onShop();
     });
+    (this.root.querySelector('.menu-leaderboard') as HTMLButtonElement).addEventListener('click', () => {
+      this.cb.onLeaderboard();
+    });
+    (this.root.querySelector('.menu-profile') as HTMLButtonElement).addEventListener('click', () => {
+      this.cb.onProfiles();
+    });
   }
 
   refresh(): void {
@@ -76,6 +105,7 @@ export class MenuScreen {
     this.coresEl.textContent = String(save.cores);
     this.bestEl.textContent = String(save.bestScores[save.settings.difficulty]);
     this.warnEl.textContent = this.save.storageAvailable ? '' : STR.saveWarning;
+    (this.root.querySelector('.menu-profile-name') as HTMLElement).textContent = this.save.activeName;
 
     // Helden-Karten
     this.heroRow.innerHTML = '';

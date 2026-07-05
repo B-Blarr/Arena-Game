@@ -224,29 +224,47 @@ export class CombatSystem {
 
   // ---------------------------------------------------------- Schwarzes Loch
 
-  /** Legendaer: Dash saugt Gegner zusammen (Tank via mass 0 immun). */
+  /**
+   * Legendaer: Die am Dash-Ende geworfene Singularitaet (Player.blackHole*)
+   * saugt Gegner per DIREKTEM Positions-Versatz auf einen Fangring — die
+   * alte kv-Variante wurde von der Knockback-Daempfung aufgefressen und war
+   * praktisch unsichtbar. Am Lebensende: Kollaps-Explosion.
+   */
   private updateBlackHole(dt: number): void {
     const p = this.world.player;
-    if (!p.isDashing || p.stats.blackHolePull <= 0) return;
+    if (p.blackHoleTimer <= 0) return;
+    p.blackHoleTimer -= dt;
+    const hx = p.blackHoleX;
+    const hz = p.blackHoleZ;
+
+    if (p.blackHoleTimer <= 0) {
+      // Kollaps-Crunch: komplette Explosions-Pipeline gratis (Ring, Partikel,
+      // Sfx, Trauma, Nova-Synergie); Knockback wirft den Knaeuel wieder auf
+      this.explode(hx, hz, UV.blackHoleCrushRadius, UV.blackHoleCrushDamage, 1, 0x9b5cff);
+      return;
+    }
+
     const found = this.world.spatialHash.queryCircle(
-      p.x, p.z, UV.blackHoleRadius + MAX_ENEMY_RADIUS, holeQueryBuf,
+      hx, hz, UV.blackHoleRadius + MAX_ENEMY_RADIUS, holeQueryBuf,
     );
     for (let n = 0; n < found; n++) {
       const idx = holeQueryBuf[n] as number;
       if (idx >= this.world.enemies.count) continue;
       const e = this.world.enemies.get(idx);
-      if (e.hp <= 0 || e.mass <= 0) continue;
-      const dx = p.x - e.x;
-      const dz = p.z - e.z;
+      if (e.hp <= 0 || e.mass <= 0) continue; // Tank immun (wie Knockback)
+      // Zuendender Bomber bleibt fest — Warn-Ring und Blast deckungsgleich
+      // (der Positions-Versatz laeuft an der kv-Daempfung vorbei!)
+      if (e.type === ENEMY_BOMBER && e.telegraphTimer > 0) continue;
+      const dx = hx - e.x;
+      const dz = hz - e.z;
       const d = Math.hypot(dx, dz);
-      if (d < 0.001 || d > UV.blackHoleRadius + e.radius) continue;
-      e.kvx += (dx / d) * p.stats.blackHolePull * dt;
-      e.kvz += (dz / d) * p.stats.blackHolePull * dt;
-      const kLen = Math.hypot(e.kvx, e.kvz);
-      if (kLen > 10) {
-        e.kvx = (e.kvx / kLen) * 10;
-        e.kvz = (e.kvz / kLen) * 10;
-      }
+      if (d <= UV.blackHoleCaptureRadius || d > UV.blackHoleRadius + e.radius) continue;
+      // Nahe dem Zentrum gedaempft, Schrittweite hart durch Restdistanz
+      // begrenzt -> stabiler Knaeuel am Fangring, kein Durchfliegen
+      const frac = Math.min(Math.max(d / UV.blackHoleSlowRadius, UV.blackHoleMinPullFrac), 1);
+      const step = Math.min(p.stats.blackHolePull * frac * dt, d - UV.blackHoleCaptureRadius);
+      e.x += (dx / d) * step;
+      e.z += (dz / d) * step;
     }
   }
 
@@ -366,7 +384,7 @@ export class CombatSystem {
       scale: (def === ENEMY_TANK ? 1.8 : 1) * (e.eliteAffix > 0 ? ELITE.visualScale : 1),
     });
 
-    if (p.stats.lifestealPerKill > 0) p.heal(p.stats.lifestealPerKill);
+    if (p.stats.lifestealPerKill > 0) p.healFractional(p.stats.lifestealPerKill);
     this.pickups.dropFrom(e);
 
     // Splitter teilt sich in 2 Kinder (Kinder splitten NIE erneut)
