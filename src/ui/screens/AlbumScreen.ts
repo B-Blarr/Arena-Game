@@ -40,7 +40,7 @@ export class AlbumScreen {
   ) {
     this.root = document.getElementById('screen-album') as HTMLElement;
     this.root.innerHTML = `
-      <h2 class="title-glow album-title">📔 ${STR.albumTitle}</h2>
+      <h2 class="title-glow album-title">🏅 ${STR.albumTitle}</h2>
       <div class="album-total">
         <div class="album-total-bar"><div class="album-total-fill"></div></div>
         <span class="album-total-text"></span>

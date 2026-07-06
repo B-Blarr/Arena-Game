@@ -70,9 +70,10 @@ Das komplette Spiel ist ohne Maus bedienbar; bei Treffern und Boss-Stampfern
 vibriert der Controller (abschaltbar in der Pause unter „Vibration").
 Wird ein Controller im Spiel abgezogen, pausiert das Spiel automatisch.
 
-**🤝 Zu zweit** (Knopf „Zusammen" im Menü): Spieler 2 drückt einfach seine
-Dash-Taste zum Beitreten — zweites Gamepad, oder Pfeiltasten + rechte
-Umschalttaste/Enter, während Spieler 1 WASD + Leertaste behält.
+**🤝 Zu zweit** (Knopf „Zusammen" im Menü): Spieler 2 tritt einfach mit
+**Enter** bei — Enter ist dann auch sein Dash, gelaufen wird mit den
+Pfeiltasten (oder ein zweites Gamepad, A-Taste). Spieler 1 behält
+WASD + Leertaste.
 
 ## 🕹️ So funktioniert's
 
@@ -94,15 +95,17 @@ dieselben Wellen — jeden Tag neue.
   Wer fällt, geht **zu Boden** statt zu sterben — der Partner stellt sich
   kurz dazu und hilft wieder auf. Verloren ist erst, wenn beide gleichzeitig
   liegen; am Wellenende stehen sowieso alle wieder. Spieler 2 kann ein
-  eigenes Profil mitbringen (bekommt Kerne, Sticker und Koop-Bestwerte
-  gutgeschrieben) oder als Gast spielen.
+  eigenes Profil mitbringen (bekommt Kerne, Erfolge und Koop-Bestwerte
+  gutgeschrieben) oder als Gast spielen. Spieler 2 tritt einfach mit
+  **Enter** bei (die Enter-Taste ist dann auch sein Dash).
 - **Volle Gamepad-Unterstützung** 🎮 — vom Menü bis zum Upgrade-Screen
   komplett ohne Maus spielbar, mit Controller-Vibration und automatischer
   Pause, wenn ein Pad abgezogen wird. Zwei Pads für den Koop, oder
   Tastatur-Hälften (WASD gegen Pfeiltasten).
-- **Sticker-Album** 📔 — 54 Sammel-Sticker auf 7 Seiten, von „Erster
+- **Erfolge** 🏅 — 54 Erfolge auf 7 Seiten, von „Erster
   Funke" bis „Schlächter III" (20.000 Gegner), inklusive 6 geheimer
-  Rätsel-Sticker. Volle Seiten geben Belohnungen: Kerne und **neue
+  Rätsel-Erfolge. Jeder neue Erfolg erscheint groß und zentral im Bild.
+  Volle Seiten geben Belohnungen: Kerne und **neue
   Farbvarianten** für die Helden (im Menü unter der Heldenreihe wählbar,
   färben auch Schüsse und Dash-Spur um). Wer ALLE 54 sammelt, schaltet
   die Gold-Farbe frei. Fortschritt zählt pro Profil und über alle Runden.

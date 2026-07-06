@@ -424,54 +424,111 @@ body.reduce-fx .hud-combo.c3 .hud-combo-ring {
   50% { transform: translateX(-50%) translateY(-6px); }
 }
 
-/* ---------- Sticker-Toast (Album-Unlock, oben rechts, gequeued) ---------- */
+/* ---------- Erfolgs-Karte (Erfolg-Unlock, zentral-oben, gequeued) ----------
+   Eigenes Element (nicht das Banner) — Wellen-/Boss-Banner wuerden es sonst
+   wegblitzen. Zentral-oben (40 %) statt Bildschirmmitte: sitzt unter dem
+   Wellen-Banner (30 %) und ueber der Spielfigur -> verdeckt niemanden.
+   pointer-events:none -> kein Gameplay-Stop. */
 .sticker-toast {
   --rarity: var(--rarity-common);
   position: absolute;
-  top: 84px;
-  right: 20px;
+  top: 40%;
+  left: 50%;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.6rem 1rem;
-  background: var(--panel-bg);
-  border: 1px solid var(--panel-border);
-  border-left: 4px solid var(--rarity);
-  border-radius: 10px;
-  box-shadow: 0 0 18px color-mix(in srgb, var(--rarity) 40%, transparent);
+  gap: 0.35rem;
+  min-width: 240px;
+  max-width: 90vw;
+  padding: 1.1rem 2.2rem 1.25rem;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--rarity) 22%, var(--panel-bg)),
+    var(--panel-bg)
+  );
+  border: 2px solid var(--rarity);
+  border-radius: 18px;
+  box-shadow:
+    0 0 44px color-mix(in srgb, var(--rarity) 55%, transparent),
+    0 10px 40px rgba(0, 0, 0, 0.5);
+  text-align: center;
   opacity: 0;
-  transform: translateX(40px);
+  transform: translate(-50%, -50%) scale(0.85);
   pointer-events: none;
-  transition: opacity 0.25s ease, transform 0.25s ease;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* weicher, pulsierender Rarity-Halo hinter der Karte */
+.sticker-toast::before {
+  content: '';
+  position: absolute;
+  inset: -40px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--rarity) 35%, transparent),
+    transparent 70%
+  );
+  z-index: -1;
+  pointer-events: none;
 }
 
 .sticker-toast.show {
-  opacity: 1;
-  transform: translateX(0);
+  animation: sticker-pop 0.55s cubic-bezier(0.2, 1.4, 0.4, 1) forwards;
 }
 
-.sticker-toast-icon {
-  font-size: 2rem;
+.sticker-toast.show::before {
+  animation: sticker-halo 1.4s ease-in-out infinite;
 }
 
-.sticker-toast-text {
-  display: flex;
-  flex-direction: column;
+@keyframes sticker-pop {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+  60% { opacity: 1; transform: translate(-50%, -50%) scale(1.08); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+@keyframes sticker-halo {
+  0%, 100% { opacity: 0.5; transform: scale(0.95); }
+  50% { opacity: 0.9; transform: scale(1.08); }
 }
 
 .sticker-toast-label {
-  font-size: 1rem;
+  font-size: 1.05rem;
   color: var(--gold);
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  font-weight: 800;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
+  text-shadow: 0 0 10px rgba(255, 200, 61, 0.7);
+}
+
+.sticker-toast-icon {
+  font-size: 3.6rem;
+  line-height: 1.1;
+  filter: drop-shadow(0 0 14px color-mix(in srgb, var(--rarity) 70%, transparent));
+  animation: sticker-icon-bounce 0.6s ease;
+}
+
+@keyframes sticker-icon-bounce {
+  0% { transform: scale(0.4) rotate(-12deg); }
+  55% { transform: scale(1.2) rotate(6deg); }
+  100% { transform: scale(1) rotate(0); }
 }
 
 .sticker-toast-name {
-  font-size: 1.125rem;
+  font-size: 1.4rem;
   color: var(--text-1);
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: 0.02em;
 }
+
+/* Effekte reduzieren: ruhiges Ein-/Ausblenden ohne Overshoot/Bounce/Halo */
+body.reduce-fx .sticker-toast.show {
+  animation: none;
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+body.reduce-fx .sticker-toast.show::before { animation: none; }
+body.reduce-fx .sticker-toast-icon { animation: none; }
 
 /* ---------- Koop-HUD: zwei kompakte Spieler-Panels ---------- */
 .hud-hp-name {

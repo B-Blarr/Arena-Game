@@ -1,3 +1,4 @@
+import { STICKERS, type StickerRarity } from '../config/stickers';
 import type { EventBus } from '../core/EventBus';
 import type { AudioEngine } from './AudioEngine';
 
@@ -55,7 +56,10 @@ export class Sfx {
       events.on('coreStolen', () => this.stolenBlip()),
       events.on('thiefEscaped', () => this.thiefWhoosh()),
       events.on('blackHole', () => this.blackHoleRumble()),
-      events.on('stickerUnlocked', () => this.stickerFanfare()),
+      // GEAENDERT: Seltenheit mitgeben -> heroischere Fanfare fuer epic/legendary
+      events.on('stickerUnlocked', (e) =>
+        this.stickerFanfare(STICKERS.find((s) => s.id === e.id)?.rarity),
+      ),
       // Koop: Down = dumpfer Fall, Partner-Rettung = Revive-Fanfare
       events.on('playerDowned', () => this.playerDownedThud()),
       events.on('playerCoopRevived', () => this.revive()),
@@ -70,16 +74,29 @@ export class Sfx {
   }
 
   /**
-   * Sticker freigeschaltet: kurzes helles Dreiklang-Arpeggio — deutlich
-   * leiser/kuerzer als die Legendaer-Fanfare (kein Gameplay-Moment).
-   * Public: der Album-Screen nutzt sie auch fuer Belohnungs-Claims.
+   * GEAENDERT: Erfolg freigeschaltet — heroische Aufsteige-Fanfare mit
+   * Body-Schicht (square) und tiefem Grundton fuer Wumms. Skaliert nach
+   * Seltenheit: epic/legendary bekommen den vollen Fuenftonlauf, sonst ein
+   * kurzes, aber sattes Terzett. Public: der Erfolge-Screen nutzt sie auch
+   * fuer Belohnungs-Claims (ohne Argument -> Standard 'rare').
    */
-  stickerFanfare(): void {
-    if (!this.engine.acquireVoice('sticker', 800, 0.6)) return;
-    this.tone('triangle', 1047, 1047, 0.12, 0.16); // C6
-    this.tone('triangle', 1319, 1319, 0.12, 0.16, 0.09); // E6
-    this.tone('triangle', 1568, 1568, 0.22, 0.18, 0.18); // G6
-    this.noise(0.25, 0.05, 'highpass', 6000, 9000, 1, 0.18);
+  stickerFanfare(rarity: StickerRarity = 'rare'): void {
+    const big = rarity === 'legendary' || rarity === 'epic';
+    if (!this.engine.acquireVoice('sticker', big ? 1500 : 1000, big ? 1.1 : 0.8)) return;
+    const notes = big
+      ? [523.25, 659.25, 783.99, 1046.5, 1318.5] // C5-E5-G5-C6-E6 (voll)
+      : [659.25, 783.99, 1046.5]; // E5-G5-C6 (kurz, satt)
+    notes.forEach((f, i) => {
+      const last = i === notes.length - 1;
+      const dur = last ? (big ? 0.44 : 0.28) : 0.13;
+      const at = 0.05 + i * 0.085;
+      this.tone('triangle', f, f, dur, 0.28, at);
+      this.tone('square', f, f, dur, 0.06, at); // Koerper
+    });
+    // tiefer Grundton fuer Wumms
+    this.tone('sine', big ? 130.81 : 196, big ? 130.81 : 196, 0.5, 0.2, 0.05);
+    // heller Glitzer-Schimmer obendrauf
+    this.noise(big ? 0.5 : 0.34, big ? 0.11 : 0.08, 'highpass', 7000, 9000, 1, 0.12);
   }
 
   // ------------------------------------------------ Bausteine

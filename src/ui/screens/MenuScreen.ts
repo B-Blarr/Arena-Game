@@ -71,7 +71,7 @@ export class MenuScreen {
         <div class="menu-buttons-row">
           <button class="btn menu-shop" data-key="menu-shop">🛠 ${STR.shop}</button>
           <button class="btn btn-gold menu-leaderboard" data-key="menu-lb">🏆 ${STR.leaderboard}</button>
-          <button class="btn btn-magenta menu-album" data-key="menu-album">📔 ${STR.album}<span class="menu-album-new"></span></button>
+          <button class="btn btn-magenta menu-album" data-key="menu-album">🏅 ${STR.album}<span class="menu-album-new"></span></button>
         </div>
       </div>
       <div class="menu-options">

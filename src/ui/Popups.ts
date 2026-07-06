@@ -153,22 +153,38 @@ export class Popups {
     this.comboEl.classList.add('show');
   }
 
-  /** Naechsten Sticker-Toast aus der Queue zeigen (2.6 s + kurze Pause). */
+  /** Ist gerade ein Vollbild-Screen (Upgrade/Pause/...) offen? */
+  private isScreenBlocking(): boolean {
+    const screens = document.getElementById('screens');
+    return !!screens?.querySelector('.screen:not(.hidden)');
+  }
+
+  /**
+   * Naechste Erfolgs-Karte aus der Queue zeigen (2.9 s + kurze Pause).
+   * GEAENDERT: zentral-oben als heroische Karte (Label / grosses Icon / Name)
+   * statt kleiner Toast oben rechts — bleibt dank pointer-events:none und
+   * Auto-Dismiss gameplay-durchlaessig. Solange ein Vollbild-Screen offen ist
+   * (Upgrade-/Pause-Screen), wird die Karte aufgeschoben, damit sie nicht die
+   * Upgrade-Auswahl ueberlagert — sie erscheint dann heroisch im Spiel.
+   */
   private nextStickerToast(): void {
-    const id = this.stickerQueue.shift();
-    if (!id) {
+    if (this.stickerQueue.length === 0) {
       this.stickerBusy = false;
       return;
     }
     this.stickerBusy = true;
+    if (this.isScreenBlocking()) {
+      window.clearTimeout(this.stickerTimeout);
+      this.stickerTimeout = window.setTimeout(() => this.nextStickerToast(), 300);
+      return;
+    }
+    const id = this.stickerQueue.shift() as string;
     const def = STICKERS.find((s) => s.id === id);
     const info = STR.stickers[id];
     this.stickerEl.innerHTML = `
+      <span class="sticker-toast-label">${STR.newSticker}</span>
       <span class="sticker-toast-icon">${def?.icon ?? '❔'}</span>
-      <span class="sticker-toast-text">
-        <span class="sticker-toast-label">${STR.newSticker}</span>
-        <span class="sticker-toast-name">${info?.name ?? id}</span>
-      </span>
+      <span class="sticker-toast-name">${info?.name ?? id}</span>
     `;
     this.stickerEl.style.setProperty('--rarity', `var(--rarity-${def?.rarity ?? 'common'})`);
     this.stickerEl.classList.remove('show');
@@ -178,7 +194,7 @@ export class Popups {
     this.stickerTimeout = window.setTimeout(() => {
       this.stickerEl.classList.remove('show');
       this.stickerTimeout = window.setTimeout(() => this.nextStickerToast(), 400);
-    }, 2600);
+    }, 2900);
   }
 
   banner(text: string, extraClass: string): void {

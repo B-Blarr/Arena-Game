@@ -87,12 +87,20 @@ export class CoopSetupScreen {
     if (src) this.assignP2(src);
   }
 
-  /** Vom State-keydown: ShiftRight/Enter = Pfeile-Haelfte tritt bei. */
-  handleKeyJoin(code: string): void {
-    if (code === 'ShiftRight' || code === 'Enter') {
-      // Enter nur, wenn der Fokus nicht gerade einen Button aktiviert
-      const active = document.activeElement;
-      if (code === 'Enter' && active instanceof HTMLButtonElement) return;
+  /**
+   * GEAENDERT: Vom State-keydown (Capture-Phase). Solange P2 noch nicht
+   * beigetreten ist, tritt Enter/ShiftRight verlaesslich der Pfeiltasten-
+   * Haelfte bei und schluckt jeden konkurrierenden Handler (UiNav-Klick,
+   * native Button-Aktivierung). Nach dem Beitritt macht Enter wieder die
+   * normale Menue-Bestaetigung (Start-Button).
+   */
+  handleKeyJoin(e: KeyboardEvent): void {
+    if (this.p2Source !== null) return; // schon beigetreten -> Enter normal
+    if (e.code === 'Enter' || e.code === 'NumpadEnter' || e.code === 'ShiftRight') {
+      const t = e.target;
+      if (t instanceof HTMLInputElement && t.type === 'text') return; // Textfeld nicht kapern
+      e.preventDefault();
+      e.stopImmediatePropagation();
       this.assignP2('arrows');
     }
   }
