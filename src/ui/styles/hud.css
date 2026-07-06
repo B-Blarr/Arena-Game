@@ -399,9 +399,38 @@ body.reduce-fx .hud-combo.c3 .hud-combo-ring {
   100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
 }
 
-/* NEU: Mythisch — fliessender Regenbogen-Text, laenger lesbar (wie Goldene Welle).
-   Spezifitaet .banner.mythic-banner.show (0,3,0) schlaegt .banner.show (0,2,0). */
-.banner.mythic-banner {
+/* NEU: „Besonderer" Banner (Mythisch/Legendaer) — EIGENES Element (special-banner),
+   damit der Wellen-Banner ihn nicht ueberschreibt. Eigene Position (top:20%, ueber
+   dem Wellen-Banner bei 30%), laenger sichtbar (~3,5 s). */
+.special-banner {
+  position: absolute;
+  top: 20%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5vw, 3.25rem);
+  max-width: 92vw;
+  text-align: center;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-shadow: var(--glow-text);
+  visibility: hidden;
+}
+
+.special-banner.show {
+  visibility: visible;
+  animation: banner-special 4.2s ease forwards;
+}
+
+/* Legendaer: Gold */
+.special-banner.gold {
+  color: var(--gold);
+  text-shadow: 0 0 18px rgba(255, 200, 61, 0.9);
+}
+
+/* Mythisch: fliessender Regenbogen-Text */
+.special-banner.mythic {
   background: linear-gradient(
     100deg,
     #ff5ce1, #ffd24d, #6dff8a, #4de6ff, #7a5cff, #ff5ce1
@@ -413,11 +442,19 @@ body.reduce-fx .hud-combo.c3 .hud-combo-ring {
   text-shadow: 0 0 22px rgba(180, 120, 255, 0.55);
 }
 
-.banner.mythic-banner.show {
+.special-banner.mythic.show {
   visibility: visible;
   animation:
-    banner-golden 4.2s ease forwards,
+    banner-special 4.2s ease forwards,
     banner-prism-flow 1.4s linear infinite;
+}
+
+@keyframes banner-special {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
+  6% { opacity: 1; transform: translate(-50%, -50%) scale(1.08); }
+  10% { transform: translate(-50%, -50%) scale(1); }
+  90% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
 }
 
 @keyframes banner-prism-flow {
@@ -426,8 +463,8 @@ body.reduce-fx .hud-combo.c3 .hud-combo-ring {
 }
 
 /* "Effekte reduzieren": statischer Regenbogen, kein Fliessen. */
-body.reduce-fx .banner.mythic-banner.show {
-  animation: banner-golden 4.2s ease forwards;
+body.reduce-fx .special-banner.mythic.show {
+  animation: banner-special 4.2s ease forwards;
 }
 
 @keyframes banner-in {

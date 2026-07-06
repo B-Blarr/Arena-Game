@@ -348,7 +348,7 @@ export const STR = {
     // NEU: Mythische Upgrades (ueber legendaer, extrem selten)
     timeBreak: { name: 'Zeitbruch', desc: 'Alle Gegner UND ihre Schüsse stark verlangsamt!' },
     phoenixCore: { name: 'Phönixkern', desc: 'Einmal pro Lauf: Wiederauferstehung mit voller Energie und Schockwelle!' },
-    prismBeam: { name: 'Prisma-Strahl', desc: 'Dein Schuss wird zu einem Dauer-Regenbogenstrahl, der alles durchschneidet!' },
+    prismBeam: { name: 'Prisma-Strahl', desc: 'Feuert unaufhörlich dicke, durchschlagende Regenbogen-Kugeln!' },
     singularity: { name: 'Singularität', desc: 'Feuerrate UND Schaden verdoppelt!' },
     corePack: { name: 'Kern-Paket', desc: 'Sofort +15 Kerne' },
     repair: { name: 'Reparatur', desc: 'Heilt sofort 25 % Leben' },

@@ -154,13 +154,15 @@ export const UPGRADE_VALUES = {
   /** Phoenixkern: einmalige Auto-Wiederbelebung, danach Schockwelle. */
   phoenixBlastRadius: 6,
   phoenixBlastDamage: 200,
-  /** Prisma-Strahl: Dauerschaden PRO SEKUNDE (skaliert mit damageMult), Strahlbreite + Reichweite. */
-  prismBeamDps: 180,
-  prismBeamWidth: 0.6,
-  prismBeamRange: 16,
-  /** Schaden wird alle prismBeamTick Sekunden gebuendelt (lesbare Trefferzahlen,
-   *  gleichmaessiger DPS). Optik laeuft trotzdem jeden Frame. */
-  prismBeamTick: 0.1,
+  /** Prisma-Salve: extrem schnelles Schiessen mit dicken, durchschlagenden,
+   *  prismatischen Kugeln (ersetzt das normale Feuern). Feste Rate -> nur der
+   *  Schaden pro Kugel skaliert mit damageMult (DPS wie der alte Strahl). */
+  prismShotInterval: 0.05, // 20 Schuss/s
+  prismShotDamage: 9, // x damageMult -> DPS ~180
+  prismShotPierce: 999, // durchschlaegt die ganze Linie
+  prismShotSpeed: 32, // schnell, kurze Flugzeit
+  prismShotRadius: 0.33, // dick (~2,2x Basis 0.15)
+  prismShotRange: 18,
   // Fallback-Karten
   corePackAmount: 15,
   repairFrac: 0.25,

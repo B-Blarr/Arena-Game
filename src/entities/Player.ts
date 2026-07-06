@@ -44,8 +44,8 @@ export interface PlayerStats {
   /** Projektil-Radius (Mega-Kugeln vergroessern ihn). */
   projectileRadius: number;
   // Mythische Upgrades
-  /** Prisma-Strahl: Dauerstrahl-Schaden pro Sekunde (0 = aus). Ersetzt das Feuern. */
-  prismBeamDps: number;
+  /** Prisma-Salve: Schaden pro Kugel (0 = aus). Ersetzt das normale Feuern. */
+  prismShotDamage: number;
 }
 
 export class Player {
@@ -89,8 +89,6 @@ export class Player {
   phoenixBlastPending = false;
   /** Orbital-Laser: Restzeit bis zum naechsten Einschlag. */
   orbitalTimer = 0;
-  /** NEU (mythisch "Prisma-Strahl"): Restzeit bis zum naechsten Schaden-Tick. */
-  prismTimer = 0;
   /** "Turbofeuer!"-Kapselbuff: Restzeit erhoehter Feuerrate. */
   rapidFireTimer = 0;
   /** Lebensraub-Bruchteile sammeln sich, geheilt wird nur ganzzahlig. */
@@ -140,7 +138,6 @@ export class Player {
     this.fireCooldown = 0;
     this.orbAngle = 0;
     this.orbitalTimer = 0;
-    this.prismTimer = 0; // NEU (mythisch)
     this.rapidFireTimer = 0;
     this.healCarry = 0;
     this.blackHoleTimer = 0;
@@ -182,7 +179,7 @@ export class Player {
       novaChance: 0, novaDamage: UV.novaDamage, ricochet: 0, boomerang: false,
       cloneDamageFrac: 0, orbitalDamage: 0, blackHolePull: 0, overchargeBonus: 0,
       projectileRadius: UV.projectileRadiusBase,
-      prismBeamDps: 0, // NEU (mythisch)
+      prismShotDamage: 0, // NEU (mythisch)
     };
   }
 
@@ -249,8 +246,8 @@ export class Player {
     s.blackHolePull = st('blackHoleDash') > 0 ? UV.blackHolePull : 0;
     s.overchargeBonus = st('overcharge') > 0 ? UV.overchargeDamageBonus : 0;
     s.projectileRadius = UV.projectileRadiusBase * (hasMega ? UV.megaShotsRadiusMult : 1);
-    // NEU (mythisch): Prisma-Strahl-DPS skaliert mit allen Schadens-Boni (damageMult).
-    s.prismBeamDps = st('prismBeam') > 0 ? UV.prismBeamDps * damageMult : 0;
+    // NEU (mythisch): Prisma-Salve-Schaden pro Kugel skaliert mit allen Boni (damageMult).
+    s.prismShotDamage = st('prismBeam') > 0 ? UV.prismShotDamage * damageMult : 0;
   }
 
   /** Ueberladung: unter 30 % HP schlaegt alles haerter zu. */

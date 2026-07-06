@@ -35,8 +35,6 @@ export class UpgradeSystem {
   /** NEU — DEV-Testhilfe: erzwingt Mythisch im naechsten Angebot. */
   debugForceMythic = false;
   private readonly legendaryPity: [number, number] = [0, 0];
-  /** NEU: max. 1 mythisches Upgrade pro Lauf (reiner Pool-Filter, rng-neutral). */
-  private mythicTaken = false;
   /** Fuer weightOf waehrend eines draw()-Laufs. */
   private drawingFor: 0 | 1 = 0;
 
@@ -51,7 +49,6 @@ export class UpgradeSystem {
     this.rerollUsed = false;
     this.legendaryPity[0] = 0;
     this.legendaryPity[1] = 0;
-    this.mythicTaken = false; // NEU
   }
 
   /** Nach Boss-Wellen: Slot 1 garantiert Rare oder besser. */
@@ -76,9 +73,8 @@ export class UpgradeSystem {
       if (player.stackOf(u.id) >= u.maxStacks) return false;
       // Legendaere erst ab der Wahl nach Welle 2 (erste Wahl bleibt simpel)
       if (u.rarity === 'legendary' && this.world.wave < LEGENDARY.minWave) return false;
-      // NEU: Mythische erst spaeter im Pool und nur, solange noch keines gewaehlt wurde
+      // Mythische erst spaeter im Pool (jedes nur 1x via maxStacks, aber mehrere pro Lauf moeglich)
       if (u.rarity === 'mythic' && this.world.wave < MYTHIC.minWave) return false;
-      if (u.rarity === 'mythic' && this.mythicTaken) return false;
       // Kettenreaktion aktiv -> Nova-Karten waeren wirkungslos
       if (u.id === 'nova' && player.stats.novaChance >= 1) return false;
       return true;
@@ -163,7 +159,6 @@ export class UpgradeSystem {
   }
 
   apply(def: UpgradeDef, playerIdx: 0 | 1 = 0): void {
-    if (def.rarity === 'mythic') this.mythicTaken = true; // NEU: max. 1 mythisch pro Lauf
     const world = this.world;
     const player = (world.players[playerIdx] ?? world.players[0]) as Player;
     if (def.instant) {

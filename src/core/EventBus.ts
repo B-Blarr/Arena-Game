@@ -24,8 +24,6 @@ export interface GameEvents {
   eliteShieldBroken: { x: number; z: number };
   /** Orbital-Laser (legendaeres Upgrade) schlaegt ein. */
   orbitalStrike: { x: number; z: number };
-  /** NEU: Prisma-Strahl (mythisch): gerichteter Dauerstrahl. active=false blendet ihn aus. */
-  prismBeam: { x: number; z: number; dirX: number; dirZ: number; length: number; active: boolean };
   /** Schwarzes Loch (legendaer): Singularitaet erscheint am Dash-Ende. */
   blackHole: { x: number; z: number; radius: number; duration: number };
   /** Schwarzes Loch kollabiert (Crunch-Explosion folgt im selben Tick). */

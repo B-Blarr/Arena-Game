@@ -33,11 +33,15 @@ export class Popups {
   private readonly bannerEl: HTMLElement;
   /** Sticker-Toast: EIGENES Element (das Banner ueberschreiben Wellen-Banner). */
   private readonly stickerEl: HTMLElement;
+  /** NEU: „Besonderer" Banner (Mythisch/Legendaer) — EIGENES Element, damit der
+   *  Wellen-Banner ihn nicht ueberschreibt; steht laenger + an eigener Position. */
+  private readonly specialBannerEl: HTMLElement;
   private readonly stickerQueue: string[] = [];
   private stickerBusy = false;
   private stickerTimeout = 0;
   private readonly unsubs: Array<() => void> = [];
   private bannerTimeout = 0;
+  private specialBannerTimeout = 0;
 
   constructor(
     layer: HTMLElement,
@@ -59,6 +63,9 @@ export class Popups {
     this.stickerEl = document.createElement('div');
     this.stickerEl.className = 'sticker-toast';
     layer.appendChild(this.stickerEl);
+    this.specialBannerEl = document.createElement('div');
+    this.specialBannerEl.className = 'special-banner';
+    layer.appendChild(this.specialBannerEl);
 
     this.unsubs.push(
       events.on('enemyHit', (e) => {
@@ -108,11 +115,11 @@ export class Popups {
       events.on('eliteSpawned', (e) => {
         this.spawn(e.x, e.z, `★ ${STR.eliteSpawned}`, 'crit');
       }),
-      // Legendaer/Mythisch gewaehlt: Banner beim Zurueckkehren ins Spiel
+      // Legendaer/Mythisch gewaehlt: eigenes Banner-Element, das der Wellen-Banner
+      // NICHT ueberschreibt -> steht laenger + eigene Position ueber dem Wellen-Banner.
       events.on('upgradeChosen', (e) => {
-        // GEAENDERT: mythisch eigener, laengerer Regenbogen-Banner
-        if (e.rarity === 'mythic') this.banner(STR.mythicFound, 'mythic-banner', 4500);
-        else if (e.rarity === 'legendary') this.banner(STR.legendaryFound, 'gold-banner');
+        if (e.rarity === 'mythic') this.specialBanner(STR.mythicFound, 'mythic', 4200);
+        else if (e.rarity === 'legendary') this.specialBanner(STR.legendaryFound, 'gold', 4200);
       }),
       // NEU (mythisch "Phoenixkern"): Auferstehung gross ankuendigen
       events.on('phoenixRevived', () => this.banner(STR.phoenixRevived, 'gold-banner', 2600)),
@@ -214,6 +221,20 @@ export class Popups {
     }, holdMs);
   }
 
+  /** NEU: „Besonderer" Banner (Mythisch/Legendaer) auf EIGENEM Element — laeuft
+   *  unabhaengig vom Wellen-Banner, wird also nicht ueberschrieben. `colorClass`
+   *  ist 'mythic' (Regenbogen) oder 'gold' (Legendaer). */
+  specialBanner(text: string, colorClass: string, holdMs = 4200): void {
+    window.clearTimeout(this.specialBannerTimeout);
+    this.specialBannerEl.textContent = text;
+    this.specialBannerEl.className = `special-banner ${colorClass}`;
+    void this.specialBannerEl.offsetWidth;
+    this.specialBannerEl.classList.add('show');
+    this.specialBannerTimeout = window.setTimeout(() => {
+      this.specialBannerEl.classList.remove('show');
+    }, holdMs);
+  }
+
   /** Laeuft auf Echtzeit — Popups bleiben auch im Hitstop fluessig. */
   update(rawDt: number, camera: PerspectiveCamera): void {
     for (const p of this.pool) {
@@ -240,16 +261,19 @@ export class Popups {
       p.el.style.visibility = 'hidden';
     }
     this.bannerEl.classList.remove('show');
+    this.specialBannerEl.classList.remove('show'); // NEU
     this.comboEl.classList.remove('show');
     this.stickerQueue.length = 0;
     this.stickerBusy = false;
     this.stickerEl.classList.remove('show');
     window.clearTimeout(this.stickerTimeout);
+    window.clearTimeout(this.specialBannerTimeout); // NEU
   }
 
   dispose(): void {
     for (const u of this.unsubs) u();
     window.clearTimeout(this.bannerTimeout);
     window.clearTimeout(this.stickerTimeout);
+    window.clearTimeout(this.specialBannerTimeout); // NEU
   }
 }
