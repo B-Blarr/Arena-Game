@@ -1,7 +1,7 @@
 import type { EventBus } from '../core/EventBus';
 
 const SCREEN_IDS = [
-  'screen-menu', 'screen-upgrade', 'screen-pause', 'screen-gameover',
+  'screen-menu', 'screen-upgrade', 'screen-path', 'screen-pause', 'screen-gameover',
   'screen-shop', 'screen-profiles', 'screen-leaderboard', 'screen-album',
   'screen-coop-setup',
 ] as const;

@@ -11,12 +11,13 @@ import type { CombatSystem } from './CombatSystem';
 const projQueryBuf: number[] = [];
 const contactQueryBuf: number[] = [];
 
-// NEU: synthetische Hit-UIDs, damit die Prisma-Kugel (pierce 999) Boss und Minis
-// ueber das bestehende hitUids-System nur EINMAL trifft. Boss/Minis haben keine
-// eigene uid; Gegner-uids starten bei 1 (World.uidCounter, ++counter), darum sind
-// negative Werte garantiert kollisionsfrei.
-const PRISM_BOSS_UID = -1;
-const prismMiniUid = (i: number): number => -2 - i;
+// Synthetische Hit-UIDs, damit JEDES Durchschlag-Projektil Boss und Minis ueber das
+// bestehende hitUids-System nur EINMAL pro Durchflug trifft — sonst treffen sie beim
+// Durchgleiten jeden Frame erneut (Laser/Prisma pierce 999 = ~9x Schaden). Boss/Minis
+// haben keine eigene uid; Gegner-uids starten bei 1 (World.uidCounter, ++counter),
+// darum sind negative Werte garantiert kollisionsfrei.
+const BOSS_HIT_UID = -1;
+const miniHitUid = (i: number): number => -2 - i;
 
 /**
  * Bewegt Projektile (inkl. Bumerang), prueft alle Kollisionen:
@@ -153,13 +154,13 @@ export class CollisionSystem {
     // Boss + Minis (Crit/Boost des SCHUETZEN, nicht pauschal Spieler 1)
     const owner = (world.players[proj.ownerIdx] ?? world.players[0]) as Player;
     const boss = world.boss;
-    // NEU: Prisma-Kugel darf den Boss nur einmal treffen — sonst trifft sie beim
-    // Durchgleiten (pierce 999) jeden Frame erneut (~8x Boss-Schaden). Schon
-    // getroffen -> ganzen Boss-Block ueberspringen (Kugel lebt weiter).
-    if (boss && boss.alive && !boss.hidden && !(proj.prism && projectileHasHit(proj, PRISM_BOSS_UID))) {
+    // Jedes Projektil trifft den Boss nur einmal pro Durchflug (schon getroffen ->
+    // ganzen Boss-Block ueberspringen, Durchschlag-Kugel lebt weiter). Vereinheitlicht
+    // Laser/Mega-Kugeln/Prisma; normale Kugeln werden ohnehin beim ersten Treffer verbraucht.
+    if (boss && boss.alive && !boss.hidden && !projectileHasHit(proj, BOSS_HIT_UID)) {
       const rr = boss.def.radius + proj.radius;
       if (segPointDist2(proj.prevX, proj.prevZ, proj.x, proj.z, boss.x, boss.z) < rr * rr) {
-        if (proj.prism) projectileMarkHit(proj, PRISM_BOSS_UID);
+        projectileMarkHit(proj, BOSS_HIT_UID);
         const crit = Math.random() < owner.stats.critChance;
         const damage = Math.round(
           proj.damage * (crit ? owner.stats.critMultiplier : 1) * owner.damageBoost,
@@ -174,15 +175,15 @@ export class CollisionSystem {
       }
     }
     if (boss) {
-      // Index-Schleife statt for-of: die Prisma-Kugel braucht pro Mini eine eigene
-      // synthetische UID (s. Boss oben), damit sie jeden Mini nur einmal trifft.
+      // Index-Schleife statt for-of: jedes Projektil braucht pro Mini eine eigene
+      // synthetische UID (s. Boss oben), damit es jeden Mini nur einmal trifft.
       for (let mi = 0; mi < boss.minis.length; mi++) {
         const m = boss.minis[mi];
         if (!m || !m.active || m.hp <= 0) continue;
-        if (proj.prism && projectileHasHit(proj, prismMiniUid(mi))) continue;
+        if (projectileHasHit(proj, miniHitUid(mi))) continue;
         const rr = m.radius + proj.radius;
         if (segPointDist2(proj.prevX, proj.prevZ, proj.x, proj.z, m.x, m.z) < rr * rr) {
-          if (proj.prism) projectileMarkHit(proj, prismMiniUid(mi));
+          projectileMarkHit(proj, miniHitUid(mi));
           const crit = Math.random() < owner.stats.critChance;
           const damage = Math.round(
             proj.damage * (crit ? owner.stats.critMultiplier : 1) * owner.damageBoost,

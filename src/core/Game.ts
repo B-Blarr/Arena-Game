@@ -19,6 +19,7 @@ import { CombatSystem } from '../systems/CombatSystem';
 import { CoopSystem } from '../systems/CoopSystem';
 import { JuiceDirector } from '../systems/JuiceDirector';
 import { ParticleSystem } from '../systems/ParticleSystem';
+import { PathSystem } from '../systems/PathSystem';
 import { PickupSystem } from '../systems/PickupSystem';
 import { RumbleSystem } from '../systems/RumbleSystem';
 import { RunStats } from '../systems/RunStats';
@@ -36,6 +37,7 @@ import { CoopSetupScreen } from '../ui/screens/CoopSetupScreen';
 import { GameOverScreen } from '../ui/screens/GameOverScreen';
 import { LeaderboardScreen } from '../ui/screens/LeaderboardScreen';
 import { MenuScreen } from '../ui/screens/MenuScreen';
+import { PathScreen } from '../ui/screens/PathScreen';
 import { PauseScreen } from '../ui/screens/PauseScreen';
 import { ProfilesScreen } from '../ui/screens/ProfilesScreen';
 import { ShopScreen } from '../ui/screens/ShopScreen';
@@ -86,6 +88,7 @@ export class Game {
   readonly score: ScoreSystem;
   readonly upgrades: UpgradeSystem;
   readonly surprise: SurpriseDirector;
+  readonly path: PathSystem; // NEU (Reise-Modus)
   readonly runStats: RunStats;
   readonly stickers: StickerSystem;
   readonly juice: JuiceDirector;
@@ -97,6 +100,7 @@ export class Game {
   readonly popups: Popups;
   readonly menuScreen: MenuScreen;
   readonly upgradeScreen: UpgradeScreen;
+  readonly pathScreen: PathScreen; // NEU (Reise-Modus)
   readonly pauseScreen: PauseScreen;
   readonly gameOverScreen: GameOverScreen;
   readonly shopScreen: ShopScreen;
@@ -119,6 +123,8 @@ export class Game {
   runSeed = 1;
   runIsDaily = false;
   runDifficulty: Difficulty = 'normal';
+  /** NEU (Reise-Modus): 'journey' = Weg-Wahl aktiv, 'classic' = linearer Modus. */
+  runMode: 'classic' | 'journey' = 'classic';
   /** Koop-Modus: Partner-Profil (null-ID = Gast). null = Solo. */
   runCoopP2: { profileId: string | null; name: string } | null = null;
 
@@ -144,6 +150,7 @@ export class Game {
     this.score = new ScoreSystem(this.events);
     this.upgrades = new UpgradeSystem(this.world, this.events, this.score);
     this.surprise = new SurpriseDirector(this.world, this.events, this.pickupSystem);
+    this.path = new PathSystem(this.world); // NEU (Reise-Modus)
     this.runStats = new RunStats(this.events);
     // Kill-Zaehler MUSS vor dem StickerSystem abonnieren: dessen
     // kills-Check liest stats.totalKills und soll den frischen Kill sehen
@@ -164,11 +171,13 @@ export class Game {
     this.popups = new Popups(document.getElementById('popup-layer') as HTMLElement, this.events, this.world);
 
     this.menuScreen = new MenuScreen(this.save, {
-      onPlay: (daily) => {
+      onPlay: (daily, journey) => {
         this.audioEngine.unlock();
         // Menue-Play ist immer Solo — Koop laeuft ueber sein Setup
         this.runCoopP2 = null;
         this.input.setSolo();
+        // NEU (Reise-Modus): Daily erzwingt Klassik (faire, vergleichbare Bestenliste)
+        this.runMode = journey && !daily ? 'journey' : 'classic';
         this.startRun(daily);
       },
       onCoop: () => this.fsm.change(this.coopSetupState),
@@ -187,6 +196,7 @@ export class Game {
         this.audioEngine.unlock();
         this.runCoopP2 = { profileId: p2ProfileId, name: p2Name };
         this.runDifficulty = difficulty;
+        this.runMode = 'classic'; // NEU: Reise-Modus vorerst solo (Koop-Reise = spaetere Erweiterung)
         this.startRun(false);
       },
     });
@@ -208,6 +218,9 @@ export class Game {
     this.upgradeScreen = new UpgradeScreen({
       onChoose: (i) => this.runState.chooseUpgrade(i),
       onReroll: () => this.runState.rerollUpgrades(),
+    });
+    this.pathScreen = new PathScreen({ // NEU (Reise-Modus)
+      onChoose: (i) => this.runState.choosePath(i),
     });
     this.pauseScreen = new PauseScreen(this.save, {
       onResume: () => this.runState.togglePause(),
@@ -356,6 +369,7 @@ export class Game {
     // Schwierigkeit (runDifficulty wurde dort gesetzt)
     if (daily) this.runDifficulty = 'normal';
     else if (!this.runCoopP2) this.runDifficulty = s.difficulty;
+    if (daily) this.runMode = 'classic'; // NEU (Reise-Modus): Daily bleibt klassisch
     const dateStr = new Date().toISOString().slice(0, 10);
     this.runSeed = daily ? hashString(dateStr) : hashString(`${Date.now()}-${Math.random()}`);
     this.fsm.change(this.runState);
@@ -374,16 +388,20 @@ export class Game {
     save.cores += coresEarned;
     save.stats.totalRuns++;
 
-    // Koop schreibt in die EIGENEN Koop-Bestwerte (fairer Vergleich)
-    let isRecord: boolean;
-    if (isCoop) {
-      isRecord = finalScore > save.bestScoresCoop[diff];
-      if (isRecord) save.bestScoresCoop[diff] = finalScore;
-      if (wave > save.bestWavesCoop[diff]) save.bestWavesCoop[diff] = wave;
-    } else {
-      isRecord = finalScore > save.bestScores[diff];
-      if (isRecord) save.bestScores[diff] = finalScore;
-      if (wave > save.bestWaves[diff]) save.bestWaves[diff] = wave;
+    // Koop schreibt in die EIGENEN Koop-Bestwerte (fairer Vergleich).
+    // NEU (Reise-Modus): Reise-Laeufe sind leichter (Rast/Schatz) -> KEIN Update der
+    // klassischen Bestenliste, sonst verfaelscht es die Wertung. Kerne/Sticker zaehlen weiter.
+    let isRecord = false;
+    if (this.runMode !== 'journey') {
+      if (isCoop) {
+        isRecord = finalScore > save.bestScoresCoop[diff];
+        if (isRecord) save.bestScoresCoop[diff] = finalScore;
+        if (wave > save.bestWavesCoop[diff]) save.bestWavesCoop[diff] = wave;
+      } else {
+        isRecord = finalScore > save.bestScores[diff];
+        if (isRecord) save.bestScores[diff] = finalScore;
+        if (wave > save.bestWaves[diff]) save.bestWaves[diff] = wave;
+      }
     }
 
     // dailyBest bleibt solo-only (Koop bietet kein Daily an)
@@ -416,8 +434,10 @@ export class Game {
       const p2Data = this.save.profileData(p2Id);
       p2Data.cores += coresEarned;
       p2Data.stats.totalRuns++;
-      if (finalScore > p2Data.bestScoresCoop[diff]) p2Data.bestScoresCoop[diff] = finalScore;
-      if (wave > p2Data.bestWavesCoop[diff]) p2Data.bestWavesCoop[diff] = wave;
+      if (this.runMode !== 'journey') { // NEU (Reise-Modus): Reise nicht in die Bestenliste
+        if (finalScore > p2Data.bestScoresCoop[diff]) p2Data.bestScoresCoop[diff] = finalScore;
+        if (wave > p2Data.bestWavesCoop[diff]) p2Data.bestWavesCoop[diff] = wave;
+      }
       // "Schwer"-Freischaltung gilt fuer beide, die dabei waren
       if (diff === 'normal' && wave >= HARD_UNLOCK_WAVE) p2Data.hardUnlocked = true;
       // Held/Waffe des Partners zaehlen fuer SEINE Sammel-Sticker —

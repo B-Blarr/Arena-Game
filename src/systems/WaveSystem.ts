@@ -88,7 +88,8 @@ export class WaveSystem {
     const world = this.world;
     const rng = world.rngWaves;
     const isEasy = world.difficulty === 'easy';
-    const total = Math.round(waveBudget(w) * world.mods.budget) + this.carryover;
+    // NEU (Reise-Modus): roomMods.budgetMult stapelt (ROOM_NORMAL = x1.0 -> bit-identisch).
+    const total = Math.round(waveBudget(w) * world.mods.budget * world.roomMods.budgetMult) + this.carryover;
     let remaining = total;
     const spent = new Array<number>(ENEMIES.length).fill(0);
 
@@ -98,7 +99,9 @@ export class WaveSystem {
     const eliteChance = Math.min(
       ELITE.baseChance + ELITE.chancePerWave * (w - eliteMinWave),
       ELITE.maxChance,
-    ) * world.mods.eliteChanceMult;
+    ) * world.mods.eliteChanceMult * world.roomMods.eliteMult;
+    // NEU (Reise-Modus): Elite-Kammer hebt das Elite-Limit an (sonst ELITE.maxPerWave).
+    const maxElites = world.roomMods.eliteMaxPerWave ?? ELITE.maxPerWave;
     let elitesThisWave = 0;
 
     const buy = (type: number): void => {
@@ -108,7 +111,7 @@ export class WaveSystem {
       let affix = 0;
       if (
         w >= eliteMinWave &&
-        elitesThisWave < ELITE.maxPerWave &&
+        elitesThisWave < maxElites &&
         ELITE.eligible.includes(type) &&
         rng.chance(eliteChance)
       ) {

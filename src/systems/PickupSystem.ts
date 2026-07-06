@@ -86,10 +86,15 @@ export class PickupSystem {
     }
   }
 
-  /** Goldene Welle: jeder Gegner-Kern-Drop wird verdoppelt. */
+  /** Goldene Welle / Sturm-Kammer: jeder Gegner-Kern-Drop bekommt Extra-Kerne. */
   private spawnCoreMaybeGolden(x: number, z: number): void {
     this.spawn(PICKUP_CORE, x, z);
-    if (this.world.goldenWave) this.spawn(PICKUP_CORE, x + 0.35, z + 0.35);
+    // NEU (Reise-Modus): Sturm-Kern-Bonus laeuft ueber roomMods.coreDropBonus, NICHT
+    // ueber goldenWave (das gehoert dem SurpriseDirector). ROOM_NORMAL = 0 -> No-Op.
+    const extra = (this.world.goldenWave ? 1 : 0) + this.world.roomMods.coreDropBonus;
+    for (let i = 0; i < extra; i++) {
+      this.spawn(PICKUP_CORE, x + 0.35 * (i + 1), z + 0.35 * (i + 1));
+    }
   }
 
   private spawn(kind: number, x: number, z: number) {

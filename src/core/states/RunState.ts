@@ -1,5 +1,6 @@
 import { COOP, HARD_UNLOCK_WAVE, META, isBossWave } from '../../config/balance';
 import { getHero } from '../../config/heroes';
+import { ROOM_NORMAL, type RoomDef } from '../../config/rooms';
 import { getColorway } from '../../config/stickers';
 import { STR } from '../../config/strings.de';
 import { UPGRADE_VALUES as UV } from '../../config/upgrades'; // NEU: Zeitbruch-Zeitskala
@@ -13,7 +14,7 @@ import type { PlayerConfig } from '../World';
 import type { GameState } from '../StateMachine';
 import type { Game } from '../Game';
 
-type RunPhase = 'wave' | 'waveEnd' | 'upgrade' | 'dying';
+type RunPhase = 'wave' | 'waveEnd' | 'upgrade' | 'pathChoice' | 'dying';
 type TutStage = 'move' | 'dash' | 'collect' | 'done';
 
 /**
@@ -30,6 +31,10 @@ export class RunState implements GameState {
   private pendingGuaranteeRare = false;
   /** Koop-Upgrade-Sequenz: wessen Wahl gerade laeuft (0 -> 1 -> weiter). */
   private chooserIdx: 0 | 1 = 0;
+  /** NEU (Reise-Modus): 'journey' schaltet die Weg-Wahl frei (aus Game.runMode). */
+  private runMode: 'classic' | 'journey' = 'classic';
+  /** NEU (Reise-Modus): gewaehlter Raum-Typ fuer die naechste Welle (null = normal). */
+  private nextRoom: RoomDef | null = null;
   private tutStage: TutStage = 'done';
   private collectPromptShown = false;
   private pauseKeyHandler: ((e: KeyboardEvent) => void) | null = null;
@@ -57,6 +62,10 @@ export class RunState implements GameState {
         if (this.phase === 'upgrade') {
           game.uiNav.setInputFilter(null);
           game.upgradeScreen.unlockInputs();
+        } else if (this.phase === 'pathChoice') {
+          // NEU (Reise-Modus): gleicher Softlock-Schutz wie bei der Upgrade-Wahl
+          game.uiNav.setInputFilter(null);
+          game.pathScreen.unlockInputs();
         } else {
           this.pauseIfActive();
         }
@@ -103,6 +112,7 @@ export class RunState implements GameState {
     g.score.reset();
     g.pickupSystem.reset();
     g.surprise.reset();
+    g.path.reset(); // NEU (Reise-Modus)
     g.runStats.reset();
     g.upgrades.reset();
     g.coopSystem.reset();
@@ -133,6 +143,8 @@ export class RunState implements GameState {
     this.phase = 'wave';
     this.pendingGuaranteeRare = false;
     this.chooserIdx = 0;
+    this.runMode = g.runMode; // NEU (Reise-Modus)
+    this.nextRoom = null;
     // Menue-Klick/A-Button darf nicht als erster Dash im Run feuern
     g.input.resetTransient();
     g.events.emit('runStarted', {});
@@ -156,6 +168,7 @@ export class RunState implements GameState {
     }
     g.uiNav.setInputFilter(null);
     g.upgradeScreen.hide();
+    g.pathScreen.hide(); // NEU (Reise-Modus)
     g.ui.hidePrompt();
     g.hud.hide();
     g.time.reset();
@@ -168,6 +181,11 @@ export class RunState implements GameState {
   private startWave(w: number): void {
     const g = this.game;
     this.tookDamageThisWave = false;
+    // NEU (Reise-Modus): Raum-Modifikator VOR surprise/waves setzen (compose +
+    // scalingForWave lesen ihn). Boss-Wellen und Klassik bekommen ROOM_NORMAL,
+    // weil nextRoom dort nie gesetzt wird bzw. die Weg-Wahl uebersprungen ist.
+    g.world.roomMods = this.nextRoom ?? ROOM_NORMAL;
+    this.nextRoom = null;
     // VOR waves.startWave: Spawns/Scaling muessen das Golden-Flag schon sehen
     g.surprise.rollForWave(w);
     g.waves.startWave(w);
@@ -176,7 +194,7 @@ export class RunState implements GameState {
   }
 
   togglePause(): void {
-    if (!this.isActive || this.phase === 'upgrade' || this.phase === 'dying') return;
+    if (!this.isActive || this.phase === 'upgrade' || this.phase === 'pathChoice' || this.phase === 'dying') return;
     this.paused = !this.paused;
     const g = this.game;
     g.time.baseScale = this.paused ? 0 : 1;
@@ -276,11 +294,29 @@ export class RunState implements GameState {
     // Koop: niemand sitzt die Upgrade-Phase am Boden ab (VOR dem Banner)
     g.coopSystem.reviveAll();
     g.pickupSystem.collectAllCores();
+    // NEU (Reise-Modus): Raum-Belohnungen der GERAEUMTEN Welle (roomMods ist noch die
+    // dieser Welle). ROOM_NORMAL = alle No-Ops, Klassik unberuehrt.
+    const rm = g.world.roomMods;
+    if (rm.healFrac > 0) {
+      for (let i = 0; i < g.world.players.length; i++) {
+        const p = g.world.players[i] as Player;
+        if (p.targetable) p.heal(Math.round(p.stats.maxHp * rm.healFrac));
+      }
+    }
+    if (rm.bonusCores > 0) {
+      g.world.runCores += rm.bonusCores;
+      g.events.emit('coresChanged', { runCores: g.world.runCores });
+    }
+    // guaranteeRare wirkt auf die Upgrade-Wahl NACH dieser Raum-Welle (openUpgradeChoice)
+    if (rm.guaranteeRare) this.pendingGuaranteeRare = true;
     const perfect = !this.tookDamageThisWave;
     const bonus = g.score.waveBonus(w, perfect);
     g.events.emit('waveCleared', { wave: w, perfect, bonus });
 
-    // "Schwer" freischalten: Welle 10 auf Normal geschafft (Boss B besiegt)
+    // "Schwer" freischalten: Welle 10 auf Normal geschafft (Boss B besiegt).
+    // Bewusst AUCH im Reise-Modus erlaubt (kein runMode-Gate): Welle 10 zu erreichen ist
+    // auch dort eine Leistung, und Freischalten motiviert die Kinder. Anders als die
+    // Bestenliste (Game.finishRun) ist dieses Unlock kein Vergleichswert.
     if (w >= HARD_UNLOCK_WAVE && g.runDifficulty === 'normal' && !g.save.data.hardUnlocked) {
       g.save.data.hardUnlocked = true;
       g.save.save();
@@ -339,12 +375,54 @@ export class RunState implements GameState {
     this.pendingGuaranteeRare = false;
     g.uiNav.setInputFilter(null);
     g.upgradeScreen.hide();
+
+    // NEU (Reise-Modus): nach der Upgrade-Wahl die Weg-Wahl fuer die naechste Welle.
+    // Uebersprungen im Klassik-Modus und wenn die naechste Welle ein Boss ist.
+    const nextWave = g.world.wave + 1;
+    if (this.runMode === 'journey' && !isBossWave(nextWave)) {
+      this.openPathChoice(nextWave);
+      return;
+    }
+    this.finishInterludeAndStart(nextWave);
+  }
+
+  /** NEU (Reise-Modus): heutiger chooseUpgrade-Abschluss = der Klassik-Pfad (unveraendert). */
+  private finishInterludeAndStart(w: number): void {
+    const g = this.game;
     g.ui.showScreen(null);
     g.time.baseScale = 1;
     g.audioEngine.duckMusic(false);
     g.input.resetTransient();
     this.phase = 'wave';
-    this.startWave(g.world.wave + 1);
+    this.startWave(w);
+  }
+
+  /** NEU (Reise-Modus): Weg-Wahl-Screen oeffnen. Zeit bleibt 0, Musik bleibt geduckt. */
+  private openPathChoice(nextWave: number): void {
+    const g = this.game;
+    this.phase = 'pathChoice';
+    const offers = g.path.rollOffers(nextWave);
+    // Koop: geteilte Team-Entscheidung -> KEIN per-Slot-Filter (beide duerfen waehlen,
+    // erster Klick gewinnt). Vermeidet Pad-Disconnect-Softlock und Tastatur-Aussperrung.
+    if (g.world.isCoop) {
+      g.uiNav.setInputFilter(null);
+      g.pathScreen.show(offers, STR.chooseRoomCoop);
+    } else {
+      g.pathScreen.show(offers);
+    }
+    g.ui.showScreen('screen-path');
+  }
+
+  /** NEU (Reise-Modus): Callback der Weg-Karten. Merkt den Raum, startet dann die Welle. */
+  choosePath(index: number): void {
+    const g = this.game;
+    if (this.phase !== 'pathChoice') return;
+    const offer = g.path.currentOffers[index];
+    if (!offer) return;
+    this.nextRoom = offer.hidden ?? offer.def; // Mystery: aufgeloester Raum
+    g.uiNav.setInputFilter(null);
+    g.pathScreen.hide();
+    this.finishInterludeAndStart(g.world.wave + 1);
   }
 
   rerollUpgrades(): void {

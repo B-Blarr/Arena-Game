@@ -6,7 +6,7 @@ import type { Difficulty } from '../../config/balance';
 import type { SaveManager } from '../../save/SaveManager';
 
 export interface MenuCallbacks {
-  onPlay: (daily: boolean) => void;
+  onPlay: (daily: boolean, journey: boolean) => void;
   onCoop: () => void;
   onShop: () => void;
   onProfiles: () => void;
@@ -42,10 +42,12 @@ export class MenuScreen {
   private diffSeg!: HTMLElement;
   private aimSeg!: HTMLElement;
   private dailySeg!: HTMLElement;
+  private journeySeg!: HTMLElement; // NEU (Reise-Modus)
   private bestEl!: HTMLElement;
   private coresEl!: HTMLElement;
   private warnEl!: HTMLElement;
   private dailyMode = false;
+  private journeyMode = false; // NEU (Reise-Modus), transient wie dailyMode
 
   constructor(
     private readonly save: SaveManager,
@@ -79,6 +81,7 @@ export class MenuScreen {
         <div class="toggle-row"><span class="option-label">${STR.difficulty}</span><span class="segmented seg-diff"></span></div>
         <div class="toggle-row"><span class="option-label">${STR.autoAim}</span><span class="segmented seg-aim"></span></div>
         <div class="toggle-row"><span class="option-label" title="${STR.dailySeedHint}">${STR.dailySeed}</span><span class="segmented seg-daily"></span></div>
+        <div class="toggle-row"><span class="option-label" title="${STR.journeyModeHint}">${STR.journeyMode}</span><span class="segmented seg-journey"></span></div>
       </div>
       <div class="menu-hint">
         <span><span class="keycap">W</span><span class="keycap">A</span><span class="keycap">S</span><span class="keycap">D</span> / Pfeile: Laufen</span>
@@ -96,12 +99,13 @@ export class MenuScreen {
     this.diffSeg = this.root.querySelector('.seg-diff') as HTMLElement;
     this.aimSeg = this.root.querySelector('.seg-aim') as HTMLElement;
     this.dailySeg = this.root.querySelector('.seg-daily') as HTMLElement;
+    this.journeySeg = this.root.querySelector('.seg-journey') as HTMLElement; // NEU
     this.bestEl = this.root.querySelector('.menu-best') as HTMLElement;
     this.coresEl = this.root.querySelector('.menu-cores') as HTMLElement;
     this.warnEl = this.root.querySelector('.menu-warn') as HTMLElement;
 
     (this.root.querySelector('.menu-play') as HTMLButtonElement).addEventListener('click', () => {
-      this.cb.onPlay(this.dailyMode);
+      this.cb.onPlay(this.dailyMode, this.journeyMode);
     });
     (this.root.querySelector('.menu-coop') as HTMLButtonElement).addEventListener('click', () => {
       this.cb.onCoop();
@@ -241,6 +245,23 @@ export class MenuScreen {
         this.refresh();
       });
       this.dailySeg.appendChild(btn);
+    }
+
+    // NEU (Reise-Modus): Toggle Klassisch/Reise. Daily erzwingt Klassik -> bei aktivem
+    // Daily deaktiviert und "Aus" angezeigt (journeyMode-Wunsch bleibt gespeichert).
+    this.journeySeg.innerHTML = '';
+    const effectiveJourney = this.journeyMode && !this.dailyMode;
+    for (const on of [false, true]) {
+      const btn = document.createElement('button');
+      btn.dataset.key = `journey-${on ? 1 : 0}`;
+      btn.textContent = on ? STR.on : STR.off;
+      btn.classList.toggle('active', effectiveJourney === on);
+      if (this.dailyMode) btn.disabled = true;
+      btn.addEventListener('click', () => {
+        this.journeyMode = on;
+        this.refresh();
+      });
+      this.journeySeg.appendChild(btn);
     }
   }
 }

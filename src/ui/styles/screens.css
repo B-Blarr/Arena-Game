@@ -311,6 +311,20 @@ body.pad-connected.audio-locked .menu-sound-hint {
   margin-top: 0.75rem;
 }
 
+/* NEU (Reise-Modus): Weg-Wahl-Karten (nutzen sonst die .upgrade-card-Optik) */
+.path-heading { margin-bottom: 0.5rem; }
+.path-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  align-items: center;
+  text-align: center;
+  flex: 1;
+  margin-top: 0.5rem;
+}
+.path-risk { font-size: 1rem; color: #ffb84d; }
+.path-reward { font-size: 1rem; font-weight: 700; color: #7dffb0; }
+
 .upgrade-footer {
   margin-top: 1.5rem;
   display: flex;

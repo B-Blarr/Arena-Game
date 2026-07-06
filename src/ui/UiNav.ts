@@ -81,9 +81,10 @@ export class UiNav {
           }
           break;
         case 'Escape': {
-          // Im Run gehoert Escape dem Pause-Handler des RunState
+          // Im Run gehoert Escape dem Pause-Handler des RunState. Die Weg-Wahl
+          // (screen-path) ist wie die Upgrade-Wahl eine Pflicht-Wahl: kein Abbrechen.
           const id = this.screen.id;
-          if (id === 'screen-pause' || id === 'screen-upgrade') return;
+          if (id === 'screen-pause' || id === 'screen-upgrade' || id === 'screen-path') return;
           this.clickBack();
           break;
         }

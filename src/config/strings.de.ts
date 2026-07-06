@@ -19,6 +19,9 @@ export const STR = {
   saveWarning: 'Achtung: Fortschritt kann nicht gespeichert werden (Speicher blockiert).',
   dailySeed: 'Tages-Arena',
   dailySeedHint: 'Jeden Tag dieselben Wellen für alle',
+  // NEU (Reise-Modus)
+  journeyMode: 'Reise-Modus',
+  journeyModeHint: 'Wähle nach jeder Welle deinen Weg',
 
   difficulties: {
     easy: 'Einfach',
@@ -65,6 +68,19 @@ export const STR = {
   } as Record<string, string>,
   legendaryFound: 'LEGENDÄR!',
   mythicFound: 'MYTHISCH!', // NEU: Banner-Text beim Waehlen eines mythischen Upgrades
+
+  // NEU (Reise-Modus): Weg-Wahl-Screen
+  chooseRoom: 'Wähle deinen Weg!',
+  chooseRoomCoop: 'Wählt euren Weg!',
+  rooms: {
+    normal: { name: 'Kampf', risk: 'Normale Welle', reward: 'Solider Kampf' },
+    treasure: { name: 'Schatzkammer', risk: 'Normale Gegner', reward: 'Garantiert Seltenes + Kerne' },
+    elite: { name: 'Elite-Kammer', risk: 'Viele Elite-Gegner', reward: 'Reiche Beute + Seltenes' },
+    storm: { name: 'Sturm', risk: 'Schneller & stärker', reward: 'Doppelte Kerne' },
+    oasis: { name: 'Oase', risk: 'Wenige Gegner', reward: 'Heilung' },
+    mystery: { name: '???', risk: 'Unbekannt', reward: 'Überraschung' },
+    horde: { name: 'Schwarm', risk: 'Riesige Übermacht', reward: 'Combo-Fest + Kerne' },
+  } as Record<string, { name: string; risk: string; reward: string }>,
 
   // Pause
   pause: 'Pause',

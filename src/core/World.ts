@@ -19,9 +19,10 @@ import {
   type DifficultyMods,
 } from '../config/balance';
 import type { HeroDef } from '../config/heroes';
+import { ROOM_NORMAL, type RoomDef } from '../config/rooms';
 import {
   makeRng, Rng,
-  RNG_STREAM_DROPS, RNG_STREAM_EVENTS, RNG_STREAM_SUMMONS,
+  RNG_STREAM_DROPS, RNG_STREAM_EVENTS, RNG_STREAM_PATH, RNG_STREAM_SUMMONS,
   RNG_STREAM_UPGRADES, RNG_STREAM_UPGRADES_P2, RNG_STREAM_WAVES,
 } from './Rng';
 import type { EventBus } from './EventBus';
@@ -67,8 +68,13 @@ export class World {
   rngDrops: Rng = new Rng(3);
   rngSummons: Rng = new Rng(4);
   rngEvents: Rng = new Rng(5);
+  /** NEU (Reise-Modus): Weg-Wahl-Angebote (eigener Stream, im Klassik nie gezogen). */
+  rngPath: Rng = new Rng(7);
   /** Goldene Welle aktiv: doppelte Kern-Drops (SurpriseDirector setzt das Flag). */
   goldenWave = false;
+  /** NEU (Reise-Modus): Raum-Modifikator der laufenden Welle. Klassik/Boss:
+   *  ROOM_NORMAL (bit-exakte Identitaet). NIE world.mods mutieren, nur hier lesen. */
+  roomMods: RoomDef = ROOM_NORMAL;
   /** In diesem Lauf gesammelte Kerne (geteilte Team-Waehrung). */
   runCores = 0;
   /** Spielzeit im Lauf (fuer Bob-Animationen etc.). */
@@ -135,7 +141,11 @@ export class World {
     this.rngDrops = makeRng(seed, RNG_STREAM_DROPS);
     this.rngSummons = makeRng(seed, RNG_STREAM_SUMMONS);
     this.rngEvents = makeRng(seed, RNG_STREAM_EVENTS);
+    this.rngPath = makeRng(seed, RNG_STREAM_PATH);
     this.goldenWave = false;
+    // NEU (Reise-Modus): roomMods BEDINGUNGSLOS neutralisieren — sonst leckt ein
+    // vorheriger Reise-Lauf in einen danach gestarteten (klassischen) Daily.
+    this.roomMods = ROOM_NORMAL;
     this.enemyTimeScale = 1; // NEU: Zeitbruch startet jeden Lauf inaktiv
     this.runCores = 0;
     this.elapsed = 0;
@@ -214,10 +224,12 @@ export class World {
     // Goldene Welle: auf Normal/Schwer flottere Gegner als Gegengewicht —
     // auf Einfach reine Belohnung (Kindermodus).
     const goldenSpeed = this.goldenWave && this.difficulty !== 'easy' ? SURPRISE.goldenSpeedMult : 1;
+    // NEU (Reise-Modus): Raum-Modifikator stapelt multiplikativ (ROOM_NORMAL = x1.0 -> No-Op).
+    const rm = this.roomMods;
     return {
-      hp: enemyHpFactor(w) * this.mods.enemyHp,
-      speed: enemySpeedFactor(w) * this.mods.enemySpeed * goldenSpeed,
-      damage: enemyDamageFactor(w) * this.mods.enemyDamage,
+      hp: enemyHpFactor(w) * this.mods.enemyHp * rm.hpMult,
+      speed: enemySpeedFactor(w) * this.mods.enemySpeed * goldenSpeed * rm.speedMult,
+      damage: enemyDamageFactor(w) * this.mods.enemyDamage * rm.damageMult,
     };
   }
 

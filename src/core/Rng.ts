@@ -58,6 +58,10 @@ export const RNG_STREAM_EVENTS = 0x27d4eb2f;
 /** Koop: Upgrade-Angebote fuer Spieler 2 — eigener Stream, damit P2s
  *  Ziehungen weder P1 noch den Solo-Daily-Stream verschieben. */
 export const RNG_STREAM_UPGRADES_P2 = 0x94d049bb;
+/** NEU (Reise-Modus): Weg-Wahl-Angebote. Eigener Stream mit FESTEM Verbrauch
+ *  pro Entscheidung (analog EVENTS). Im Klassik-Modus wird er geseedet, aber NIE
+ *  gezogen -> verschiebt keinen anderen Stream, Daily bleibt byte-identisch. */
+export const RNG_STREAM_PATH = 0x165667b1;
 
 export function makeRng(seed: number, stream: number): Rng {
   return new Rng((seed ^ stream) >>> 0);
