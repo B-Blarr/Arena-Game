@@ -562,6 +562,14 @@ body.reduce-fx .sticker-toast-icon { animation: none; }
   transform: none;
 }
 
+/* Solo: zweites Spieler-Panel wirklich ausblenden. `.hidden` (base.css) allein
+   verliert gegen `.hud-hp/.hud-dash { display: flex }` (gleiche Spezifitaet,
+   spaetere Quelle) — daher hier mit hoeherer Spezifitaet, ohne !important. */
+.hud-hp.hidden,
+.hud-dash.hidden {
+  display: none;
+}
+
 .hud-hp.p2 {
   right: 24px;
   left: auto;
