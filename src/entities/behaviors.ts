@@ -51,7 +51,9 @@ export function updateEnemies(world: World, dt: number, events: EventBus): void 
     const dist = Math.hypot(dx, dz);
     const nx = dist > 0.001 ? dx / dist : 0;
     const nz = dist > 0.001 ? dz / dist : 1;
-    let speed = e.speed * e.slowFactor;
+    // NEU (mythisch "Zeitbruch"): globale Gegner-Zeitskala (1 = normal). Einziger
+    // Bewegungs-Choke-Point -> deckt alle Gegner-KIs ab; Boss laeuft separat.
+    let speed = e.speed * e.slowFactor * world.enemyTimeScale;
     // Elite-Affix "Wut": unter 50 % HP deutlich schneller
     if (e.eliteAffix === AFFIX_RAGE && e.hp < e.maxHp * ELITE.rageThreshold) {
       speed *= ELITE.rageSpeedMult;

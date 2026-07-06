@@ -79,9 +79,14 @@ export class JuiceDirector {
         this.renderer.kickAberration(0.6);
       }),
       events.on('playerCoopRevived', () => this.flash()),
-      // Legendaer gewaehlt: Rueckkehr ins Spiel in Zeitlupe + Blitz
+      // Legendaer/Mythisch gewaehlt: Rueckkehr ins Spiel in Zeitlupe + Blitz
       events.on('upgradeChosen', (e) => {
-        if (e.rarity === 'legendary') {
+        if (e.rarity === 'mythic') {
+          // NEU: mythisch — noch staerkerer Moment als legendaer
+          this.flash();
+          this.time.slowmo(0.25, 0.6, 0.5);
+          this.renderer.kickAberration(1.0);
+        } else if (e.rarity === 'legendary') {
           this.flash();
           this.time.slowmo(0.3, 0.5, 0.4);
           this.renderer.kickAberration(0.8);

@@ -35,7 +35,12 @@ export class Sfx {
         else this.magnet();
       }),
       events.on('explosion', () => this.explosion()),
-      events.on('upgradeChosen', (e) => (e.rarity === 'legendary' ? this.legendaryChosen() : this.upgrade())),
+      // GEAENDERT: mythisch bekommt die wuchtigste Wahl-Bestaetigung
+      events.on('upgradeChosen', (e) => {
+        if (e.rarity === 'mythic') this.mythicChosen();
+        else if (e.rarity === 'legendary') this.legendaryChosen();
+        else this.upgrade();
+      }),
       events.on('waveStarted', (e) => (e.isBossWave ? this.bossIntro() : this.waveStart())),
       events.on('waveCleared', () => this.fanfare()),
       events.on('bossTelegraph', () => this.warning()),
@@ -46,6 +51,9 @@ export class Sfx {
       events.on('uiClick', () => this.uiClick()),
       // Neue Inhalte
       events.on('legendaryRevealed', () => this.legendaryFanfare()),
+      // NEU (mythisch): noch heroischere Aufdeck-Fanfare + Auferstehungs-Sweep
+      events.on('mythicRevealed', () => this.mythicFanfare()),
+      events.on('phoenixRevived', () => this.phoenixRise()),
       events.on('orbitalStrike', () => this.orbitalZap()),
       events.on('enemyFuse', () => this.fuseWarning()),
       events.on('eliteSpawned', () => this.eliteSting()),
@@ -341,6 +349,50 @@ export class Sfx {
     this.tone('triangle', 784, 784, 0.5, 0.28, 0.08);
     this.tone('triangle', 1046.5, 1046.5, 0.6, 0.24, 0.16);
     this.tone('sine', 130, 65, 0.4, 0.3);
+  }
+
+  /** NEU: Grosse, heroische Fanfare beim Aufdecken einer MYTHISCHEN Karte —
+   *  noch fetter als legendaer: Timpani-Auftakt, 6-Ton-Anlauf, breiter Schlussakkord. */
+  private mythicFanfare(): void {
+    if (!this.engine.acquireVoice('mythic', 2600, 1.8)) return;
+    // Tiefer Timpani-Auftakt
+    this.tone('sine', 82, 55, 0.3, 0.34, 0);
+    // Aufsteigende Blech-Fanfare: C5-E5-G5-C6-E6-G6
+    const notes = [523.25, 659.25, 783.99, 1046.5, 1318.5, 1568.0];
+    notes.forEach((f, i) => {
+      const dur = i === notes.length - 1 ? 0.7 : 0.13;
+      const at = 0.28 + i * 0.12;
+      this.tone('triangle', f, f, dur, 0.3, at);
+      this.tone('square', f, f, dur, 0.07, at); // Blech-Koerper
+    });
+    // Breiter, gehaltener Schlussakkord (C-Dur) + tiefer Grundton
+    const at = 0.28 + notes.length * 0.12;
+    [523.25, 659.25, 783.99, 1046.5].forEach((f) => {
+      this.tone('triangle', f, f, 0.9, 0.12, at);
+      this.tone('sawtooth', f, f, 0.9, 0.03, at); // Glanz
+    });
+    this.tone('sine', 65.41, 65.41, 1.0, 0.28, at);
+    // Regenbogen-Glitzer obendrauf
+    this.noise(0.7, 0.12, 'highpass', 6000, 11000, 1, at);
+  }
+
+  /** NEU: Wuchtigste Wahl-Bestaetigung — fuer mythische Upgrades. */
+  private mythicChosen(): void {
+    if (!this.engine.acquireVoice('mythchosen', 600, 1.2)) return;
+    this.tone('triangle', 523.25, 523.25, 0.6, 0.34);
+    this.tone('triangle', 784, 784, 0.6, 0.3, 0.08);
+    this.tone('triangle', 1046.5, 1046.5, 0.55, 0.28, 0.16);
+    this.tone('triangle', 1568.0, 1568.0, 0.7, 0.24, 0.24);
+    this.tone('sine', 98, 49, 0.5, 0.32);
+  }
+
+  /** NEU (mythisch "Phoenixkern"): heroischer Aufsteh-Sweep bei der Auferstehung. */
+  private phoenixRise(): void {
+    if (!this.engine.acquireVoice('phoenix', 900, 1.3)) return;
+    this.tone('sawtooth', 220, 880, 0.5, 0.22, 0); // aufsteigender Sweep
+    this.tone('triangle', 659.25, 659.25, 0.6, 0.26, 0.2);
+    this.tone('triangle', 987.77, 987.77, 0.7, 0.24, 0.32);
+    this.noise(0.5, 0.1, 'highpass', 5000, 9000, 1, 0.2); // Funken
   }
 
   /** Orbital-Laser-Einschlag: Zap von oben. */

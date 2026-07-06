@@ -87,6 +87,7 @@ function updateTrioShots(boss: Boss, dt: number, world: World, events: EventBus)
         boss.x, boss.z, dx / d, dz / d,
         (def.trioProjectileSpeed ?? 8) * boss.projSpeedMult,
         Math.round(boss.projectileDamage * 1.2), 40,
+        true, // NEU: Boss-Projektil -> vom "Zeitbruch"-Slow ausgenommen
       );
       events.emit('enemyShot', { x: boss.x, z: boss.z });
     }
@@ -152,7 +153,7 @@ function updatePrisma(boss: Boss, dt: number, world: World, events: EventBus): v
     const speed = (def.salvoProjectileSpeed ?? 6) * boss.projSpeedMult;
     for (let i = 0; i < count; i++) {
       const a = boss.salvoAngle + (i / count) * Math.PI * 2;
-      world.spawnEnemyProjectile(boss.x, boss.z, Math.cos(a), Math.sin(a), speed, boss.projectileDamage, 40);
+      world.spawnEnemyProjectile(boss.x, boss.z, Math.cos(a), Math.sin(a), speed, boss.projectileDamage, 40, true);
     }
     events.emit('enemyShot', { x: boss.x, z: boss.z });
   }
@@ -677,7 +678,7 @@ function updateVortex(boss: Boss, dt: number, world: World, events: EventBus): v
       const speed = (def.spiralProjectileSpeed ?? 4.5) * boss.projSpeedMult;
       for (let i = 0; i < count; i++) {
         const a = boss.salvoAngle + (i / count) * Math.PI * 2;
-        world.spawnEnemyProjectile(boss.x, boss.z, Math.cos(a), Math.sin(a), speed, boss.projectileDamage, 40);
+        world.spawnEnemyProjectile(boss.x, boss.z, Math.cos(a), Math.sin(a), speed, boss.projectileDamage, 40, true);
       }
       events.emit('enemyShot', { x: boss.x, z: boss.z });
       // Wiederhol-Ring ist reine Kosmetik — bossTelegraph wuerde jedes Mal
@@ -739,7 +740,7 @@ function fireFan(
   for (let i = 0; i < count; i++) {
     const t = count > 1 ? i / (count - 1) - 0.5 : 0;
     const a = baseAngle + t * totalAngle;
-    world.spawnEnemyProjectile(x, z, Math.cos(a), Math.sin(a), speed, damage, 40);
+    world.spawnEnemyProjectile(x, z, Math.cos(a), Math.sin(a), speed, damage, 40, true);
   }
 }
 

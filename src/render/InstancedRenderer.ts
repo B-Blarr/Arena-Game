@@ -1,5 +1,6 @@
 import {
   Color,
+  CylinderGeometry,
   DynamicDrawUsage,
   Group,
   InstancedMesh,
@@ -24,6 +25,8 @@ import { lerp } from '../utils/math';
 
 const dummy = new Object3D();
 const flashColor = new Color(5, 5, 5);
+/** NEU (mythisch "Prisma-Strahl"): wiederverwendete Farbe fuer die Regenbogen-Animation. */
+const prismColor = new Color();
 /** Elite-Schild aktiv: kalt-weisse Tönung statt Typfarbe. */
 const shieldColor = new Color(2.2, 3.2, 3.8);
 const streakColorEnemy = new Color(0xff3b30).multiplyScalar(1.6);
@@ -33,6 +36,11 @@ const ELITE_RING_CAP = 64;
 const GHOST_COUNT = 3;
 const GHOST_LIFE = 0.25;
 const BEAM_TIME = 0.35;
+/** NEU (mythisch "Prisma-Strahl"): halbe Dicke (Optik), Nachhaltezeit gegen Flackern,
+ *  Regenbogen-Zyklen pro Sekunde. */
+const PRISM_WIDTH = 0.45;
+const PRISM_VIS_HOLD = 0.15;
+const PRISM_HUE_SPEED = 0.6;
 /** Part-Slots pro Helden-Figur (Rumpf + 2 Anbauten + Triebwerk). */
 const HERO_PART_SLOTS = 4;
 /** Maximal 2 Spieler-Figuren (Koop). */
@@ -104,6 +112,11 @@ export class InstancedRenderer {
   private readonly beamMesh: Mesh;
   private readonly beamMat: MeshBasicMaterial;
   private beamTimer = 0;
+  /** NEU (mythisch "Prisma-Strahl"): gerichtetes, prismatisches Dauerstrahl-Mesh. */
+  private readonly prismMesh: Mesh;
+  private readonly prismMat: MeshBasicMaterial;
+  private prismVisTimer = 0;
+  private prismHue = 0;
   private readonly muzzle: PointLight;
   private muzzleTimer = 0;
   private readonly unsubs: Array<() => void> = [];
@@ -173,6 +186,18 @@ export class InstancedRenderer {
     this.beamMesh.visible = false;
     scene.add(this.beamMesh);
 
+    // NEU (mythisch "Prisma-Strahl"): eigener gerichteter Strahl. Zylinder-Achse von
+    // y auf +x drehen und auf 0..1 verschieben -> Ursprung sitzt am Spieler, Laenge
+    // ueber scale.x, Ausrichtung ueber rotation.y (siehe prismBeam-Handler).
+    const prismGeo = new CylinderGeometry(1, 1, 1, 10);
+    prismGeo.rotateZ(-Math.PI / 2);
+    prismGeo.translate(0.5, 0, 0);
+    this.prismMat = assets.makeGlowTransparent(0xffffff, 2.4, 0.85, true);
+    this.prismMesh = new Mesh(prismGeo, this.prismMat);
+    this.prismMesh.visible = false;
+    this.prismMesh.frustumCulled = false;
+    scene.add(this.prismMesh);
+
     // Bosse: alle 3 vorbauen, Sichtbarkeit wird getoggelt
     for (const def of BOSS_ROTATION) {
       const group = new Group();
@@ -211,6 +236,18 @@ export class InstancedRenderer {
       events.on('orbitalStrike', (e) => {
         this.beamTimer = BEAM_TIME;
         this.beamMesh.position.set(e.x, 12, e.z);
+      }),
+      // NEU (mythisch "Prisma-Strahl"): Position/Richtung/Laenge aus dem Event.
+      // rotation.y = atan2(-dirZ, dirX) legt die lokale +x-Achse auf die Zielrichtung.
+      events.on('prismBeam', (e) => {
+        if (!e.active) {
+          this.prismVisTimer = 0;
+          return;
+        }
+        this.prismMesh.position.set(e.x, 0.7, e.z);
+        this.prismMesh.rotation.set(0, Math.atan2(-e.dirZ, e.dirX), 0);
+        this.prismMesh.scale.set(e.length, PRISM_WIDTH, PRISM_WIDTH);
+        this.prismVisTimer = PRISM_VIS_HOLD;
       }),
     );
 
@@ -415,6 +452,7 @@ export class InstancedRenderer {
     this.renderBoss(world, alpha);
     this.renderMuzzle(world, rawDt);
     this.renderBeam(rawDt);
+    this.renderPrism(rawDt);
   }
 
   private renderEnemies(world: World, alpha: number): void {
@@ -771,6 +809,21 @@ export class InstancedRenderer {
     this.beamMat.opacity = 0.7 * t;
   }
 
+  /** NEU (mythisch "Prisma-Strahl"): Regenbogen-Puls; haelt kurz nach (PRISM_VIS_HOLD),
+   *  damit Pause/Frameraten den Strahl nicht flackern lassen. Position/Ausrichtung
+   *  kommen aus dem prismBeam-Event (60 Hz), der Hue-Zyklus laeuft in Echtzeit. */
+  private renderPrism(rawDt: number): void {
+    if (this.prismVisTimer <= 0) {
+      this.prismMesh.visible = false;
+      return;
+    }
+    this.prismVisTimer -= rawDt;
+    this.prismMesh.visible = true;
+    this.prismHue = (this.prismHue + rawDt * PRISM_HUE_SPEED) % 1;
+    prismColor.setHSL(this.prismHue, 0.95, 0.6).multiplyScalar(1.9);
+    this.prismMat.color.copy(prismColor);
+  }
+
   reset(): void {
     for (const mesh of this.enemyMeshes) mesh.count = 0;
     this.playerProj.count = 0;
@@ -792,6 +845,8 @@ export class InstancedRenderer {
     this.reviveProgress[1] = 0;
     this.beamTimer = 0;
     this.beamMesh.visible = false;
+    this.prismVisTimer = 0; // NEU
+    this.prismMesh.visible = false;
     this.muzzleTimer = 0;
     this.muzzle.intensity = 0;
   }

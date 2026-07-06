@@ -61,8 +61,10 @@ export const STR = {
     rare: 'Selten',
     epic: 'Episch',
     legendary: 'Legendär',
+    mythic: 'Mythisch', // NEU
   } as Record<string, string>,
   legendaryFound: 'LEGENDÄR!',
+  mythicFound: 'MYTHISCH!', // NEU: Banner-Text beim Waehlen eines mythischen Upgrades
 
   // Pause
   pause: 'Pause',
@@ -343,6 +345,11 @@ export const STR = {
     blackHoleDash: { name: 'Schwarzes Loch', desc: 'Dash schleudert ein Schwarzes Loch, das Gegner ansaugt. Dann: Wumms!' },
     overcharge: { name: 'Überladung', desc: 'Unter 30 % Leben: +50 % Schaden' },
     megaShots: { name: 'Mega-Kugeln', desc: 'Riesige Kugeln: mehr Schaden, durchbohren Gegner' },
+    // NEU: Mythische Upgrades (ueber legendaer, extrem selten)
+    timeBreak: { name: 'Zeitbruch', desc: 'Alle Gegner UND ihre Schüsse stark verlangsamt!' },
+    phoenixCore: { name: 'Phönixkern', desc: 'Einmal pro Lauf: Wiederauferstehung mit voller Energie und Schockwelle!' },
+    prismBeam: { name: 'Prisma-Strahl', desc: 'Dein Schuss wird zu einem Dauer-Regenbogenstrahl, der alles durchschneidet!' },
+    singularity: { name: 'Singularität', desc: 'Feuerrate UND Schaden verdoppelt!' },
     corePack: { name: 'Kern-Paket', desc: 'Sofort +15 Kerne' },
     repair: { name: 'Reparatur', desc: 'Heilt sofort 25 % Leben' },
     scoreBoost: { name: 'Punkte-Schub', desc: 'Sofort Bonuspunkte (500 × Welle)' },
@@ -367,4 +374,5 @@ export const STR = {
   // Sonstiges
   clickToStart: 'Klicke, um zu starten',
   revived: 'Zweite Chance!',
+  phoenixRevived: '🔥 PHÖNIX! 🔥', // NEU (mythisch "Phoenixkern"): Auferstehungs-Banner
 } as const;

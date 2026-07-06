@@ -399,6 +399,37 @@ body.reduce-fx .hud-combo.c3 .hud-combo-ring {
   100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
 }
 
+/* NEU: Mythisch — fliessender Regenbogen-Text, laenger lesbar (wie Goldene Welle).
+   Spezifitaet .banner.mythic-banner.show (0,3,0) schlaegt .banner.show (0,2,0). */
+.banner.mythic-banner {
+  background: linear-gradient(
+    100deg,
+    #ff5ce1, #ffd24d, #6dff8a, #4de6ff, #7a5cff, #ff5ce1
+  );
+  background-size: 220% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 0 22px rgba(180, 120, 255, 0.55);
+}
+
+.banner.mythic-banner.show {
+  visibility: visible;
+  animation:
+    banner-golden 4.2s ease forwards,
+    banner-prism-flow 1.4s linear infinite;
+}
+
+@keyframes banner-prism-flow {
+  from { background-position: 0% center; }
+  to { background-position: 220% center; }
+}
+
+/* "Effekte reduzieren": statischer Regenbogen, kein Fliessen. */
+body.reduce-fx .banner.mythic-banner.show {
+  animation: banner-golden 4.2s ease forwards;
+}
+
 @keyframes banner-in {
   0% { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
   12% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }

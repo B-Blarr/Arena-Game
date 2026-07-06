@@ -2,6 +2,7 @@ import { COOP, HARD_UNLOCK_WAVE, META, isBossWave } from '../../config/balance';
 import { getHero } from '../../config/heroes';
 import { getColorway } from '../../config/stickers';
 import { STR } from '../../config/strings.de';
+import { UPGRADE_VALUES as UV } from '../../config/upgrades'; // NEU: Zeitbruch-Zeitskala
 import { PICKUP_CORE } from '../../entities/Pickup';
 import { updateEnemies } from '../../entities/behaviors';
 import { updateBoss } from '../../entities/bossPatterns';
@@ -201,6 +202,13 @@ export class RunState implements GameState {
     const g = this.game;
     const world = g.world;
     world.elapsed += dt;
+
+    // NEU (mythisch "Zeitbruch"): normale Gegner + deren Kugeln verlangsamen, solange
+    // ein Spieler das Upgrade traegt. Der Boss-Pfad liest enemyTimeScale NICHT -> Boss
+    // bleibt normal schnell (Boss-Duell fair). Pro Frame gesetzt, damit Koop/Revive stimmen.
+    world.enemyTimeScale = world.players.some((p) => p.stackOf('timeBreak') > 0)
+      ? UV.timeBreakScale
+      : 1;
 
     if (this.phase === 'dying') {
       // Welt klingt in Zeitlupe aus, dann Abrechnung

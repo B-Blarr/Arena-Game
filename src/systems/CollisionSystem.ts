@@ -236,9 +236,13 @@ export class CollisionSystem {
       const proj = pool.get(i);
       proj.prevX = proj.x;
       proj.prevZ = proj.z;
-      proj.x += proj.vx * dt;
-      proj.z += proj.vz * dt;
-      proj.traveled += Math.hypot(proj.vx, proj.vz) * dt;
+      // NEU (mythisch "Zeitbruch"): normale Gegner-Kugeln fliegen langsamer,
+      // Boss-Kugeln bleiben unberuehrt (Boss-Duell fair). traveled skaliert mit,
+      // damit die Reichweite (Strecke, nicht Zeit) unveraendert bleibt.
+      const ts = proj.fromBoss ? 1 : this.world.enemyTimeScale;
+      proj.x += proj.vx * dt * ts;
+      proj.z += proj.vz * dt * ts;
+      proj.traveled += Math.hypot(proj.vx, proj.vz) * dt * ts;
 
       if (proj.traveled >= proj.range || Math.hypot(proj.x, proj.z) >= ARENA_RADIUS - 0.15) {
         pool.despawn(i);

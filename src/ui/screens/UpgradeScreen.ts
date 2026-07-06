@@ -70,29 +70,34 @@ export class UpgradeScreen {
     // Zeremonie: legendaere Karte erscheint als LETZTE, der Screen kriegt
     // einen Andock-Punkt fuer Gold-Styling (has-legendary)
     const hasLegendary = offers.some((o) => o.rarity === 'legendary');
+    const hasMythic = offers.some((o) => o.rarity === 'mythic'); // NEU
     this.root.classList.toggle('has-legendary', hasLegendary);
+    this.root.classList.toggle('has-mythic', hasMythic); // NEU
     // Wahl erst nach dem Aufdecken — sonst waehlt ein hastiger Tastendruck
-    // die goldene Karte, bevor sie ueberhaupt sichtbar war
-    this.revealLocked = hasLegendary;
+    // die goldene/prismatische Karte, bevor sie ueberhaupt sichtbar war.
+    // GEAENDERT: mythisch bekommt eine etwas laengere Zeremonie als legendaer.
+    this.revealLocked = hasLegendary || hasMythic;
     window.clearTimeout(this.revealTimeout);
-    if (hasLegendary) {
+    if (hasLegendary || hasMythic) {
       this.revealTimeout = window.setTimeout(() => {
         this.revealLocked = false;
-      }, 550);
+      }, hasMythic ? 750 : 550);
     }
     offers.forEach((def, i) => {
       const info = STR.upgrades[def.id] ?? { name: def.id, desc: '' };
       const stacks = player.stackOf(def.id);
       const isLegendary = def.rarity === 'legendary';
+      const isMythic = def.rarity === 'mythic'; // NEU
       const card = document.createElement('button');
       card.className = 'upgrade-card appear';
       if (i === 0) card.setAttribute('data-nav-default', '');
       card.dataset.key = `upgrade-${i}`;
       if (isLegendary) card.classList.add('legendary');
+      if (isMythic) card.classList.add('mythic'); // NEU: animierte prismatische Karte
       card.style.setProperty('--rarity', `var(--rarity-${def.rarity})`);
-      card.style.animationDelay = isLegendary ? '0.45s' : `${i * 0.08}s`;
-      // Legendaere sind Einmal-Karten — kein "Stufe 1/1"-Label
-      const stacksLabel = def.instant || isLegendary
+      card.style.animationDelay = isLegendary || isMythic ? '0.55s' : `${i * 0.08}s`;
+      // Legendaere/mythische sind Einmal-Karten — kein "Stufe 1/1"-Label
+      const stacksLabel = def.instant || isLegendary || isMythic
         ? ''
         : `<span class="upgrade-stacks">${STR.stacksLabel} ${stacks + 1}/${def.maxStacks}</span>`;
       card.innerHTML = `

@@ -24,6 +24,8 @@ export interface GameEvents {
   eliteShieldBroken: { x: number; z: number };
   /** Orbital-Laser (legendaeres Upgrade) schlaegt ein. */
   orbitalStrike: { x: number; z: number };
+  /** NEU: Prisma-Strahl (mythisch): gerichteter Dauerstrahl. active=false blendet ihn aus. */
+  prismBeam: { x: number; z: number; dirX: number; dirZ: number; length: number; active: boolean };
   /** Schwarzes Loch (legendaer): Singularitaet erscheint am Dash-Ende. */
   blackHole: { x: number; z: number; radius: number; duration: number };
   /** Schwarzes Loch kollabiert (Crunch-Explosion folgt im selben Tick). */
@@ -38,6 +40,8 @@ export interface GameEvents {
   playerDashed: { x: number; z: number; playerIndex: number };
   dashReady: { playerIndex: number };
   playerRevived: { playerIndex: number };
+  /** NEU: Phoenixkern (mythisch): einmalige Auto-Wiederbelebung mit Schockwelle. */
+  phoenixRevived: { playerIndex: number; x: number; z: number };
   /** Koop: Spieler geht zu Boden (statt zu sterben). */
   playerDowned: { playerIndex: number; x: number; z: number };
   /** Koop: Spieler steht wieder (byPartner false = Auto-Aufstehen am Wellenende). */
@@ -94,6 +98,8 @@ export interface GameEvents {
   stickerUnlocked: { id: string };
   /** Ein legendaeres Upgrade liegt im Angebot (Zeremonie/Fanfare). */
   legendaryRevealed: { id: string };
+  /** NEU: Ein mythisches Upgrade liegt im Angebot (eigene, heroischere Zeremonie/Fanfare). */
+  mythicRevealed: { id: string };
   uiHover: Record<string, never>;
   uiClick: Record<string, never>;
   musicBeat: { step: number };

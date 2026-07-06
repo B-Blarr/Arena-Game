@@ -108,10 +108,14 @@ export class Popups {
       events.on('eliteSpawned', (e) => {
         this.spawn(e.x, e.z, `★ ${STR.eliteSpawned}`, 'crit');
       }),
-      // Legendaer gewaehlt: goldener Banner beim Zurueckkehren ins Spiel
+      // Legendaer/Mythisch gewaehlt: Banner beim Zurueckkehren ins Spiel
       events.on('upgradeChosen', (e) => {
-        if (e.rarity === 'legendary') this.banner(STR.legendaryFound, 'gold-banner');
+        // GEAENDERT: mythisch eigener, laengerer Regenbogen-Banner
+        if (e.rarity === 'mythic') this.banner(STR.mythicFound, 'mythic-banner', 4500);
+        else if (e.rarity === 'legendary') this.banner(STR.legendaryFound, 'gold-banner');
       }),
+      // NEU (mythisch "Phoenixkern"): Auferstehung gross ankuendigen
+      events.on('phoenixRevived', () => this.banner(STR.phoenixRevived, 'gold-banner', 2600)),
       // Pad eines Spielers weg -> RunState pausiert, wir erklaeren warum
       events.on('padDisconnected', (e) => {
         if (e.slot >= 0) this.banner(STR.padDisconnected, 'boss-banner');

@@ -410,6 +410,87 @@ body.reduce-fx .upgrade-card.legendary::after {
   background: none;
 }
 
+/* ---------- Mythische Karte (prismatisch/Regenbogen) ---------- */
+
+/* Eigener registrierter Winkel (unabhaengig von --leg-angle) */
+@property --myth-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.upgrade-card.mythic {
+  position: relative;
+  /* Panel innen, rotierender Regenbogen-Verlauf als Border. Reine UI-Optik
+     (kein Gefahren-Rot-Kontext), analog zum prismatischen Farb-Chip. */
+  border-color: transparent;
+  background:
+    linear-gradient(rgba(10, 12, 30, 0.94), rgba(10, 12, 30, 0.94)) padding-box,
+    conic-gradient(
+      from var(--myth-angle, 0deg),
+      #ff4d6d, #ffd24d, #6dff8a, #4de6ff, #7a5cff, #ff5ce1, #ff4d6d
+    ) border-box;
+  box-shadow: 0 0 30px rgba(180, 120, 255, 0.5);
+  animation:
+    card-in-mythic 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.3) forwards,
+    myth-spin 2.2s linear infinite;
+}
+
+.upgrade-card.mythic.chosen,
+body.reduce-fx .upgrade-card.mythic.chosen {
+  animation: card-chosen 0.25s ease forwards;
+}
+
+.upgrade-card.mythic.dismissed,
+body.reduce-fx .upgrade-card.mythic.dismissed {
+  animation: none;
+}
+
+@keyframes myth-spin {
+  to { --myth-angle: 360deg; }
+}
+
+/* Aufdeck-Moment: kommt groesser rein + einmaliger Regenbogen-Puls */
+@keyframes card-in-mythic {
+  0% { opacity: 0; transform: translateY(48px) scale(0.65); }
+  60% { opacity: 1; transform: translateY(-5px) scale(1.08); box-shadow: 0 0 56px rgba(180, 120, 255, 0.8); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Endlicher Shimmer-Sweep (2 Durchlaeufe, dann Ruhe) */
+.upgrade-card.mythic::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  background: linear-gradient(
+    115deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.28) 48%,
+    rgba(255, 255, 255, 0.4) 50%,
+    rgba(255, 255, 255, 0.28) 52%,
+    transparent 70%
+  );
+  background-size: 260% 100%;
+  animation: leg-shimmer 1.6s ease-out 2;
+  pointer-events: none;
+}
+
+.upgrade-card.mythic:hover,
+.upgrade-card.mythic:focus-visible {
+  box-shadow: 0 0 44px rgba(180, 120, 255, 0.8);
+}
+
+/* "Effekte reduzieren": statische prismatische Karte, keine Rotation/Shimmer. */
+body.reduce-fx .upgrade-card.mythic {
+  animation: card-in 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.2) forwards;
+}
+
+body.reduce-fx .upgrade-card.mythic::after {
+  animation: none;
+  background: none;
+}
+
 /* ---------- Pause ---------- */
 .pause-panel {
   display: flex;

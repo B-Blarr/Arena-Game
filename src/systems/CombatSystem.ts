@@ -16,6 +16,7 @@ import type { World } from '../core/World';
 import type { Enemy } from '../entities/Enemy';
 import type { Player } from '../entities/Player';
 import { initProjectile } from '../entities/Projectile';
+import { segPointDist2 } from '../utils/math'; // NEU: Prisma-Strahl (Punkt-zu-Segment)
 import type { InputState } from '../input/InputManager';
 import type { PickupSystem } from './PickupSystem';
 
@@ -48,9 +49,15 @@ export class CombatSystem {
       const p = players[i] as Player;
       // Geworfenes Schwarzes Loch tickt weiter, auch wenn der Werfer faellt
       this.updateBlackHole(p, dt);
+      // NEU (mythisch "Phoenixkern"): Aufersteh-Schockwelle ausloesen (Poll-Muster
+      // wie Schwarzes Loch). explode() bringt Schaden, Ring, Partikel, Sound + Shake mit.
+      if (p.phoenixBlastPending) {
+        p.phoenixBlastPending = false;
+        this.explode(p.x, p.z, UV.phoenixBlastRadius, UV.phoenixBlastDamage, 0, 0xffc83d, true, p.index);
+      }
       if (!p.targetable) continue;
       const input = inputs[i];
-      if (input) this.updateFiring(p, input);
+      if (input) this.updateFiring(p, input, dt);
       this.updateOrbs(p, dt);
       this.updateDashBlade(p);
       this.updateOrbital(p, dt);
@@ -60,7 +67,7 @@ export class CombatSystem {
 
   // ---------------------------------------------------------- Feuern
 
-  private updateFiring(p: Player, input: InputState): void {
+  private updateFiring(p: Player, input: InputState, dt: number): void {
     const stats = p.stats;
 
     let aimX = 0;
@@ -123,6 +130,21 @@ export class CombatSystem {
       }
     }
 
+    // NEU (mythisch "Prisma-Strahl"): ersetzt das normale Feuern durch einen
+    // gerichteten Dauerstrahl. Ohne Ziel wird er ausgeblendet (active:false).
+    if (stats.prismBeamDps > 0) {
+      if (haveTarget) {
+        p.faceX = aimX;
+        p.faceZ = aimZ;
+        this.firePrism(p, aimX, aimZ, dt);
+      } else {
+        this.events.emit('prismBeam', {
+          x: p.x, z: p.z, dirX: p.faceX, dirZ: p.faceZ, length: 0, active: false,
+        });
+      }
+      return;
+    }
+
     if (!haveTarget) return;
 
     // Figur schaut KONTINUIERLICH in die Zielrichtung (nicht nur im
@@ -174,6 +196,65 @@ export class CombatSystem {
       proj.knockback = stats.knockback;
       proj.boomerang = stats.boomerang;
       proj.ownerIdx = p.index;
+    }
+  }
+
+  /**
+   * NEU (mythisch "Prisma-Strahl"): gerichteter Dauerstrahl statt Einzelschuss.
+   * Optik laeuft jeden Frame (prismBeam-Event), Schaden aber gebuendelt alle
+   * prismBeamTick Sekunden — so bleiben Trefferzahlen lesbar und der DPS gleich.
+   * Trifft alle Ziele entlang des Segments Spieler -> +Richtung*Range.
+   */
+  private firePrism(p: Player, aimX: number, aimZ: number, dt: number): void {
+    const range = UV.prismBeamRange;
+    // Optik: gerichteter Strahl, jeden Frame gemeldet (Renderer haelt/dreht das Mesh).
+    this.events.emit('prismBeam', { x: p.x, z: p.z, dirX: aimX, dirZ: aimZ, length: range, active: true });
+
+    // Schaden nur im Tick-Frame (gebuendelt = DPS * Tick).
+    p.prismTimer -= dt;
+    if (p.prismTimer > 0) return;
+    p.prismTimer = UV.prismBeamTick;
+
+    const dmg = p.stats.prismBeamDps * UV.prismBeamTick;
+    const ex = p.x + aimX * range;
+    const ez = p.z + aimZ * range;
+    const boost = p.damageBoost;
+
+    // Normale Gegner (hitEnemy -> Kill/Lifesteal/Nova laufen ueber sweepDead).
+    // allowCrit=false: kein Crit-/Frost-Wuerfeln pro Tick, knockback 0 (Strahl schiebt nicht).
+    const pool = this.world.enemies;
+    for (let i = 0; i < pool.count; i++) {
+      const e = pool.get(i);
+      if (e.hp <= 0) continue;
+      const rr = UV.prismBeamWidth + e.radius;
+      if (segPointDist2(p.x, p.z, ex, ez, e.x, e.z) < rr * rr) {
+        this.hitEnemy(e, dmg, false, p.x, p.z, 0, true, p.index);
+      }
+    }
+
+    const boss = this.world.boss;
+    if (boss && boss.alive && !boss.hidden) {
+      const rr = UV.prismBeamWidth + boss.def.radius;
+      if (segPointDist2(p.x, p.z, ex, ez, boss.x, boss.z) < rr * rr) {
+        const bd = Math.round(dmg * boost);
+        boss.takeDamage(bd, this.events);
+        this.events.emit('enemyHit', { x: boss.x, z: boss.z, damage: bd, crit: false, enemyType: -1 });
+      }
+      // HYDRA-Minis: der Strahl ersetzt die Schuesse -> muss sie treffen koennen.
+      for (const m of boss.minis) {
+        if (!m.active || m.hp <= 0) continue;
+        const rr2 = UV.prismBeamWidth + m.radius;
+        if (segPointDist2(p.x, p.z, ex, ez, m.x, m.z) < rr2 * rr2) {
+          const md = Math.round(dmg * boost);
+          m.hp -= md;
+          m.flashTimer = 0.08;
+          this.events.emit('enemyHit', { x: m.x, z: m.z, damage: md, crit: false, enemyType: -1 });
+          if (m.hp <= 0) {
+            this.events.emit('enemyKilled', { x: m.x, z: m.z, enemyType: -1, points: 250, scale: 1.4, elite: false });
+            m.active = false;
+          }
+        }
+      }
     }
   }
 

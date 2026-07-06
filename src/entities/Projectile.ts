@@ -24,6 +24,8 @@ export interface Projectile {
   hitCount: number;
   /** Koop: Index des Schuetzen (Crit/Boost/Bumerang-Rueckkehr). */
   ownerIdx: number;
+  /** NEU: Gegner-Projektil stammt vom BOSS -> vom "Zeitbruch"-Slow ausgenommen. */
+  fromBoss: boolean;
 }
 
 export function makeProjectile(): Projectile {
@@ -32,7 +34,7 @@ export function makeProjectile(): Projectile {
     damage: 0, pierceLeft: 0, ricochetLeft: 0,
     traveled: 0, range: 10, radius: 0.15, knockback: 0,
     boomerang: false, returning: false,
-    hitUids: [], hitCount: 0, ownerIdx: 0,
+    hitUids: [], hitCount: 0, ownerIdx: 0, fromBoss: false,
   };
 }
 
@@ -59,6 +61,7 @@ export function initProjectile(
   p.returning = false;
   p.hitCount = 0;
   p.ownerIdx = 0;
+  p.fromBoss = false; // NEU: Standard normaler Gegner (Boss setzt es beim Spawn explizit)
 }
 
 export function projectileHasHit(p: Projectile, uid: number): boolean {

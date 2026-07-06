@@ -24,6 +24,7 @@
   --rarity-rare: #00e5ff;
   --rarity-epic: #b14cff;
   --rarity-legendary: #ffc83d;
+  --rarity-mythic: #e59cff; /* NEU: prismatischer Basiston (Name/Label); Karte animiert */
 
   /* Glow-Rezepte */
   --glow-text:

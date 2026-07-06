@@ -1,9 +1,11 @@
 import {
   FALLBACK_UPGRADES,
   LEGENDARY,
+  MYTHIC,
   RARITY_WEIGHTS,
   UPGRADES,
   UPGRADE_VALUES as UV,
+  type Rarity,
   type UpgradeDef,
 } from '../config/upgrades';
 import type { EventBus } from '../core/EventBus';
@@ -30,7 +32,11 @@ export class UpgradeSystem {
   rerollUsed = false;
   /** DEV-Testhilfe: erzwingt Legendaer im naechsten Angebot. */
   debugForceLegendary = false;
+  /** NEU — DEV-Testhilfe: erzwingt Mythisch im naechsten Angebot. */
+  debugForceMythic = false;
   private readonly legendaryPity: [number, number] = [0, 0];
+  /** NEU: max. 1 mythisches Upgrade pro Lauf (reiner Pool-Filter, rng-neutral). */
+  private mythicTaken = false;
   /** Fuer weightOf waehrend eines draw()-Laufs. */
   private drawingFor: 0 | 1 = 0;
 
@@ -45,6 +51,7 @@ export class UpgradeSystem {
     this.rerollUsed = false;
     this.legendaryPity[0] = 0;
     this.legendaryPity[1] = 0;
+    this.mythicTaken = false; // NEU
   }
 
   /** Nach Boss-Wellen: Slot 1 garantiert Rare oder besser. */
@@ -69,6 +76,9 @@ export class UpgradeSystem {
       if (player.stackOf(u.id) >= u.maxStacks) return false;
       // Legendaere erst ab der Wahl nach Welle 2 (erste Wahl bleibt simpel)
       if (u.rarity === 'legendary' && this.world.wave < LEGENDARY.minWave) return false;
+      // NEU: Mythische erst spaeter im Pool und nur, solange noch keines gewaehlt wurde
+      if (u.rarity === 'mythic' && this.world.wave < MYTHIC.minWave) return false;
+      if (u.rarity === 'mythic' && this.mythicTaken) return false;
       // Kettenreaktion aktiv -> Nova-Karten waeren wirkungslos
       if (u.id === 'nova' && player.stats.novaChance >= 1) return false;
       return true;
@@ -77,22 +87,27 @@ export class UpgradeSystem {
     // Waren Legendaere in DIESEM Angebot ueberhaupt moeglich? (Pity nur dann zaehlen)
     const poolHadLegendary = pool.some((u) => u.rarity === 'legendary');
 
-    // Nach einem legendaeren Pick: restliche Legendaere raus
-    // (max. 1 pro Angebot — niemand soll eine Einmal-Karte wegwerfen muessen)
-    const dropLegendaries = (): void => {
+    // Nach einem legendaeren/mythischen Pick: restliche derselben Seltenheit raus
+    // (max. 1 pro Angebot — niemand soll eine Einmal-Karte wegwerfen muessen).
+    // GEAENDERT: von dropLegendaries auf beide Einmal-Seltenheiten verallgemeinert.
+    const dropExclusive = (r: Rarity): void => {
+      if (r !== 'legendary' && r !== 'mythic') return;
       for (let i = pool.length - 1; i >= 0; i--) {
-        if ((pool[i] as UpgradeDef).rarity === 'legendary') pool.splice(i, 1);
+        if ((pool[i] as UpgradeDef).rarity === r) pool.splice(i, 1);
       }
     };
 
     if (guaranteeRare) {
-      // Garantierter Boss-Slot: mindestens Selten, aber NIE legendaer (kein Legendaer-Bias)
-      const rarePool = pool.filter((u) => u.rarity !== 'common' && u.rarity !== 'legendary');
+      // Garantierter Boss-Slot: mindestens Selten, aber NIE legendaer/mythisch (kein Bias)
+      // GEAENDERT: mythic ebenfalls ausgeschlossen (wie legendaer).
+      const rarePool = pool.filter(
+        (u) => u.rarity !== 'common' && u.rarity !== 'legendary' && u.rarity !== 'mythic',
+      );
       if (rarePool.length > 0) {
         const pick = this.weightedPick(rarePool, rng);
         picks.push(pick);
         pool.splice(pool.indexOf(pick), 1);
-        if (pick.rarity === 'legendary') dropLegendaries();
+        dropExclusive(pick.rarity);
       }
     }
 
@@ -100,7 +115,7 @@ export class UpgradeSystem {
       const pick = this.weightedPick(pool, rng);
       picks.push(pick);
       pool.splice(pool.indexOf(pick), 1);
-      if (pick.rarity === 'legendary') dropLegendaries();
+      dropExclusive(pick.rarity);
     }
 
     // Pool erschoepft -> Fallback-Karten (nie leere Auswahl)
@@ -122,10 +137,15 @@ export class UpgradeSystem {
       // oder wenn alle Legendaeren laengst vergeben sind — sonst laedt er sich unnoetig auf)
       this.legendaryPity[playerIdx] += LEGENDARY.pityPerOffer;
     }
+    // NEU: Mythisch hat KEIN Pity — nur die eigene, heroischere Zeremonie ankuendigen.
+    const mythic = picks.find((u) => u.rarity === 'mythic');
+    if (mythic) this.events.emit('mythicRevealed', { id: mythic.id });
     return picks;
   }
 
   private weightOf(u: UpgradeDef): number {
+    // NEU: mythic — flaches Gewicht, KEIN Pity (debugForceMythic nur fuer Tests).
+    if (u.rarity === 'mythic') return this.debugForceMythic ? 100000 : RARITY_WEIGHTS.mythic;
     if (u.rarity !== 'legendary') return RARITY_WEIGHTS[u.rarity];
     if (this.debugForceLegendary) return 100000;
     return Math.min(RARITY_WEIGHTS.legendary + this.legendaryPity[this.drawingFor], LEGENDARY.weightCap);
@@ -143,6 +163,7 @@ export class UpgradeSystem {
   }
 
   apply(def: UpgradeDef, playerIdx: 0 | 1 = 0): void {
+    if (def.rarity === 'mythic') this.mythicTaken = true; // NEU: max. 1 mythisch pro Lauf
     const world = this.world;
     const player = (world.players[playerIdx] ?? world.players[0]) as Player;
     if (def.instant) {

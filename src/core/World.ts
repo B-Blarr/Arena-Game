@@ -56,6 +56,10 @@ export class World {
   mods: DifficultyMods = DIFFICULTIES.normal;
   /** Gleichzeitig-Limit fuer Gegner (Solo 40, Koop 60). */
   maxEnemiesLimit = LIMITS.maxEnemies;
+  /** NEU (mythisch "Zeitbruch"): Zeitskala fuer NORMALE Gegner + deren Projektile.
+   *  1 = normal, <1 = langsamer. Bosse laufen ueber einen eigenen Pfad und bleiben
+   *  davon unberuehrt. RunState setzt den Wert pro Frame. */
+  enemyTimeScale = 1;
   rngWaves: Rng = new Rng(1);
   rngUpgrades: Rng = new Rng(2);
   /** Koop: eigener Angebots-Stream fuer Spieler 2 (Solo unbenutzt). */
@@ -132,6 +136,7 @@ export class World {
     this.rngSummons = makeRng(seed, RNG_STREAM_SUMMONS);
     this.rngEvents = makeRng(seed, RNG_STREAM_EVENTS);
     this.goldenWave = false;
+    this.enemyTimeScale = 1; // NEU: Zeitbruch startet jeden Lauf inaktiv
     this.runCores = 0;
     this.elapsed = 0;
     this.isDaily = isDaily;
@@ -227,11 +232,13 @@ export class World {
     x: number, z: number,
     dirX: number, dirZ: number,
     speed: number, damage: number, range: number,
+    fromBoss = false, // NEU: Boss-Projektile werden vom "Zeitbruch"-Slow ausgenommen
   ): Projectile | null {
     const p = this.enemyProjectiles.spawn();
     if (!p) return null;
     initProjectile(p, x, z, dirX, dirZ, speed, damage, range);
     p.radius = 0.19;
+    p.fromBoss = fromBoss;
     return p;
   }
 }

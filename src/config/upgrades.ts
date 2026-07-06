@@ -4,9 +4,13 @@
  * Namen/Beschreibungen in strings.de.ts.
  */
 
-export type Rarity = 'common' | 'rare' | 'epic' | 'legendary';
+// NEU: 'mythic' — Stufe ueber legendaer, siehe MYTHIC/RARITY_WEIGHTS unten.
+export type Rarity = 'common' | 'rare' | 'epic' | 'legendary' | 'mythic';
 
-export const RARITY_WEIGHTS: Record<Rarity, number> = { common: 60, rare: 30, epic: 10, legendary: 0.3 };
+// NEU: mythic 0.05 — grob 6- bis 20-mal seltener als legendaer (das per Pity bis 1.0 steigt).
+export const RARITY_WEIGHTS: Record<Rarity, number> = {
+  common: 60, rare: 30, epic: 10, legendary: 0.3, mythic: 0.05,
+};
 
 /** Legendaer-Regeln: EXTREM selten, nur ein sanfter Rest-Pity gegen Extrem-Pech. */
 export const LEGENDARY = {
@@ -16,6 +20,13 @@ export const LEGENDARY = {
   weightCap: 1.0,
   /** Erst ab der Wahl NACH dieser Welle im Pool (frueher Lauf bleibt legendaer-frei). */
   minWave: 6,
+};
+
+/** NEU: Mythisch-Regeln: "so gut wie nie" — KEIN Pity (reines Glueck), spaeteres Gate,
+ *  max. 1 pro Lauf (siehe UpgradeSystem: mythicTaken + Pool-Filter, alles rng-neutral). */
+export const MYTHIC = {
+  /** Erst ab der Wahl NACH dieser Welle im Pool (spaeter als legendaer). */
+  minWave: 10,
 };
 
 export interface UpgradeDef {
@@ -55,6 +66,11 @@ export const UPGRADES: readonly UpgradeDef[] = [
   { id: 'blackHoleDash', icon: '🕳️', rarity: 'legendary', maxStacks: 1, instant: false },
   { id: 'overcharge', icon: '🚨', rarity: 'legendary', maxStacks: 1, instant: false },
   { id: 'megaShots', icon: '🌕', rarity: 'legendary', maxStacks: 1, instant: false },
+  // NEU: Mythisch (ueber legendaer, extrem selten, max. 1 pro Lauf) — je 1x pro Lauf.
+  { id: 'timeBreak', icon: '⏳', rarity: 'mythic', maxStacks: 1, instant: false },
+  { id: 'phoenixCore', icon: '🐦‍🔥', rarity: 'mythic', maxStacks: 1, instant: false },
+  { id: 'prismBeam', icon: '🌈', rarity: 'mythic', maxStacks: 1, instant: false },
+  { id: 'singularity', icon: '♾️', rarity: 'mythic', maxStacks: 1, instant: false },
 ];
 
 /** Fallback-Karten, wenn der regulaere Pool ausgeschoepft ist. */
@@ -129,6 +145,22 @@ export const UPGRADE_VALUES = {
   megaShotsRadiusMult: 2.2,
   megaShotsPierce: 2,
   projectileRadiusBase: 0.15,
+  // NEU: Mythische Upgrades (alle maxStacks 1, build-definierend)
+  /** Singularitaet: Feuerrate UND Schaden mal diesem Faktor. */
+  singularityMult: 2,
+  /** Zeitbruch: Zeitskala fuer normale Gegner + deren Projektile (0.55 = 45 % langsamer).
+   *  Bosse laufen ueber einen eigenen Pfad und bleiben unberuehrt. */
+  timeBreakScale: 0.55,
+  /** Phoenixkern: einmalige Auto-Wiederbelebung, danach Schockwelle. */
+  phoenixBlastRadius: 6,
+  phoenixBlastDamage: 200,
+  /** Prisma-Strahl: Dauerschaden PRO SEKUNDE (skaliert mit damageMult), Strahlbreite + Reichweite. */
+  prismBeamDps: 180,
+  prismBeamWidth: 0.6,
+  prismBeamRange: 16,
+  /** Schaden wird alle prismBeamTick Sekunden gebuendelt (lesbare Trefferzahlen,
+   *  gleichmaessiger DPS). Optik laeuft trotzdem jeden Frame. */
+  prismBeamTick: 0.1,
   // Fallback-Karten
   corePackAmount: 15,
   repairFrac: 0.25,

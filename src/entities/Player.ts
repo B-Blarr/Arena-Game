@@ -43,6 +43,9 @@ export interface PlayerStats {
   overchargeBonus: number;
   /** Projektil-Radius (Mega-Kugeln vergroessern ihn). */
   projectileRadius: number;
+  // Mythische Upgrades
+  /** Prisma-Strahl: Dauerstrahl-Schaden pro Sekunde (0 = aus). Ersetzt das Feuern. */
+  prismBeamDps: number;
 }
 
 export class Player {
@@ -80,8 +83,14 @@ export class Player {
   orbAngle = 0;
   stacks = new Map<string, number>();
   reviveAvailable = false;
+  /** NEU (mythisch "Phoenixkern"): einmalige Auto-Wiederbelebung noch geladen? */
+  phoenixCharge = false;
+  /** NEU: Poll-Flag — CombatSystem loest die Aufersteh-Schockwelle aus. */
+  phoenixBlastPending = false;
   /** Orbital-Laser: Restzeit bis zum naechsten Einschlag. */
   orbitalTimer = 0;
+  /** NEU (mythisch "Prisma-Strahl"): Restzeit bis zum naechsten Schaden-Tick. */
+  prismTimer = 0;
   /** "Turbofeuer!"-Kapselbuff: Restzeit erhoehter Feuerrate. */
   rapidFireTimer = 0;
   /** Lebensraub-Bruchteile sammeln sich, geheilt wird nur ganzzahlig. */
@@ -131,10 +140,13 @@ export class Player {
     this.fireCooldown = 0;
     this.orbAngle = 0;
     this.orbitalTimer = 0;
+    this.prismTimer = 0; // NEU (mythisch)
     this.rapidFireTimer = 0;
     this.healCarry = 0;
     this.blackHoleTimer = 0;
     this.reviveAvailable = (perma.secondChance ?? 0) > 0;
+    this.phoenixCharge = false; // NEU: Phoenixkern erst per Upgrade-Wahl laden
+    this.phoenixBlastPending = false;
     this.recomputeStats();
     this.dashCooldowns = new Array<number>(this.stats.dashCharges).fill(0);
     this.dashReadyNotified = true;
@@ -154,6 +166,8 @@ export class Player {
     if (this.stats.maxHp > oldMax) this.hp += Math.round((this.stats.maxHp - oldMax) / 2);
     // Doppel-Dash: neue Ladung sofort einsatzbereit
     while (this.dashCooldowns.length < this.stats.dashCharges) this.dashCooldowns.push(0);
+    // NEU (mythisch "Phoenixkern"): einmalige Auferstehung laden (maxStacks 1)
+    if (id === 'phoenixCore') this.phoenixCharge = true;
   }
 
   private computeStats(): PlayerStats {
@@ -168,6 +182,7 @@ export class Player {
       novaChance: 0, novaDamage: UV.novaDamage, ricochet: 0, boomerang: false,
       cloneDamageFrac: 0, orbitalDamage: 0, blackHolePull: 0, overchargeBonus: 0,
       projectileRadius: UV.projectileRadiusBase,
+      prismBeamDps: 0, // NEU (mythisch)
     };
   }
 
@@ -186,7 +201,10 @@ export class Player {
       this.hero.maxHp * (1 + armorLv * 0.1) * this.mods.playerHp + st('maxHp') * UV.maxHpPerStack,
     );
     s.speed = this.hero.speed * (1 + turboLv * 0.05) * (1 + st('speed') * UV.speedPerStack);
-    s.fireRate = w.fireRate * (1 + st('fireRate') * UV.fireRatePerStack);
+    // NEU (mythisch): Singularitaet verdoppelt Feuerrate UND Schaden (fliesst via
+    // damageMult auch in Orb/Nova/Orbital/Prisma). Faktor 1, solange nicht gewaehlt.
+    const singularity = st('singularity') > 0 ? UV.singularityMult : 1;
+    s.fireRate = w.fireRate * (1 + st('fireRate') * UV.fireRatePerStack) * singularity;
 
     const multishot = st('multishot');
     const hasMega = st('megaShots') > 0;
@@ -195,7 +213,8 @@ export class Player {
       (1 + calibLv * 0.06) *
       (1 + st('damage') * UV.damagePerStack) *
       (hasMega ? 1 + UV.megaShotsDamageBonus : 1) *
-      Math.pow(UV.multishotDamageMult, multishot);
+      Math.pow(UV.multishotDamageMult, multishot) *
+      singularity; // NEU: mythisch
     s.damage = w.damage * damageMult;
     s.projectileCount = w.projectileCount + multishot;
     s.spreadAngle = s.projectileCount > 1 ? Math.max(w.spreadAngle, UV.multishotSpreadAngle) : 0;
@@ -230,6 +249,8 @@ export class Player {
     s.blackHolePull = st('blackHoleDash') > 0 ? UV.blackHolePull : 0;
     s.overchargeBonus = st('overcharge') > 0 ? UV.overchargeDamageBonus : 0;
     s.projectileRadius = UV.projectileRadiusBase * (hasMega ? UV.megaShotsRadiusMult : 1);
+    // NEU (mythisch): Prisma-Strahl-DPS skaliert mit allen Schadens-Boni (damageMult).
+    s.prismBeamDps = st('prismBeam') > 0 ? UV.prismBeamDps * damageMult : 0;
   }
 
   /** Ueberladung: unter 30 % HP schlaegt alles haerter zu. */
@@ -371,7 +392,20 @@ export class Player {
       damage: amount, hp: Math.max(0, this.hp), maxHp: this.stats.maxHp, playerIndex: this.index,
     });
     if (this.hp <= 0) {
-      if (this.reviveAvailable) {
+      if (this.phoenixCharge) {
+        // NEU (mythisch "Phoenixkern"): einmalige Auto-Wiederbelebung mit VOLLER
+        // Energie (secondChance gibt nur 50 %) + Schockwelle. CombatSystem pollt
+        // phoenixBlastPending und loest ueber explode() den Wumms aus.
+        this.phoenixCharge = false;
+        this.hp = this.stats.maxHp;
+        this.iFrames = 2;
+        this.phoenixBlastPending = true;
+        this.events.emit('phoenixRevived', { playerIndex: this.index, x: this.x, z: this.z });
+        // HUD/HP-Balken ueber die bestehende Heil-Pipeline aktualisieren (wie revive())
+        this.events.emit('playerHealed', {
+          amount: this.hp, hp: this.hp, maxHp: this.stats.maxHp, playerIndex: this.index,
+        });
+      } else if (this.reviveAvailable) {
         this.reviveAvailable = false;
         this.hp = Math.round(this.stats.maxHp * 0.5);
         this.iFrames = 2;
