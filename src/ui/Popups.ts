@@ -81,9 +81,10 @@ export class Popups {
       }),
       events.on('waveStarted', (e) => {
         if (e.isBossWave) return;
-        // Goldene Welle: EIN kombinierter Banner (es gibt nur ein Banner-Element)
+        // Goldene Welle: EIN kombinierter Banner (es gibt nur ein Banner-Element).
+        // Marker-Klasse `golden-wave` + laengere Haltezeit -> gut lesbar (~3,5 s).
         if (this.world.goldenWave) {
-          this.banner(`${STR.waveIncoming} ${e.wave} — ${STR.goldenWave}`, 'gold-banner');
+          this.banner(`${STR.waveIncoming} ${e.wave} — ${STR.goldenWave}`, 'gold-banner golden-wave', 4500);
         } else {
           this.banner(`${STR.waveIncoming} ${e.wave}`, '');
         }
@@ -197,15 +198,16 @@ export class Popups {
     }, 4500);
   }
 
-  banner(text: string, extraClass: string): void {
+  banner(text: string, extraClass: string, holdMs = 1900): void {
     window.clearTimeout(this.bannerTimeout);
     this.bannerEl.textContent = text;
     this.bannerEl.className = `banner ${extraClass}`;
     void this.bannerEl.offsetWidth;
     this.bannerEl.classList.add('show');
+    // holdMs muss >= Animationsdauer sein, sonst wird .show mittendrin entfernt
     this.bannerTimeout = window.setTimeout(() => {
       this.bannerEl.classList.remove('show');
-    }, 1900);
+    }, holdMs);
   }
 
   /** Laeuft auf Echtzeit — Popups bleiben auch im Hitstop fluessig. */

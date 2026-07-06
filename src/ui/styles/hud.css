@@ -384,6 +384,21 @@ body.reduce-fx .hud-combo.c3 .hud-combo-ring {
   animation: banner-boss-in 1.8s ease forwards;
 }
 
+/* Goldene Welle: laenger stehen bleiben (gut lesbar). Spezifitaet
+   `.banner.golden-wave.show` (0,3,0) schlaegt `.banner.show` (0,2,0) —
+   nur die Goldene Welle, die anderen gold-banner-Meldungen bleiben kurz. */
+.banner.golden-wave.show {
+  animation: banner-golden 4.2s ease forwards;
+}
+
+@keyframes banner-golden {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
+  6% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
+  10% { transform: translate(-50%, -50%) scale(1); }
+  90% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+}
+
 @keyframes banner-in {
   0% { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
   12% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }

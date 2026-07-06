@@ -67,7 +67,7 @@ export class WaveSystem {
     const { def, tier } = bossForWave(w);
     // Koop: Boss-HP zusaetzlich erhoeht — Einzelziel gegen doppelten DPS
     const coopMult = this.world.isCoop ? COOP.bossHpExtra : 1;
-    const hp = Math.round(bossHp(w, enemyHpFactor(w), this.world.mods.enemyHp) * coopMult);
+    const hp = Math.round(bossHp(w, enemyHpFactor(w), this.world.mods.enemyHp) * coopMult * (def.hpMult ?? 1));
     const projDamage = Math.max(4, Math.round(10 * enemyDamageFactor(w) * this.world.mods.enemyDamage));
     this.bossInstance.init(def, tier, hp, projDamage);
     this.world.boss = this.bossInstance;

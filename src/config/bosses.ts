@@ -15,6 +15,8 @@ export interface BossDef {
   scale: number;
   speed: number;
   contactDamage: number;
+  /** Optionaler Boss-HP-Multiplikator auf die Wellen-Formel (Standard 1). */
+  hpMult?: number;
 
   // PRISMA: Kreis-Salve + Ziel-Trio (Trio wird auch von MINOS/WIRBEL genutzt)
   salvoInterval?: number;
@@ -123,9 +125,11 @@ export const BOSS_PRISMA: BossDef = {
 
 export const BOSS_GOLIATH: BossDef = {
   id: 'goliath', color: 0x7b2dff, shape: 'cube', radius: 1.9, scale: 3.5,
-  speed: 1.4, contactDamage: 30,
-  chargeInterval: 6, chargeTelegraph: 1.2, chargeSpeed: 14, chargeDamage: 30,
-  chargeStunTime: 1.5, chargeStunTimeP2: 2.0, stunDamageTakenMult: 2.0,
+  // GEAENDERT: haelt mehr aus (hpMult 1.25) und ist etwas schwerer
+  // (haeufigere Stuerme, minimal kleineres Konterfenster) — Telegraphs bleiben.
+  speed: 1.4, contactDamage: 30, hpMult: 1.25,
+  chargeInterval: 5.5, chargeTelegraph: 1.2, chargeSpeed: 14, chargeDamage: 30,
+  chargeStunTime: 1.5, chargeStunTimeP2: 2.0, stunDamageTakenMult: 1.85,
   shockInterval: 8, shockTelegraph: 1.0, shockRadius: 6, shockDamage: 20, shockRingSpeed: 10,
   summonIntervalP2: 8, chargeIntervalP2: 5,
   // v2: Nachbeben-Steine + P2-Billard-Abpraller + Doppel-Schockwelle
