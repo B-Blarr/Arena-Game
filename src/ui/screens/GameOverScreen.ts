@@ -17,6 +17,9 @@ export interface GameOverResult {
   strongestHit: number;
   maxCombo: number;
   build: BuildEntry[];
+  /** Koop: Build des zweiten Spielers + Namen beider (sonst null). */
+  build2: BuildEntry[] | null;
+  buildLabels: [string, string] | null;
   /** In diesem Lauf freigeschaltete Sticker (Album). */
   newStickers: string[];
 }
@@ -111,18 +114,30 @@ export class GameOverScreen {
     }
 
     this.buildEl.innerHTML = '';
-    if (result.build.length > 0) {
-      const label = document.createElement('span');
-      label.className = 'build-label';
-      label.textContent = `${STR.runSummary.build}: `;
-      this.buildEl.appendChild(label);
-      for (const entry of result.build) {
+    // Koop: upgradeOrder mischt beide Spieler — Eintraege ohne eigene
+    // Stacks gehoeren dem Partner und werden in der eigenen Zeile uebersprungen
+    const renderBuild = (entries: BuildEntry[], label: string, skipZero: boolean): void => {
+      if (entries.length === 0) return;
+      const row = document.createElement('div');
+      const labelEl = document.createElement('span');
+      labelEl.className = 'build-label';
+      labelEl.textContent = `${label}: `;
+      row.appendChild(labelEl);
+      for (const entry of entries) {
+        if (skipZero && entry.stacks <= 0) continue;
         const chip = document.createElement('span');
         chip.className = `build-chip${entry.rarity === 'legendary' ? ' legendary' : ''}`;
         chip.title = STR.upgrades[entry.id]?.name ?? entry.id;
         chip.textContent = entry.stacks > 1 ? `${entry.icon}×${entry.stacks}` : entry.icon;
-        this.buildEl.appendChild(chip);
+        row.appendChild(chip);
       }
+      this.buildEl.appendChild(row);
+    };
+    if (result.build2 && result.buildLabels) {
+      renderBuild(result.build, result.buildLabels[0], true);
+      renderBuild(result.build2, result.buildLabels[1], true);
+    } else {
+      renderBuild(result.build, STR.runSummary.build, false);
     }
 
     // Punktzahl-Count-up (1.2 s, easeOutExpo) mit aufsteigendem Tick

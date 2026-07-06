@@ -1,4 +1,5 @@
 import { PerspectiveCamera, Vector3 } from 'three';
+import { COOP } from '../config/balance';
 import { clamp, damp } from '../utils/math';
 
 const BASE_FOV = 55;
@@ -34,6 +35,8 @@ export class CameraRig {
   private lookaheadZ = 0;
   private fovKick = 0;
   private noiseT = 0;
+  /** Koop-Zoom: gedaempfter Dolly-Faktor auf die GESAMTE OFFSET (Pitch konstant). */
+  private zoomK = 1;
 
   constructor() {
     this.camera = new PerspectiveCamera(BASE_FOV, window.innerWidth / window.innerHeight, 0.1, 300);
@@ -60,7 +63,7 @@ export class CameraRig {
     this.lookaheadZ = 0;
   }
 
-  update(rawDt: number, targetX: number, targetZ: number, velX: number, velZ: number): void {
+  update(rawDt: number, targetX: number, targetZ: number, velX: number, velZ: number, zoomTarget = 1): void {
     // Lookahead in Bewegungsrichtung, selbst geglaettet — aber NUR waehrend
     // der Bewegung. Beim Stillstand friert er ein: das Zurueckgleiten zur
     // Mitte bei ansonsten stehendem Bild wirkte wie stoerendes Nachjustieren.
@@ -97,10 +100,13 @@ export class CameraRig {
       this.camera.updateProjectionMatrix();
     }
 
+    // Koop: reiner Dolly-out (ganze OFFSET skaliert, Blickwinkel konstant)
+    this.zoomK = damp(this.zoomK, zoomTarget, COOP.camera.zoomDamp, rawDt);
+    const k = this.zoomK;
     this.camera.position.set(
-      this.followX + OFFSET.x + nX * shake * MAX_SHAKE_OFFSET,
-      OFFSET.y + nY * shake * MAX_SHAKE_OFFSET,
-      this.followZ + OFFSET.z,
+      this.followX + OFFSET.x * k + nX * shake * MAX_SHAKE_OFFSET,
+      OFFSET.y * k + nY * shake * MAX_SHAKE_OFFSET,
+      this.followZ + OFFSET.z * k,
     );
     lookTarget.set(this.followX, 0, this.followZ);
     this.camera.lookAt(lookTarget);

@@ -21,12 +21,12 @@ import type { Enemy } from './Enemy';
 const neighborBuf: number[] = [];
 
 /**
- * Steering aller Gegner: Timer, Bewegung Richtung Spieler, Schuetzen-KI,
- * weiche Separation via Spatial Hash, Knockback-Daempfung, Arena-Clamp.
+ * Steering aller Gegner: Timer, Bewegung Richtung des NAECHSTEN Spielers
+ * (Koop: jeder Gegner jagt individuell), Schuetzen-KI, weiche Separation
+ * via Spatial Hash, Knockback-Daempfung, Arena-Clamp.
  * Der Spatial Hash muss vorher fuer diesen Step befuellt worden sein.
  */
 export function updateEnemies(world: World, dt: number, events: EventBus): void {
-  const player = world.player;
   const pool = world.enemies;
 
   for (let i = 0; i < pool.count; i++) {
@@ -45,6 +45,7 @@ export function updateEnemies(world: World, dt: number, events: EventBus): void 
     }
     e.yRot += e.rotSpeed * dt;
 
+    const player = world.nearestAlivePlayer(e.x, e.z);
     const dx = player.x - e.x;
     const dz = player.z - e.z;
     const dist = Math.hypot(dx, dz);
@@ -116,9 +117,10 @@ function updateShooter(
     e.telegraphTimer -= dt;
     e.flashTimer = Math.max(e.flashTimer, 0.03); // dauerhaftes Glimmen
     if (e.telegraphTimer <= 0) {
-      // Feuern!
-      const px = world.player.x;
-      const pz = world.player.z;
+      // Feuern! (auf den JETZT naechsten Spieler — nicht den vom Zyklusstart)
+      const target = world.nearestAlivePlayer(e.x, e.z);
+      const px = target.x;
+      const pz = target.z;
       const ddx = px - e.x;
       const ddz = pz - e.z;
       const dlen = Math.hypot(ddx, ddz) || 1;

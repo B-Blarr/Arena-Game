@@ -29,7 +29,14 @@ export class JuiceDirector {
       }),
       events.on('enemyKilled', () => this.rig.addTrauma(0.06)),
       events.on('explosion', (e) => {
-        const d = Math.hypot(e.x - this.world.player.x, e.z - this.world.player.z);
+        // Koop: Distanz zum NAECHSTEN Spieler bestimmt das Beben
+        let d = Infinity;
+        for (let i = 0; i < this.world.players.length; i++) {
+          const p = this.world.players[i];
+          if (!p) continue;
+          const pd = Math.hypot(e.x - p.x, e.z - p.z);
+          if (pd < d) d = pd;
+        }
         this.rig.addTrauma(0.3 * Math.max(0, 1 - d / 15));
       }),
       events.on('bossStomp', () => this.rig.addTrauma(0.5)),
@@ -65,6 +72,13 @@ export class JuiceDirector {
         this.rig.addTrauma(0.6);
       }),
       events.on('playerRevived', () => this.flash()),
+      // Koop: Down = kurzer Schreck-Moment, Revive = Weissblitz
+      events.on('playerDowned', () => {
+        this.time.slowmo(0.5, 0.4, 0.3);
+        this.rig.addTrauma(0.5);
+        this.renderer.kickAberration(0.6);
+      }),
+      events.on('playerCoopRevived', () => this.flash()),
       // Legendaer gewaehlt: Rueckkehr ins Spiel in Zeitlupe + Blitz
       events.on('upgradeChosen', (e) => {
         if (e.rarity === 'legendary') {

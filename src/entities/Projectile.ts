@@ -22,6 +22,8 @@ export interface Projectile {
   /** UIDs bereits getroffener Gegner (kein Doppel-Treffer bei Durchschlag). */
   hitUids: number[];
   hitCount: number;
+  /** Koop: Index des Schuetzen (Crit/Boost/Bumerang-Rueckkehr). */
+  ownerIdx: number;
 }
 
 export function makeProjectile(): Projectile {
@@ -30,7 +32,7 @@ export function makeProjectile(): Projectile {
     damage: 0, pierceLeft: 0, ricochetLeft: 0,
     traveled: 0, range: 10, radius: 0.15, knockback: 0,
     boomerang: false, returning: false,
-    hitUids: [], hitCount: 0,
+    hitUids: [], hitCount: 0, ownerIdx: 0,
   };
 }
 
@@ -56,6 +58,7 @@ export function initProjectile(
   p.boomerang = false;
   p.returning = false;
   p.hitCount = 0;
+  p.ownerIdx = 0;
 }
 
 export function projectileHasHit(p: Projectile, uid: number): boolean {

@@ -41,6 +41,9 @@ export interface SaveData {
   cores: number;
   bestScores: Record<Difficulty, number>;
   bestWaves: Record<Difficulty, number>;
+  /** Koop-Bestwerte (getrennt vom Solo — fairer Vergleich). */
+  bestScoresCoop: Record<Difficulty, number>;
+  bestWavesCoop: Record<Difficulty, number>;
   unlockedHeroes: string[];
   unlockedWeapons: string[];
   permaUpgrades: Record<string, number>;
@@ -80,6 +83,8 @@ function defaults(): SaveData {
     cores: 0,
     bestScores: { easy: 0, normal: 0, hard: 0 },
     bestWaves: { easy: 0, normal: 0, hard: 0 },
+    bestScoresCoop: { easy: 0, normal: 0, hard: 0 },
+    bestWavesCoop: { easy: 0, normal: 0, hard: 0 },
     unlockedHeroes: ['volt'],
     unlockedWeapons: [],
     permaUpgrades: {},
@@ -126,6 +131,10 @@ function sanitize(raw: unknown): SaveData {
     if (typeof bs === 'number' && isFinite(bs)) d.bestScores[key] = Math.max(0, bs);
     const bw = (r.bestWaves as Record<string, unknown> | undefined)?.[key];
     if (typeof bw === 'number' && isFinite(bw)) d.bestWaves[key] = Math.max(0, bw);
+    const cs = (r.bestScoresCoop as Record<string, unknown> | undefined)?.[key];
+    if (typeof cs === 'number' && isFinite(cs)) d.bestScoresCoop[key] = Math.max(0, cs);
+    const cw = (r.bestWavesCoop as Record<string, unknown> | undefined)?.[key];
+    if (typeof cw === 'number' && isFinite(cw)) d.bestWavesCoop[key] = Math.max(0, cw);
   }
   if (Array.isArray(r.unlockedHeroes)) {
     d.unlockedHeroes = r.unlockedHeroes.filter((h): h is string => typeof h === 'string');

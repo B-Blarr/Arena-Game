@@ -119,7 +119,13 @@ export class StickerSystem {
           if (this.goldenWaveNr === e.wave) this.setFlag('goldenPerfect');
         }
         // Geheim: Welle mit hoechstens 5 HP ueberlebt (Koop: knappster Spieler)
-        if (this.world.player.alive && this.world.player.hp <= 5) this.setFlag('closeCall');
+        for (let i = 0; i < this.world.players.length; i++) {
+          const p = this.world.players[i];
+          if (p?.targetable && p.hp <= 5) {
+            this.setFlag('closeCall');
+            break;
+          }
+        }
         if (this.world.isCoop && e.wave >= 10) this.setFlag('coopWave10');
       }),
       events.on('bossSpawned', () => {

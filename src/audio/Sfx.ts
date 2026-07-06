@@ -56,7 +56,17 @@ export class Sfx {
       events.on('thiefEscaped', () => this.thiefWhoosh()),
       events.on('blackHole', () => this.blackHoleRumble()),
       events.on('stickerUnlocked', () => this.stickerFanfare()),
+      // Koop: Down = dumpfer Fall, Partner-Rettung = Revive-Fanfare
+      events.on('playerDowned', () => this.playerDownedThud()),
+      events.on('playerCoopRevived', () => this.revive()),
     );
+  }
+
+  /** Koop: Spieler geht zu Boden — schwerer, dumpfer Fall. */
+  private playerDownedThud(): void {
+    if (!this.engine.acquireVoice('downed', 600, 1.0)) return;
+    this.tone('sine', 130, 36, 0.45, 0.5);
+    this.noise(0.35, 0.3, 'lowpass', 500, 120, 1);
   }
 
   /**

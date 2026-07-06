@@ -8,6 +8,7 @@ import {
 } from '../config/upgrades';
 import type { EventBus } from '../core/EventBus';
 import type { World } from '../core/World';
+import type { Player } from '../entities/Player';
 import type { Rng } from '../core/Rng';
 import type { ScoreSystem } from './ScoreSystem';
 
@@ -16,16 +17,22 @@ import type { ScoreSystem } from './ScoreSystem';
  * ohne Zuruecklegen), 1 Gratis-Reroll. Ist der Pool ausgeschoepft, fuellen
  * Fallback-Karten auf — die Auswahl ist NIE leer.
  *
- * Legendaer: Basisgewicht 2 mit unsichtbarem Pity (+1 pro Angebot ohne
+ * Koop: jeder Spieler zieht aus SEINEM Stream (P1 rngUpgrades wie Solo,
+ * P2 rngUpgradesP2) mit eigenem Pity — P2s Ziehungen koennen den
+ * Solo-Daily-Stream nicht verschieben.
+ *
+ * Legendaer: Basisgewicht mit unsichtbarem Pity (+1 pro Angebot ohne
  * Fund, Reset beim ANZEIGEN). Deterministisch, weil der Pity nur von den
- * bisherigen rngUpgrades-Ziehungen abhaengt — Daily Seeds bleiben stabil.
+ * bisherigen Ziehungen des jeweiligen Streams abhaengt.
  */
 export class UpgradeSystem {
   currentOffers: UpgradeDef[] = [];
   rerollUsed = false;
   /** DEV-Testhilfe: erzwingt Legendaer im naechsten Angebot. */
   debugForceLegendary = false;
-  private legendaryPity = 0;
+  private readonly legendaryPity: [number, number] = [0, 0];
+  /** Fuer weightOf waehrend eines draw()-Laufs. */
+  private drawingFor: 0 | 1 = 0;
 
   constructor(
     private readonly world: World,
@@ -36,26 +43,28 @@ export class UpgradeSystem {
   reset(): void {
     this.currentOffers = [];
     this.rerollUsed = false;
-    this.legendaryPity = 0;
+    this.legendaryPity[0] = 0;
+    this.legendaryPity[1] = 0;
   }
 
   /** Nach Boss-Wellen: Slot 1 garantiert Rare oder besser. */
-  rollOffers(guaranteeRare: boolean): UpgradeDef[] {
+  rollOffers(guaranteeRare: boolean, playerIdx: 0 | 1 = 0): UpgradeDef[] {
     this.rerollUsed = false;
-    this.currentOffers = this.draw(guaranteeRare);
+    this.currentOffers = this.draw(guaranteeRare, playerIdx);
     return this.currentOffers;
   }
 
-  reroll(guaranteeRare: boolean): UpgradeDef[] | null {
+  reroll(guaranteeRare: boolean, playerIdx: 0 | 1 = 0): UpgradeDef[] | null {
     if (this.rerollUsed) return null;
     this.rerollUsed = true;
-    this.currentOffers = this.draw(guaranteeRare);
+    this.currentOffers = this.draw(guaranteeRare, playerIdx);
     return this.currentOffers;
   }
 
-  private draw(guaranteeRare: boolean): UpgradeDef[] {
-    const rng = this.world.rngUpgrades;
-    const player = this.world.player;
+  private draw(guaranteeRare: boolean, playerIdx: 0 | 1): UpgradeDef[] {
+    this.drawingFor = playerIdx;
+    const rng = playerIdx === 0 ? this.world.rngUpgrades : this.world.rngUpgradesP2;
+    const player = (this.world.players[playerIdx] ?? this.world.players[0]) as Player;
     const pool = UPGRADES.filter((u) => {
       if (player.stackOf(u.id) >= u.maxStacks) return false;
       // Legendaere erst ab der Wahl nach Welle 2 (erste Wahl bleibt simpel)
@@ -103,10 +112,10 @@ export class UpgradeSystem {
     // (nicht erst bei der Wahl — sonst waere er durch Ignorieren farmbar)
     const legendary = picks.find((u) => u.rarity === 'legendary');
     if (legendary) {
-      this.legendaryPity = 0;
+      this.legendaryPity[playerIdx] = 0;
       this.events.emit('legendaryRevealed', { id: legendary.id });
     } else {
-      this.legendaryPity += LEGENDARY.pityPerOffer;
+      this.legendaryPity[playerIdx] += LEGENDARY.pityPerOffer;
     }
     return picks;
   }
@@ -114,7 +123,7 @@ export class UpgradeSystem {
   private weightOf(u: UpgradeDef): number {
     if (u.rarity !== 'legendary') return RARITY_WEIGHTS[u.rarity];
     if (this.debugForceLegendary) return 100000;
-    return Math.min(RARITY_WEIGHTS.legendary + this.legendaryPity, LEGENDARY.weightCap);
+    return Math.min(RARITY_WEIGHTS.legendary + this.legendaryPity[this.drawingFor], LEGENDARY.weightCap);
   }
 
   private weightedPick(pool: UpgradeDef[], rng: Rng): UpgradeDef {
@@ -128,8 +137,9 @@ export class UpgradeSystem {
     return pool[pool.length - 1] as UpgradeDef;
   }
 
-  apply(def: UpgradeDef): void {
+  apply(def: UpgradeDef, playerIdx: 0 | 1 = 0): void {
     const world = this.world;
+    const player = (world.players[playerIdx] ?? world.players[0]) as Player;
     if (def.instant) {
       switch (def.id) {
         case 'corePack':
@@ -137,24 +147,27 @@ export class UpgradeSystem {
           this.events.emit('coresChanged', { runCores: world.runCores });
           break;
         case 'repair':
-          world.player.heal(Math.round(world.player.stats.maxHp * UV.repairFrac));
+          // Instant-Heilung gehoert dem Waehler
+          player.heal(Math.round(player.stats.maxHp * UV.repairFrac));
           break;
         case 'scoreBoost':
           this.score.addRaw(UV.scoreBoostPerWave * world.wave);
           break;
       }
     } else {
-      world.player.addStack(def.id);
+      player.addStack(def.id);
     }
-    this.events.emit('upgradeChosen', { id: def.id, rarity: def.rarity });
+    this.events.emit('upgradeChosen', { id: def.id, rarity: def.rarity, playerIndex: playerIdx });
   }
 
   /** Dauer-Bonus "Kopfstart": Lauf beginnt mit 1 zufaelligen Common-Upgrade. */
-  applyHeadstart(): UpgradeDef | null {
+  applyHeadstart(playerIdx: 0 | 1 = 0): UpgradeDef | null {
     const commons = UPGRADES.filter((u) => u.rarity === 'common');
     if (commons.length === 0) return null;
-    const pick = commons[this.world.rngUpgrades.int(commons.length)] as UpgradeDef;
-    this.world.player.addStack(pick.id);
+    const rng = playerIdx === 0 ? this.world.rngUpgrades : this.world.rngUpgradesP2;
+    const pick = commons[rng.int(commons.length)] as UpgradeDef;
+    const player = (this.world.players[playerIdx] ?? this.world.players[0]) as Player;
+    player.addStack(pick.id);
     return pick;
   }
 }

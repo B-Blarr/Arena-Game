@@ -24,6 +24,8 @@ interface ActivePopup {
 export class Popups {
   /** Setting "Schadenszahlen" an/aus. */
   damageNumbersEnabled = true;
+  /** Koop: Anzeigenamen fuer Down-Banner (setzt RunState beim Start). */
+  coopNames: [string, string] | null = null;
 
   private readonly pool: ActivePopup[] = [];
   private poolIdx = 0;
@@ -64,7 +66,8 @@ export class Popups {
         this.spawn(e.x, e.z, String(e.damage) + (e.crit ? '!' : ''), e.crit ? 'crit' : '');
       }),
       events.on('playerHealed', (e) => {
-        this.spawn(this.world.player.x, this.world.player.z, `+${e.amount}`, 'heal-pop');
+        const p = this.world.players[e.playerIndex] ?? this.world.player;
+        this.spawn(p.x, p.z, `+${e.amount}`, 'heal-pop');
       }),
       events.on('comboChanged', (e) => {
         // Popup nur an den Stufen-Schwellen
@@ -117,6 +120,12 @@ export class Popups {
         this.stickerQueue.push(e.id);
         if (!this.stickerBusy) this.nextStickerToast();
       }),
+      // Koop: Down/Rettung gross ankuendigen (Kinder sollen sofort reagieren)
+      events.on('playerDowned', (e) => {
+        const name = this.coopNames?.[e.playerIndex as 0 | 1] ?? `Spieler ${e.playerIndex + 1}`;
+        this.banner(STR.downedBanner(name), 'boss-banner');
+      }),
+      events.on('playerCoopRevived', () => this.banner(STR.coopRevivedBanner, 'gold-banner')),
     );
   }
 

@@ -12,7 +12,7 @@ import {
 import { ELITE, ENEMIES, type EnemyDef } from '../config/enemies';
 import { BOSS_ROTATION } from '../config/bosses';
 import { HEROES, type HeroDef } from '../config/heroes';
-import { ARENA_RADIUS, PICKUPS } from '../config/balance';
+import { ARENA_RADIUS, COOP, PICKUPS, POOLS } from '../config/balance';
 import { UPGRADE_VALUES as UV } from '../config/upgrades';
 import { PICKUP_CORE } from '../entities/Pickup';
 import type { World } from '../core/World';
@@ -28,13 +28,43 @@ const flashColor = new Color(5, 5, 5);
 const shieldColor = new Color(2.2, 3.2, 3.8);
 const streakColorEnemy = new Color(0xff3b30).multiplyScalar(1.6);
 const MAX_ORBS = 3;
-const STREAK_CAP = 384;
+const STREAK_CAP = POOLS.playerProjectiles + POOLS.enemyProjectiles;
 const ELITE_RING_CAP = 64;
 const GHOST_COUNT = 3;
 const GHOST_LIFE = 0.25;
 const BEAM_TIME = 0.35;
 /** Part-Slots pro Helden-Figur (Rumpf + 2 Anbauten + Triebwerk). */
 const HERO_PART_SLOTS = 4;
+/** Maximal 2 Spieler-Figuren (Koop). */
+const MAX_FIGURES = 2;
+
+/** Alle Szene-Objekte EINER Spieler-Figur (P1/P2 identisch aufgebaut). */
+interface PlayerFigure {
+  group: Group;
+  parts: Mesh[];
+  ring: Mesh;
+  blob: Mesh;
+  cloneGroup: Group;
+  cloneParts: Mesh[];
+  bodyMat: MeshBasicMaterial;
+  engineMat: MeshBasicMaterial;
+  cloneBodyMat: MeshBasicMaterial;
+  ringBase: number;
+  ghostRotX: number;
+  ghostY: number;
+  ghostMeshes: Mesh[];
+  ghostMats: MeshBasicMaterial[];
+  ghostLife: number[];
+  ghostCursor: number;
+  ghostSpawnTimer: number;
+  orbMeshes: Mesh[];
+  /** Koop-Down: blasser Zonen-Ring ("hier hinstellen") + Fortschritts-Ring. */
+  reviveZone: Mesh;
+  reviveProg: Mesh;
+  reviveProgMat: MeshBasicMaterial;
+  /** Aktuelle Basisfarbe (Held/Farbvariante) fuer Dimmen + Muzzle. */
+  bodyColor: number;
+}
 
 /**
  * Schreibt pro Frame die Optik aller dynamischen Entities:
@@ -54,30 +84,18 @@ export class InstancedRenderer {
   private readonly streaks: InstancedMesh;
   private readonly eliteRings: InstancedMesh;
   private readonly pickupMeshes: InstancedMesh[] = [];
-  private readonly orbMeshes: Mesh[] = [];
-  private readonly playerGroup: Group;
-  private readonly playerParts: Mesh[] = [];
-  private readonly playerRing: Mesh;
-  private readonly playerBlob: Mesh;
-  private readonly cloneGroup: Group;
-  private readonly cloneParts: Mesh[] = [];
-  private readonly bodyMat: MeshBasicMaterial;
-  private readonly engineMat: MeshBasicMaterial;
-  private readonly cloneBodyMat: MeshBasicMaterial;
-  /** Helden-abhaengige Render-Parameter (setHero). */
-  private ringBase = 1;
-  /** Trail-Farbe der Spieler-Projektile (folgt Held/Farbvariante). */
-  private readonly streakPlayerColor = new Color(0x00e5ff).multiplyScalar(1.8);
-  private ghostRotX = Math.PI / 2;
-  private ghostY = 0.55;
+  /** Zwei komplette Spieler-Figuren (Solo nutzt nur Index 0). */
+  private readonly figures: PlayerFigure[] = [];
+  /** Koop-Revive-Fortschritt [0..1] je Figur — RunState schreibt pro Frame. */
+  readonly reviveProgress: [number, number] = [0, 0];
+  /** Trail-Farben der Spieler-Projektile je Owner (folgt Held/Farbvariante). */
+  private readonly streakColors: [Color, Color] = [
+    new Color(0x00e5ff).multiplyScalar(1.8),
+    new Color(0xff3df2).multiplyScalar(1.8),
+  ];
   private readonly bossGroups = new Map<string, Group>();
   private readonly bossWireMats = new Map<string, MeshBasicMaterial>();
   private readonly miniMeshes: Mesh[] = [];
-  private readonly ghostMeshes: Mesh[] = [];
-  private readonly ghostMats: MeshBasicMaterial[] = [];
-  private readonly ghostLife: number[] = [];
-  private ghostCursor = 0;
-  private ghostSpawnTimer = 0;
   private readonly beamMesh: Mesh;
   private readonly beamMat: MeshBasicMaterial;
   private beamTimer = 0;
@@ -92,7 +110,7 @@ export class InstancedRenderer {
   ) {
     // Gegner: ein InstancedMesh pro Typ (eigene Form, Farbe via instanceColor)
     for (const def of ENEMIES) {
-      const mesh = new InstancedMesh(assets.geometryFor(def.shape), assets.matEnemy, 192);
+      const mesh = new InstancedMesh(assets.geometryFor(def.shape), assets.matEnemy, POOLS.enemies);
       mesh.instanceMatrix.setUsage(DynamicDrawUsage);
       // instanceColor-Buffer sofort anlegen und als dynamisch markieren
       // (sonst erzeugt three ihn beim ersten setColorAt mit StaticDrawUsage)
@@ -104,8 +122,8 @@ export class InstancedRenderer {
       this.enemyMeshes.push(mesh);
     }
 
-    this.playerProj = new InstancedMesh(assets.geoPlayerProjectile, assets.matPlayerProjectile, 256);
-    this.enemyProj = new InstancedMesh(assets.geoEnemyProjectile, assets.matEnemyProjectile, 128);
+    this.playerProj = new InstancedMesh(assets.geoPlayerProjectile, assets.matPlayerProjectile, POOLS.playerProjectiles);
+    this.enemyProj = new InstancedMesh(assets.geoEnemyProjectile, assets.matEnemyProjectile, POOLS.enemyProjectiles);
     for (const m of [this.playerProj, this.enemyProj]) {
       m.instanceMatrix.setUsage(DynamicDrawUsage);
       m.frustumCulled = false;
@@ -116,7 +134,7 @@ export class InstancedRenderer {
     // Projektil-Streaks: EIN additives Mesh fuer Spieler (cyan) + Gegner (rot)
     this.streaks = new InstancedMesh(assets.geoStreak, assets.matStreak, STREAK_CAP);
     this.streaks.instanceMatrix.setUsage(DynamicDrawUsage);
-    this.streaks.setColorAt(0, this.streakPlayerColor);
+    this.streaks.setColorAt(0, this.streakColors[0]);
     this.streaks.instanceColor?.setUsage(DynamicDrawUsage);
     this.streaks.frustumCulled = false;
     this.streaks.count = 0;
@@ -140,64 +158,9 @@ export class InstancedRenderer {
       this.pickupMeshes.push(m);
     }
 
-    // Schutz-Orbs
-    for (let k = 0; k < MAX_ORBS; k++) {
-      const orb = new Mesh(assets.geoOrb, assets.matOrb);
-      orb.visible = false;
-      scene.add(orb);
-      this.orbMeshes.push(orb);
-    }
-
-    // Spieler: Part-Slot-Figur (pro Held eigene Silhouette) + Ring + Blob
-    this.bodyMat = assets.makeGlow(0x00e5ff, 1.9);
-    this.engineMat = assets.makeGlowTransparent(0xbff8ff, 2.6, 0.8, true);
-    this.playerGroup = new Group();
-    for (let i = 0; i < HERO_PART_SLOTS; i++) {
-      const part = new Mesh(assets.geoPlayerBody, this.bodyMat);
-      part.visible = false;
-      this.playerGroup.add(part);
-      this.playerParts.push(part);
-    }
-    this.playerRing = new Mesh(assets.geoPlayerRing, assets.makeGlow(0xffffff, 1.4));
-    this.playerRing.rotation.x = Math.PI / 2;
-    this.playerRing.position.y = 0.25;
-    this.playerGroup.add(this.playerRing);
-    scene.add(this.playerGroup);
-    this.playerBlob = new Mesh(assets.geoBlob, assets.matBlob);
-    this.playerBlob.rotation.x = -Math.PI / 2;
-    this.playerBlob.position.y = 0.02;
-    scene.add(this.playerBlob);
-
-    // Spiegelklon (legendaeres Upgrade): transluzenter Geist hinter dem Spieler
-    this.cloneGroup = new Group();
-    this.cloneBodyMat = assets.makeGlowTransparent(0x00e5ff, 1.6, 0.35, true);
-    for (let i = 0; i < HERO_PART_SLOTS; i++) {
-      const part = new Mesh(assets.geoPlayerBody, this.cloneBodyMat);
-      part.visible = false;
-      this.cloneGroup.add(part);
-      this.cloneParts.push(part);
-    }
-    const cloneRing = new Mesh(assets.geoPlayerRing, assets.makeGlowTransparent(0xffffff, 1.2, 0.22, true));
-    cloneRing.rotation.x = Math.PI / 2;
-    cloneRing.position.y = 0.25;
-    this.cloneGroup.add(cloneRing);
-    this.cloneGroup.visible = false;
-    scene.add(this.cloneGroup);
-
-    // Dash-Afterimages: 3 gepoolte Geister mit eigenem Fade-Material.
-    // Euler-Order YXZ: erst Yaw, dann Kippen — wie die Spieler-Group-
-    // Komposition; mit Default-XYZ zeigten die Kegel immer nach Welt-+Z.
-    for (let i = 0; i < GHOST_COUNT; i++) {
-      const mat = assets.makeGlowTransparent(0x00e5ff, 1.6, 0.5, true);
-      const ghost = new Mesh(assets.geoPlayerBody, mat);
-      ghost.rotation.order = 'YXZ';
-      ghost.rotation.x = Math.PI / 2;
-      ghost.visible = false;
-      scene.add(ghost);
-      this.ghostMeshes.push(ghost);
-      this.ghostMats.push(mat);
-      this.ghostLife.push(0);
-    }
+    // Zwei komplette Spieler-Figuren (Figur, Ring, Blob, Klon, Ghosts,
+    // Orbs, Revive-Ringe) — alles statisch vorgebaut, nie zur Laufzeit
+    for (let f = 0; f < MAX_FIGURES; f++) this.figures.push(this.buildFigure());
 
     // Orbital-Laser: goldener Saeulen-Beam
     this.beamMat = assets.makeGlowTransparent(0xffc83d, 2.2, 0.7, true);
@@ -229,12 +192,16 @@ export class InstancedRenderer {
       this.miniMeshes.push(m);
     }
 
-    // Muzzle-Flash: EIN gepooltes PointLight, Timer wird nur zurueckgesetzt
+    // Muzzle-Flash: EIN gepooltes PointLight, positioniert aus dem
+    // Event-Payload (klebt im Koop nicht mehr an Spieler 1)
     this.muzzle = new PointLight(0x00e5ff, 0, 6);
     scene.add(this.muzzle);
     this.unsubs.push(
-      events.on('shotFired', () => {
+      events.on('shotFired', (e) => {
         this.muzzleTimer = 0.05;
+        this.muzzle.position.set(e.x + e.dirX * 0.9, 0.7, e.z + e.dirZ * 0.9);
+        const fig = this.figures[e.playerIndex];
+        if (fig) this.muzzle.color.set(fig.bodyColor);
       }),
       events.on('orbitalStrike', (e) => {
         this.beamTimer = BEAM_TIME;
@@ -242,9 +209,107 @@ export class InstancedRenderer {
       }),
     );
 
-    // Default-Silhouette (Menue-Backdrop zeigt sonst nichts)
+    // Default-Silhouetten (Menue-Backdrop zeigt sonst nichts)
     const firstHero = HEROES[0];
-    if (firstHero) this.setHero(firstHero);
+    if (firstHero) {
+      this.setHero(firstHero);
+      this.setHero(firstHero, undefined, 1);
+    }
+  }
+
+  /** Baut eine komplette Spieler-Figur (einmalig im Konstruktor). */
+  private buildFigure(): PlayerFigure {
+    const assets = this.assets;
+    const scene = this.scene;
+    const bodyMat = assets.makeGlow(0x00e5ff, 1.9);
+    const engineMat = assets.makeGlowTransparent(0xbff8ff, 2.6, 0.8, true);
+    const group = new Group();
+    const parts: Mesh[] = [];
+    for (let i = 0; i < HERO_PART_SLOTS; i++) {
+      const part = new Mesh(assets.geoPlayerBody, bodyMat);
+      part.visible = false;
+      group.add(part);
+      parts.push(part);
+    }
+    const ring = new Mesh(assets.geoPlayerRing, assets.makeGlow(0xffffff, 1.4));
+    ring.rotation.x = Math.PI / 2;
+    ring.position.y = 0.25;
+    group.add(ring);
+    group.visible = false;
+    scene.add(group);
+    const blob = new Mesh(assets.geoBlob, assets.matBlob);
+    blob.rotation.x = -Math.PI / 2;
+    blob.position.y = 0.02;
+    blob.visible = false;
+    scene.add(blob);
+
+    // Spiegelklon (legendaeres Upgrade): transluzenter Geist hinter dem Spieler
+    const cloneGroup = new Group();
+    const cloneBodyMat = assets.makeGlowTransparent(0x00e5ff, 1.6, 0.35, true);
+    const cloneParts: Mesh[] = [];
+    for (let i = 0; i < HERO_PART_SLOTS; i++) {
+      const part = new Mesh(assets.geoPlayerBody, cloneBodyMat);
+      part.visible = false;
+      cloneGroup.add(part);
+      cloneParts.push(part);
+    }
+    const cloneRing = new Mesh(assets.geoPlayerRing, assets.makeGlowTransparent(0xffffff, 1.2, 0.22, true));
+    cloneRing.rotation.x = Math.PI / 2;
+    cloneRing.position.y = 0.25;
+    cloneGroup.add(cloneRing);
+    cloneGroup.visible = false;
+    scene.add(cloneGroup);
+
+    // Dash-Afterimages: 3 gepoolte Geister mit eigenem Fade-Material.
+    // Euler-Order YXZ: erst Yaw, dann Kippen — wie die Spieler-Group-
+    // Komposition; mit Default-XYZ zeigten die Kegel immer nach Welt-+Z.
+    const ghostMeshes: Mesh[] = [];
+    const ghostMats: MeshBasicMaterial[] = [];
+    const ghostLife: number[] = [];
+    for (let i = 0; i < GHOST_COUNT; i++) {
+      const mat = assets.makeGlowTransparent(0x00e5ff, 1.6, 0.5, true);
+      const ghost = new Mesh(assets.geoPlayerBody, mat);
+      ghost.rotation.order = 'YXZ';
+      ghost.rotation.x = Math.PI / 2;
+      ghost.visible = false;
+      scene.add(ghost);
+      ghostMeshes.push(ghost);
+      ghostMats.push(mat);
+      ghostLife.push(0);
+    }
+
+    // Schutz-Orbs (pro Figur eigene — im Koop kreisen beide Wolken)
+    const orbMeshes: Mesh[] = [];
+    for (let k = 0; k < MAX_ORBS; k++) {
+      const orb = new Mesh(assets.geoOrb, assets.matOrb);
+      orb.visible = false;
+      scene.add(orb);
+      orbMeshes.push(orb);
+    }
+
+    // Koop-Down: Zonen-Ring ("hier hinstellen") + goldener Fortschritts-Ring
+    const zoneMat = assets.makeGlowTransparent(0xffffff, 1.2, 0.35, true);
+    const reviveZone = new Mesh(assets.geoRing, zoneMat);
+    reviveZone.rotation.x = -Math.PI / 2;
+    reviveZone.position.y = 0.04;
+    reviveZone.scale.setScalar(COOP.revive.radius);
+    reviveZone.visible = false;
+    scene.add(reviveZone);
+    const reviveProgMat = assets.makeGlowTransparent(0xffc83d, 1.8, 0.6, true);
+    const reviveProg = new Mesh(assets.geoRing, reviveProgMat);
+    reviveProg.rotation.x = -Math.PI / 2;
+    reviveProg.position.y = 0.05;
+    reviveProg.visible = false;
+    scene.add(reviveProg);
+
+    return {
+      group, parts, ring, blob, cloneGroup, cloneParts,
+      bodyMat, engineMat, cloneBodyMat,
+      ringBase: 1, ghostRotX: Math.PI / 2, ghostY: 0.55,
+      ghostMeshes, ghostMats, ghostLife, ghostCursor: 0, ghostSpawnTimer: 0,
+      orbMeshes, reviveZone, reviveProg, reviveProgMat,
+      bodyColor: 0x00e5ff,
+    };
   }
 
   private heroGeo(key: HeroPartGeo) {
@@ -261,31 +326,33 @@ export class InstancedRenderer {
   }
 
   /**
-   * Held setzen: eigene Silhouette (Part-Slots) + Farben fuer Figur,
-   * Spiegelklon, Dash-Geister, Projektil-Trails und Muzzle — alles
+   * Held fuer eine Figur setzen: eigene Silhouette (Part-Slots) + Farben
+   * fuer Figur, Spiegelklon, Dash-Geister, Projektil-Trails — alles
    * allokationsfrei (Geometrie-Tausch). Optionale Farbvariante aus dem
    * Sticker-Album uebersteuert Rumpf-/Trail-/Triebwerksfarbe.
    */
-  setHero(hero: HeroDef, colorway?: ColorwayDef): void {
+  setHero(hero: HeroDef, colorway?: ColorwayDef, figureIdx: 0 | 1 = 0): void {
+    const fig = this.figures[figureIdx];
+    if (!fig) return;
     const shape = (HERO_SHAPES[hero.id] ?? HERO_SHAPES.volt) as HeroShape;
     const body = colorway?.body ?? hero.color;
     const engine = colorway?.engine ?? shape.engineColor;
-    this.bodyMat.color.set(body).multiplyScalar(1.9);
-    this.cloneBodyMat.color.set(body).multiplyScalar(1.6);
-    for (const mat of this.ghostMats) mat.color.set(body).multiplyScalar(1.6);
-    this.engineMat.color.set(engine).multiplyScalar(shape.engineIntensity);
-    this.streakPlayerColor.set(body).multiplyScalar(1.8);
-    this.muzzle.color.set(body);
-    this.ringBase = shape.ringScale;
-    this.playerBlob.scale.setScalar(shape.blobScale);
-    this.ghostRotX = shape.hullRotX;
-    this.ghostY = shape.hullY;
+    fig.bodyColor = body;
+    fig.bodyMat.color.set(body).multiplyScalar(1.9);
+    fig.cloneBodyMat.color.set(body).multiplyScalar(1.6);
+    for (const mat of fig.ghostMats) mat.color.set(body).multiplyScalar(1.6);
+    fig.engineMat.color.set(engine).multiplyScalar(shape.engineIntensity);
+    (this.streakColors[figureIdx] as Color).set(body).multiplyScalar(1.8);
+    fig.ringBase = shape.ringScale;
+    fig.blob.scale.setScalar(shape.blobScale);
+    fig.ghostRotX = shape.hullRotX;
+    fig.ghostY = shape.hullY;
 
     // Dash-Geister zeigen nur den Rumpf (parts[0]) des aktiven Helden
     const hull = shape.parts[0];
     if (hull) {
       const hullGeo = this.heroGeo(hull.geo);
-      for (const ghost of this.ghostMeshes) ghost.geometry = hullGeo;
+      for (const ghost of fig.ghostMeshes) ghost.geometry = hullGeo;
     }
 
     const apply = (slots: Mesh[], isClone: boolean): void => {
@@ -304,12 +371,12 @@ export class InstancedRenderer {
         if (part.sx !== undefined) slot.scale.set(part.sx, part.sy ?? 1, part.sz ?? 1);
         else slot.scale.setScalar(part.scale ?? 1);
         slot.material = part.mat === 'engine'
-          ? this.engineMat
-          : (isClone ? this.cloneBodyMat : this.bodyMat);
+          ? fig.engineMat
+          : (isClone ? fig.cloneBodyMat : fig.bodyMat);
       }
     };
-    apply(this.playerParts, false);
-    apply(this.cloneParts, true);
+    apply(fig.parts, false);
+    apply(fig.cloneParts, true);
   }
 
   /** simRunning=false (Pause/Upgrade/Menue): keine neuen Dash-Ghosts spawnen. */
@@ -395,7 +462,10 @@ export class InstancedRenderer {
       if (!p.boomerang) dummy.rotation.y = Math.atan2(p.vx, p.vz);
       dummy.updateMatrix();
       this.playerProj.setMatrixAt(i, dummy.matrix);
-      streakIdx = this.writeStreak(streakIdx, p.vx, p.vz, x, z, rScale, this.streakPlayerColor);
+      streakIdx = this.writeStreak(
+        streakIdx, p.vx, p.vz, x, z, rScale,
+        (this.streakColors[p.ownerIdx] ?? this.streakColors[0]) as Color,
+      );
     }
     this.playerProj.count = pp.count;
     this.playerProj.instanceMatrix.needsUpdate = true;
@@ -477,34 +547,86 @@ export class InstancedRenderer {
   }
 
   private renderPlayer(world: World, alpha: number, rawDt: number, simRunning: boolean): void {
-    const p = world.player;
+    for (let fi = 0; fi < MAX_FIGURES; fi++) {
+      const fig = this.figures[fi] as PlayerFigure;
+      const p = world.players[fi];
+      // Figur 2 nur im Koop; in der Menue-Vorschau nur Figur 1
+      const inUse = !!p && !(fi > 0 && this.heroPreview);
+      if (!p || !inUse) {
+        this.hideFigure(fig);
+        continue;
+      }
+      this.renderFigure(fig, fi, p, world, alpha, rawDt, simRunning);
+    }
+  }
+
+  private hideFigure(fig: PlayerFigure): void {
+    fig.group.visible = false;
+    fig.blob.visible = false;
+    fig.cloneGroup.visible = false;
+    fig.reviveZone.visible = false;
+    fig.reviveProg.visible = false;
+    for (const o of fig.orbMeshes) o.visible = false;
+  }
+
+  private renderFigure(
+    fig: PlayerFigure,
+    fi: number,
+    p: World['players'][number],
+    world: World,
+    alpha: number,
+    rawDt: number,
+    simRunning: boolean,
+  ): void {
     const x = lerp(p.prevX, p.x, alpha);
     const z = lerp(p.prevZ, p.z, alpha);
-    this.playerGroup.position.set(x, 0, z);
-    this.playerGroup.rotation.y = Math.atan2(p.faceX, p.faceZ);
+    fig.group.position.set(x, 0, z);
+    fig.group.rotation.y = Math.atan2(p.faceX, p.faceZ);
     // Dash: Streckung in Bewegungsrichtung
     const stretch = p.isDashing ? 1.35 : 1;
-    this.playerGroup.scale.set(1, 1, stretch);
+    fig.group.scale.set(1, 1, stretch);
     // dezenter Idle-Puls des Neon-Rings (ringBase = Helden-Skalierung)
-    this.playerRing.scale.setScalar(this.ringBase * (1 + 0.04 * Math.sin(world.elapsed * 3)));
+    fig.ring.scale.setScalar(fig.ringBase * (1 + 0.04 * Math.sin(world.elapsed * 3)));
     // Triebwerks-Flackern: beim Dash volle Flamme
-    this.engineMat.opacity = p.isDashing ? 1.0 : 0.6 + 0.2 * Math.sin(world.elapsed * 22);
+    fig.engineMat.opacity = p.isDashing ? 1.0 : 0.6 + 0.2 * Math.sin(world.elapsed * 22);
+
+    // Koop-Down: Figur kippt, sinkt und dimmt; Triebwerk aus;
+    // Zonen-Ring zeigt Kindern "hier hinstellen", Gold-Ring den Fortschritt
+    if (p.downed) {
+      fig.group.rotation.x = 1.15;
+      fig.group.position.y = -0.2;
+      fig.bodyMat.color.set(fig.bodyColor).multiplyScalar(0.55);
+      fig.engineMat.opacity = 0;
+      fig.reviveZone.position.set(x, 0.04, z);
+      fig.reviveZone.visible = true;
+      const prog = this.reviveProgress[fi as 0 | 1];
+      fig.reviveProg.position.set(x, 0.05, z);
+      fig.reviveProg.scale.setScalar(Math.max(0.001, COOP.revive.radius * prog));
+      fig.reviveProgMat.opacity = 0.65 * this.fxIntensity;
+      fig.reviveProg.visible = prog > 0.01;
+    } else {
+      fig.group.rotation.x = 0;
+      fig.group.position.y = 0;
+      fig.bodyMat.color.set(fig.bodyColor).multiplyScalar(1.9);
+      fig.reviveZone.visible = false;
+      fig.reviveProg.visible = false;
+    }
 
     // Unverwundbarkeits-Blinken: 8 Hz, 60 % sichtbar.
     // Helden-Vorschau im Menue: immer sichtbar (alive vom letzten Run egal)
     let visible = this.heroPreview || p.alive;
-    if (!this.heroPreview && p.alive && p.iFrames > 0 && !p.isDashing) {
+    if (!this.heroPreview && p.alive && !p.downed && p.iFrames > 0 && !p.isDashing) {
       visible = (world.elapsed * 8) % 1 < 0.6;
     }
-    this.playerGroup.visible = visible;
-    this.playerBlob.position.set(x, 0.02, z);
-    this.playerBlob.visible = this.heroPreview || p.alive;
+    fig.group.visible = visible;
+    fig.blob.position.set(x, 0.02, z);
+    fig.blob.visible = this.heroPreview || p.alive;
 
     // Spiegelklon: Geist spiegelverkehrt hinter dem Spieler
     // (in die Arena geclampt, wie der Feuer-Ursprung im CombatSystem);
     // in der Menue-Vorschau nie (Run-Rest des letzten Builds)
-    const hasClone = !this.heroPreview && p.alive && p.stats.cloneDamageFrac > 0;
-    this.cloneGroup.visible = hasClone;
+    const hasClone = !this.heroPreview && p.targetable && p.stats.cloneDamageFrac > 0;
+    fig.cloneGroup.visible = hasClone;
     if (hasClone) {
       let cx = x - p.faceX * UV.mirrorCloneOffset;
       let cz = z - p.faceZ * UV.mirrorCloneOffset;
@@ -514,39 +636,39 @@ export class InstancedRenderer {
         cx = (cx / cd) * maxR;
         cz = (cz / cd) * maxR;
       }
-      this.cloneGroup.position.set(cx, 0, cz);
-      this.cloneGroup.rotation.y = this.playerGroup.rotation.y;
+      fig.cloneGroup.position.set(cx, 0, cz);
+      fig.cloneGroup.rotation.y = fig.group.rotation.y;
     }
 
     // Dash-Afterimages: waehrend des Dashs alle 40 ms ein Schnappschuss
     // (nur bei laufender Sim — sonst pulsiert es hinter dem Pause-Screen)
-    this.ghostSpawnTimer -= rawDt;
-    if (simRunning && p.alive && p.isDashing && this.ghostSpawnTimer <= 0) {
-      this.ghostSpawnTimer = 0.04;
-      const ghost = this.ghostMeshes[this.ghostCursor] as Mesh;
-      ghost.position.set(x, this.ghostY, z);
-      ghost.rotation.set(this.ghostRotX, this.playerGroup.rotation.y, 0);
+    fig.ghostSpawnTimer -= rawDt;
+    if (simRunning && p.targetable && p.isDashing && fig.ghostSpawnTimer <= 0) {
+      fig.ghostSpawnTimer = 0.04;
+      const ghost = fig.ghostMeshes[fig.ghostCursor] as Mesh;
+      ghost.position.set(x, fig.ghostY, z);
+      ghost.rotation.set(fig.ghostRotX, fig.group.rotation.y, 0);
       ghost.visible = true;
-      this.ghostLife[this.ghostCursor] = GHOST_LIFE;
-      this.ghostCursor = (this.ghostCursor + 1) % GHOST_COUNT;
+      fig.ghostLife[fig.ghostCursor] = GHOST_LIFE;
+      fig.ghostCursor = (fig.ghostCursor + 1) % GHOST_COUNT;
     }
     for (let i = 0; i < GHOST_COUNT; i++) {
-      const life = this.ghostLife[i] as number;
+      const life = fig.ghostLife[i] as number;
       if (life <= 0) continue;
       const next = life - rawDt;
-      this.ghostLife[i] = next;
-      const ghost = this.ghostMeshes[i] as Mesh;
+      fig.ghostLife[i] = next;
+      const ghost = fig.ghostMeshes[i] as Mesh;
       if (next <= 0) {
         ghost.visible = false;
       } else {
-        (this.ghostMats[i] as MeshBasicMaterial).opacity = 0.5 * (next / GHOST_LIFE) * this.fxIntensity;
+        (fig.ghostMats[i] as MeshBasicMaterial).opacity = 0.5 * (next / GHOST_LIFE) * this.fxIntensity;
       }
     }
 
     // Schutz-Orbs (in der Menue-Vorschau ausgeblendet)
-    const orbCount = this.heroPreview ? 0 : Math.min(p.stats.orbCount, MAX_ORBS);
+    const orbCount = this.heroPreview || p.downed ? 0 : Math.min(p.stats.orbCount, MAX_ORBS);
     for (let k = 0; k < MAX_ORBS; k++) {
-      const orb = this.orbMeshes[k] as Mesh;
+      const orb = fig.orbMeshes[k] as Mesh;
       if (k < orbCount && p.alive) {
         const angle = p.orbAngle + (k / orbCount) * Math.PI * 2;
         orb.position.set(
@@ -598,10 +720,10 @@ export class InstancedRenderer {
   }
 
   private renderMuzzle(world: World, rawDt: number): void {
+    void world;
     if (this.muzzleTimer > 0) {
+      // Position setzt der shotFired-Handler (Koop: am jeweiligen Schuetzen)
       this.muzzleTimer -= rawDt;
-      const p = world.player;
-      this.muzzle.position.set(p.x + p.faceX * 0.9, 0.7, p.z + p.faceZ * 0.9);
       this.muzzle.intensity = 3 * Math.max(0, this.muzzleTimer / 0.05);
     } else {
       this.muzzle.intensity = 0;
@@ -630,13 +752,16 @@ export class InstancedRenderer {
     for (const mesh of this.pickupMeshes) mesh.count = 0;
     for (const group of this.bossGroups.values()) group.visible = false;
     for (const m of this.miniMeshes) m.visible = false;
-    for (const o of this.orbMeshes) o.visible = false;
-    this.cloneGroup.visible = false;
-    for (let i = 0; i < GHOST_COUNT; i++) {
-      this.ghostLife[i] = 0;
-      (this.ghostMeshes[i] as Mesh).visible = false;
+    for (const fig of this.figures) {
+      this.hideFigure(fig);
+      for (let i = 0; i < GHOST_COUNT; i++) {
+        fig.ghostLife[i] = 0;
+        (fig.ghostMeshes[i] as Mesh).visible = false;
+      }
+      fig.ghostSpawnTimer = 0;
     }
-    this.ghostSpawnTimer = 0;
+    this.reviveProgress[0] = 0;
+    this.reviveProgress[1] = 0;
     this.beamTimer = 0;
     this.beamMesh.visible = false;
     this.muzzleTimer = 0;

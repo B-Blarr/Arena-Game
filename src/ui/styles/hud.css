@@ -472,3 +472,66 @@ body.reduce-fx .hud-combo.c3 .hud-combo-ring {
   color: var(--text-1);
   font-weight: 700;
 }
+
+/* ---------- Koop-HUD: zwei kompakte Spieler-Panels ---------- */
+.hud-hp-name {
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--text-2);
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Solo: Namensfeld leer und unsichtbar (Layout unveraendert) */
+.hud-hp-name:empty { display: none; }
+
+#hud.coop .hud-hp.p1 {
+  left: 24px;
+  transform: none;
+}
+
+#hud.coop .hud-hp-bar {
+  width: 220px;
+}
+
+/* Dash-Ringe wandern im Koop UEBER die Balken (keine Ueberlappung) */
+#hud.coop .hud-dash.p1 {
+  left: 24px;
+  right: auto;
+  bottom: 92px;
+  transform: none;
+}
+
+.hud-hp.p2 {
+  right: 24px;
+  left: auto;
+  transform: none;
+}
+
+.hud-dash.p2 {
+  right: 24px;
+  left: auto;
+  bottom: 92px;
+  transform: none;
+}
+
+.hud-hp.p2 .hud-hp-name { color: var(--accent-2); }
+#hud.coop .hud-hp.p1 .hud-hp-name { color: var(--accent); }
+
+/* Down-Zustand: Panel blinkt, Balken zeigt den Revive-Fortschritt in Gold */
+.hud-hp.downed .hud-hp-text {
+  color: var(--gold);
+  animation: hud-downed-blink 0.8s ease-in-out infinite;
+}
+
+.hud-hp.downed .hud-hp-fill {
+  background: var(--gold);
+}
+
+@keyframes hud-downed-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}

@@ -3,6 +3,7 @@ import { ELITE, ENEMY_TANK } from '../config/enemies';
 import type { EventBus } from '../core/EventBus';
 import type { World } from '../core/World';
 import type { Enemy } from '../entities/Enemy';
+import type { Player } from '../entities/Player';
 import { initPickup, PICKUP_CAPSULE, PICKUP_CORE, PICKUP_HEART, PICKUP_MAGNET } from '../entities/Pickup';
 
 /**
@@ -26,10 +27,9 @@ export class PickupSystem {
   dropFrom(e: Enemy): void {
     const world = this.world;
     const rng = world.rngDrops;
-    const player = world.player;
 
-    // Kern (Goldene Welle: doppelt)
-    const coreChance = e.coreChance * player.stats.coreChanceMult;
+    // Kern (Goldene Welle: doppelt); Koop: bester Kern-Chance-Mult im Team
+    const coreChance = e.coreChance * world.maxCoreChanceMult();
     if (rng.chance(Math.min(coreChance, 0.95))) this.spawnCoreMaybeGolden(e.x, e.z);
 
     // Tank: garantiert Kern (75 %) oder Herz (25 %) zusaetzlich
@@ -44,9 +44,10 @@ export class PickupSystem {
       if (rng.chance(ELITE.dropHeartChance)) this.spawn(PICKUP_HEART, e.x, e.z + 0.5);
     }
 
-    // Herz mit Mitleids-Regel und Anti-Unsterblichkeits-Nerf
+    // Herz mit Mitleids-Regel (Koop: der knappste Spieler zaehlt) und
+    // Anti-Unsterblichkeits-Nerf
     let heartChance = world.mods.heartChance;
-    if (player.hp < player.stats.maxHp * PICKUPS.heartPityHpFrac) heartChance *= PICKUPS.heartPityMult;
+    if (world.minAliveHpFrac() < PICKUPS.heartPityHpFrac) heartChance *= PICKUPS.heartPityMult;
     if (world.wave >= PICKUPS.heartNerfWave) heartChance *= 0.5;
     if (this.countHearts() < PICKUPS.maxHearts && rng.chance(heartChance)) {
       this.spawn(PICKUP_HEART, e.x - 0.3, e.z + 0.3);
@@ -119,7 +120,6 @@ export class PickupSystem {
 
   update(dt: number): void {
     const world = this.world;
-    const player = world.player;
     const pool = world.pickups;
     if (this.magnetTimer > 0) this.magnetTimer -= dt;
 
@@ -135,13 +135,15 @@ export class PickupSystem {
         continue;
       }
 
+      // Koop: der NAECHSTE angreifbare Spieler ist Sog-Ziel und Einsammler
+      const player = world.nearestAlivePlayer(p.x, p.z);
       const dx = player.x - p.x;
       const dz = player.z - p.z;
       const dist = Math.hypot(dx, dz);
 
-      // Einsammeln
+      // Einsammeln (Herz heilt den, der es beruehrt)
       if (dist < PICKUPS.collectDistance + 0.2) {
-        this.collect(p.kind, p.x, p.z);
+        this.collect(p.kind, p.x, p.z, player);
         pool.despawn(i);
         continue;
       }
@@ -182,17 +184,17 @@ export class PickupSystem {
     }
   }
 
-  private collect(kind: number, x: number, z: number): void {
+  private collect(kind: number, x: number, z: number, collector: Player): void {
     const world = this.world;
     if (kind === PICKUP_CORE) {
       world.runCores += 1;
       this.events.emit('pickupCollected', { kind: 'core', x, z, value: 1 });
       this.events.emit('coresChanged', { runCores: world.runCores });
     } else if (kind === PICKUP_HEART) {
-      world.player.heal(PICKUPS.heartHeal);
+      collector.heal(PICKUPS.heartHeal);
       this.events.emit('pickupCollected', { kind: 'heart', x, z, value: PICKUPS.heartHeal });
     } else if (kind === PICKUP_CAPSULE) {
-      this.openCapsule(x, z);
+      this.openCapsule(x, z, collector);
     } else {
       this.magnetTimer = PICKUPS.magnetDuration;
       this.events.emit('pickupCollected', { kind: 'magnet', x, z, value: 0 });
@@ -200,7 +202,7 @@ export class PickupSystem {
   }
 
   /** Kapsel-Belohnung: gewichteter Zufall (rngDrops — spielerabhaengig erlaubt). */
-  private openCapsule(x: number, z: number): void {
+  private openCapsule(x: number, z: number, collector: Player): void {
     const world = this.world;
     const cfg = SURPRISE.capsule;
     const weights = cfg.rewards[world.difficulty];
@@ -218,7 +220,7 @@ export class PickupSystem {
       this.magnetTimer = PICKUPS.magnetDuration;
     } else {
       kind = 'rapidFire';
-      world.player.rapidFireTimer = cfg.rapidFireDuration;
+      collector.rapidFireTimer = cfg.rapidFireDuration;
     }
     this.events.emit('pickupCollected', { kind: 'capsule', x, z, value: 0 });
     this.events.emit('capsuleReward', { x, z, kind });

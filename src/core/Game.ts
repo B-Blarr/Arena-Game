@@ -16,6 +16,7 @@ import { Renderer } from '../render/Renderer';
 import { SaveManager } from '../save/SaveManager';
 import { CollisionSystem } from '../systems/CollisionSystem';
 import { CombatSystem } from '../systems/CombatSystem';
+import { CoopSystem } from '../systems/CoopSystem';
 import { JuiceDirector } from '../systems/JuiceDirector';
 import { ParticleSystem } from '../systems/ParticleSystem';
 import { PickupSystem } from '../systems/PickupSystem';
@@ -31,6 +32,7 @@ import { Popups } from '../ui/Popups';
 import { UiManager } from '../ui/UiManager';
 import { UiNav } from '../ui/UiNav';
 import { AlbumScreen } from '../ui/screens/AlbumScreen';
+import { CoopSetupScreen } from '../ui/screens/CoopSetupScreen';
 import { GameOverScreen } from '../ui/screens/GameOverScreen';
 import { LeaderboardScreen } from '../ui/screens/LeaderboardScreen';
 import { MenuScreen } from '../ui/screens/MenuScreen';
@@ -45,6 +47,7 @@ import { StateMachine } from './StateMachine';
 import { Time } from './Time';
 import { World } from './World';
 import { AlbumState } from './states/AlbumState';
+import { CoopSetupState } from './states/CoopSetupState';
 import { GameOverState } from './states/GameOverState';
 import { LeaderboardState } from './states/LeaderboardState';
 import { MenuState } from './states/MenuState';
@@ -78,6 +81,7 @@ export class Game {
   readonly pickupSystem: PickupSystem;
   readonly combat: CombatSystem;
   readonly collision: CollisionSystem;
+  readonly coopSystem: CoopSystem;
   readonly waves: WaveSystem;
   readonly score: ScoreSystem;
   readonly upgrades: UpgradeSystem;
@@ -99,6 +103,7 @@ export class Game {
   readonly profilesScreen: ProfilesScreen;
   readonly leaderboardScreen: LeaderboardScreen;
   readonly albumScreen: AlbumScreen;
+  readonly coopSetupScreen: CoopSetupScreen;
 
   readonly fsm = new StateMachine();
   readonly loop: GameLoop;
@@ -109,10 +114,13 @@ export class Game {
   readonly profilesState: ProfilesState;
   readonly leaderboardState: LeaderboardState;
   readonly albumState: AlbumState;
+  readonly coopSetupState: CoopSetupState;
 
   runSeed = 1;
   runIsDaily = false;
   runDifficulty: Difficulty = 'normal';
+  /** Koop-Modus: Partner-Profil (null-ID = Gast). null = Solo. */
+  runCoopP2: { profileId: string | null; name: string } | null = null;
 
   private readonly disposers: Array<() => void> = [];
 
@@ -131,6 +139,7 @@ export class Game {
     this.pickupSystem = new PickupSystem(this.world, this.events);
     this.combat = new CombatSystem(this.world, this.events, this.pickupSystem);
     this.collision = new CollisionSystem(this.world, this.events, this.combat);
+    this.coopSystem = new CoopSystem(this.world);
     this.waves = new WaveSystem(this.world, this.events);
     this.score = new ScoreSystem(this.events);
     this.upgrades = new UpgradeSystem(this.world, this.events, this.score);
@@ -150,8 +159,12 @@ export class Game {
     this.menuScreen = new MenuScreen(this.save, {
       onPlay: (daily) => {
         this.audioEngine.unlock();
+        // Menue-Play ist immer Solo — Koop laeuft ueber sein Setup
+        this.runCoopP2 = null;
+        this.input.setSolo();
         this.startRun(daily);
       },
+      onCoop: () => this.fsm.change(this.coopSetupState),
       onShop: () => this.fsm.change(this.shopState),
       onProfiles: () => this.fsm.change(this.profilesState),
       onLeaderboard: () => this.fsm.change(this.leaderboardState),
@@ -159,6 +172,15 @@ export class Game {
       onSettingChanged: () => {
         this.applySettings();
         this.save.save();
+      },
+    });
+    this.coopSetupScreen = new CoopSetupScreen(this.save, this.input, {
+      onBack: () => this.fsm.change(this.menuState),
+      onStart: (p2ProfileId, p2Name, difficulty) => {
+        this.audioEngine.unlock();
+        this.runCoopP2 = { profileId: p2ProfileId, name: p2Name };
+        this.runDifficulty = difficulty;
+        this.startRun(false);
       },
     });
     this.profilesScreen = new ProfilesScreen(this.save, {
@@ -217,6 +239,7 @@ export class Game {
     this.profilesState = new ProfilesState(this);
     this.leaderboardState = new LeaderboardState(this);
     this.albumState = new AlbumState(this);
+    this.coopSetupState = new CoopSetupState(this);
     this.loop = new GameLoop(
       this.time,
       (dt) => {
@@ -300,7 +323,9 @@ export class Game {
     this.instRenderer.fxIntensity = s.reduceFx ? 0.4 : 1;
     // CSS-Effekte (Shimmer/Pulse) daempfen sich ueber diese Klasse selbst
     document.body.classList.toggle('reduce-fx', s.reduceFx);
-    this.combat.autoAimEnabled = s.autoAim;
+    // Auto-Aim ist ein Per-Spieler-Setting (Koop: P2 bringt seins mit)
+    const p0 = this.world.players[0];
+    if (p0) p0.autoAim = s.autoAim;
     this.rumble.enabled = s.vibration;
     this.rumble.intensityMult = s.reduceFx ? RUMBLE.reduceFxMult : 1;
     this.hud.setMuted(s.muted);
@@ -309,11 +334,24 @@ export class Game {
     this.instRenderer.setHero(getHero(s.heroId), getColorway(s.colorwayId, this.save.data.unlockedColorways));
   }
 
+  /** Anzeigenamen der aktiven Spieler (HUD, Upgrade-Header, Game Over). */
+  coopNames(): [string, string] {
+    return [this.save.activeName, this.runCoopP2?.name ?? STR.guest];
+  }
+
   startRun(daily: boolean): void {
     const s = this.save.data.settings;
+    // DEV-Einstieg: ?coop=1 startet direkt mit Gast-P2 (WASD vs. Pfeile)
+    if (import.meta.env.DEV && location.search.includes('coop=1') && !this.runCoopP2) {
+      this.runCoopP2 = { profileId: null, name: STR.guest };
+      this.input.assignSlot(0, 'wasd+mouse');
+      this.input.assignSlot(1, 'arrows');
+    }
     this.runIsDaily = daily;
-    // Daily: feste Schwierigkeit Normal, Seed aus dem Datum -> gleiche Wellen fuer alle
-    this.runDifficulty = daily ? 'normal' : s.difficulty;
+    // Daily: feste Schwierigkeit Normal; Koop behaelt die im Setup gewaehlte
+    // Schwierigkeit (runDifficulty wurde dort gesetzt)
+    if (daily) this.runDifficulty = 'normal';
+    else if (!this.runCoopP2) this.runDifficulty = s.difficulty;
     const dateStr = new Date().toISOString().slice(0, 10);
     this.runSeed = daily ? hashString(dateStr) : hashString(`${Date.now()}-${Math.random()}`);
     this.fsm.change(this.runState);
@@ -325,18 +363,27 @@ export class Game {
     const diff = this.runDifficulty;
     const finalScore = this.score.score;
     const wave = this.world.wave;
+    const isCoop = this.world.isCoop;
 
     const endBonus = Math.floor(finalScore / META.scorePerCore) + META.coresPerWave * wave;
     const coresEarned = Math.round((this.world.runCores + endBonus) * DIFFICULTIES[diff].coreMult);
     save.cores += coresEarned;
     save.stats.totalRuns++;
 
-    const prevBest = save.bestScores[diff];
-    const isRecord = finalScore > prevBest;
-    if (isRecord) save.bestScores[diff] = finalScore;
-    if (wave > save.bestWaves[diff]) save.bestWaves[diff] = wave;
+    // Koop schreibt in die EIGENEN Koop-Bestwerte (fairer Vergleich)
+    let isRecord: boolean;
+    if (isCoop) {
+      isRecord = finalScore > save.bestScoresCoop[diff];
+      if (isRecord) save.bestScoresCoop[diff] = finalScore;
+      if (wave > save.bestWavesCoop[diff]) save.bestWavesCoop[diff] = wave;
+    } else {
+      isRecord = finalScore > save.bestScores[diff];
+      if (isRecord) save.bestScores[diff] = finalScore;
+      if (wave > save.bestWaves[diff]) save.bestWaves[diff] = wave;
+    }
 
-    if (this.runIsDaily) {
+    // dailyBest bleibt solo-only (Koop bietet kein Daily an)
+    if (this.runIsDaily && !isCoop) {
       const dateStr = new Date().toISOString().slice(0, 10);
       if (!save.dailyBest || save.dailyBest.date !== dateStr || finalScore > save.dailyBest.score) {
         save.dailyBest = {
@@ -354,22 +401,43 @@ export class Game {
       wave,
       heroId: hero.id,
       weaponId: getWeapon(save.settings.weaponId, hero).id,
-      isCoop: this.world.isCoop,
+      isCoop,
     });
     this.save.save();
 
+    // Koop: das Partner-Profil bekommt Kerne, Bestwerte und Sticker VOLL
+    // mit (Gast: nichts zu speichern)
+    const p2Id = this.runCoopP2?.profileId;
+    if (isCoop && p2Id) {
+      const p2Data = this.save.profileData(p2Id);
+      p2Data.cores += coresEarned;
+      p2Data.stats.totalRuns++;
+      if (finalScore > p2Data.bestScoresCoop[diff]) p2Data.bestScoresCoop[diff] = finalScore;
+      if (wave > p2Data.bestWavesCoop[diff]) p2Data.bestWavesCoop[diff] = wave;
+      const p2Hero = getHero(p2Data.settings.heroId);
+      this.stickers.applyDeltasTo(p2Data);
+      // Held/Waffe des Partners zaehlen fuer SEINE Sammel-Sticker
+      p2Data.stickerCounters[`hero:${p2Hero.id}`] = (p2Data.stickerCounters[`hero:${p2Hero.id}`] ?? 0) + 1;
+      const p2Weapon = getWeapon(p2Data.settings.weaponId, p2Hero).id;
+      p2Data.stickerCounters[`weapon:${p2Weapon}`] = (p2Data.stickerCounters[`weapon:${p2Weapon}`] ?? 0) + 1;
+      this.save.writeProfile(p2Id, p2Data);
+    }
+
+    const names = this.coopNames();
     this.gameOverState.result = {
       score: finalScore,
       wave,
       isRecord,
-      best: save.bestScores[diff],
+      best: isCoop ? save.bestScoresCoop[diff] : save.bestScores[diff],
       coresEarned,
       totalCores: save.cores,
       teaser: this.buildTeaser(),
       dps: this.runStats.dps(this.world.elapsed),
       strongestHit: this.runStats.strongestHit,
       maxCombo: this.runStats.maxComboMultiplier,
-      build: this.runStats.build(this.world.player),
+      build: this.runStats.build(this.world.players[0] ?? this.world.player),
+      build2: isCoop ? this.runStats.build(this.world.players[1] ?? this.world.player) : null,
+      buildLabels: isCoop ? names : null,
       newStickers,
     };
     this.events.emit('gameOver', { score: finalScore, wave, coresEarned, isRecord });

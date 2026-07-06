@@ -83,7 +83,8 @@ export class Boss {
   shockTelegraphLeft = 0;
   shockActive = false;
   shockR = 0;
-  shockHitDone = false;
+  /** Bitmaske pro playerIndex: wer wurde von diesem Ring schon geprueft. */
+  shockHitMask = 0;
   shockX = 0;
   shockZ = 0;
   summonTimer = 0;
@@ -99,13 +100,15 @@ export class Boss {
   shock2Countdown = 0;
   shock2Active = false;
   shock2R = 0;
-  shock2HitDone = false;
+  shock2HitMask = 0;
 
   // MINOS: Bomben-Zonen + Orbit
   readonly bombs: BossBomb[] = Array.from({ length: MAX_BOSS_BOMBS }, makeBomb);
   plantTimer = 0;
   strafeTimer = 0;
   strafeSign = 1;
+  /** Koop: Bomben-Ziel alterniert deterministisch zwischen den Spielern. */
+  bombTargetIdx = 0;
 
   // WIRBEL: Sog-Zyklus
   suctionTimer = 0;
@@ -154,7 +157,7 @@ export class Boss {
     // ueber die gesamte App-Lebensdauer wiederverwendet (Phantom-Schock sonst!)
     this.shockActive = false;
     this.shockR = 0;
-    this.shockHitDone = false;
+    this.shockHitMask = 0;
     this.shockTelegraphLeft = 0;
     this.shockX = 0;
     this.shockZ = 0;
@@ -164,12 +167,13 @@ export class Boss {
     this.shock2Countdown = 0;
     this.shock2Active = false;
     this.shock2R = 0;
-    this.shock2HitDone = false;
+    this.shock2HitMask = 0;
     // MINOS (Phantom-Bomben verhindern)
     for (const b of this.bombs) b.active = false;
     this.plantTimer = (def.plantInterval ?? 0) * this.cdMult * 0.6;
     this.strafeTimer = def.strafeFlip ?? 0;
     this.strafeSign = 1;
+    this.bombTargetIdx = 0;
     // WIRBEL (Phantom-Sog verhindern)
     this.suctionTimer = (def.suctionInterval ?? 0) * this.cdMult * 0.7;
     this.suctionLeft = 0;

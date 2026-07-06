@@ -1,6 +1,7 @@
 import { STR } from '../config/strings.de';
 import type { EventBus } from '../core/EventBus';
 import type { World } from '../core/World';
+import type { CoopSystem } from '../systems/CoopSystem';
 import type { ScoreSystem } from '../systems/ScoreSystem';
 import type { Sfx } from '../audio/Sfx';
 
@@ -15,6 +16,14 @@ export class Hud {
   private readonly hpChunk: HTMLElement;
   private readonly hpText: HTMLElement;
   private readonly hpWrap: HTMLElement;
+  // Koop: zweites Spieler-Panel (Solo versteckt)
+  private hpFill2!: HTMLElement;
+  private hpChunk2!: HTMLElement;
+  private hpText2!: HTMLElement;
+  private hpWrap2!: HTMLElement;
+  private dashEl2!: HTMLElement;
+  private coopActive = false;
+  private readonly downed: [boolean, boolean] = [false, false];
   private readonly waveLabel: HTMLElement;
   private readonly waveEnemies: HTMLElement;
   private readonly scoreValue: HTMLElement;
@@ -53,18 +62,31 @@ export class Hud {
         <div class="hud-boss-name"></div>
         <div class="hud-boss-bar"><div class="hud-boss-fill"></div></div>
       </div>
-      <div class="hud-hp">
+      <div class="hud-hp p1">
+        <span class="hud-hp-name"></span>
         <span class="hud-hp-icon">❤</span>
         <div class="hud-hp-bar"><div class="hud-hp-chunk"></div><div class="hud-hp-fill"></div></div>
         <span class="hud-hp-text"></span>
       </div>
-      <div class="hud-dash"><div class="hud-dash-inner">⚡</div></div>
+      <div class="hud-dash p1"><div class="hud-dash-inner">⚡</div></div>
+      <div class="hud-hp p2 hidden">
+        <span class="hud-hp-name"></span>
+        <span class="hud-hp-icon">❤</span>
+        <div class="hud-hp-bar"><div class="hud-hp-chunk"></div><div class="hud-hp-fill"></div></div>
+        <span class="hud-hp-text"></span>
+      </div>
+      <div class="hud-dash p2 hidden"><div class="hud-dash-inner">⚡</div></div>
     `;
     const q = (sel: string): HTMLElement => this.root.querySelector(sel) as HTMLElement;
-    this.hpFill = q('.hud-hp-fill');
-    this.hpChunk = q('.hud-hp-chunk');
-    this.hpText = q('.hud-hp-text');
-    this.hpWrap = q('.hud-hp');
+    this.hpFill = q('.hud-hp.p1 .hud-hp-fill');
+    this.hpChunk = q('.hud-hp.p1 .hud-hp-chunk');
+    this.hpText = q('.hud-hp.p1 .hud-hp-text');
+    this.hpWrap = q('.hud-hp.p1');
+    this.hpFill2 = q('.hud-hp.p2 .hud-hp-fill');
+    this.hpChunk2 = q('.hud-hp.p2 .hud-hp-chunk');
+    this.hpText2 = q('.hud-hp.p2 .hud-hp-text');
+    this.hpWrap2 = q('.hud-hp.p2');
+    this.dashEl2 = q('.hud-dash.p2');
     this.waveLabel = q('.hud-wave-label');
     this.waveEnemies = q('.hud-wave-enemies');
     this.scoreValue = q('.hud-score-value');
@@ -82,9 +104,18 @@ export class Hud {
     this.muteBtn.addEventListener('click', () => this.onMuteToggle?.());
 
     this.unsubs.push(
-      events.on('playerHit', (e) => this.setHp(e.hp, e.maxHp, true)),
-      events.on('playerHealed', (e) => this.setHp(e.hp, e.maxHp, false)),
-      events.on('playerRevived', () => this.flashHpBar()),
+      events.on('playerHit', (e) => this.setHp(e.playerIndex, e.hp, e.maxHp, true)),
+      events.on('playerHealed', (e) => this.setHp(e.playerIndex, e.hp, e.maxHp, false)),
+      events.on('playerRevived', (e) => this.flashHpBar(e.playerIndex)),
+      events.on('playerDowned', (e) => {
+        this.downed[e.playerIndex as 0 | 1] = true;
+        this.panelFor(e.playerIndex).classList.add('downed');
+      }),
+      events.on('playerCoopRevived', (e) => {
+        this.downed[e.playerIndex as 0 | 1] = false;
+        this.panelFor(e.playerIndex).classList.remove('downed');
+        this.flashHpBar(e.playerIndex);
+      }),
       events.on('waveStarted', (e) => {
         this.waveLabel.textContent = e.isBossWave ? `${STR.wave} ${e.wave} — BOSS` : `${STR.wave} ${e.wave}`;
       }),
@@ -127,38 +158,65 @@ export class Hud {
         this.bossFill.style.transform = `scaleX(${Math.max(0, e.hp / e.maxHp).toFixed(3)})`;
       }),
       events.on('bossDied', () => this.bossWrap.classList.add('hidden')),
-      events.on('dashReady', () => {
-        this.dashEl.classList.add('ready');
-        window.setTimeout(() => this.dashEl.classList.remove('ready'), 250);
+      events.on('dashReady', (e) => {
+        const el = e.playerIndex === 1 ? this.dashEl2 : this.dashEl;
+        el.classList.add('ready');
+        window.setTimeout(() => el.classList.remove('ready'), 250);
       }),
     );
   }
 
-  private setHp(hp: number, maxHp: number, damaged: boolean): void {
-    const frac = Math.max(0, hp / maxHp);
-    this.hpFill.style.transform = `scaleX(${frac.toFixed(3)})`;
-    // Delayed-Damage-Chunk laeuft per CSS-Transition verzoegert nach
-    this.hpChunk.style.transform = `scaleX(${frac.toFixed(3)})`;
-    this.hpText.textContent = `${Math.max(0, Math.ceil(hp))}`;
-    this.lowHp = frac < 0.3 && hp > 0;
-    this.hpWrap.classList.toggle('low', this.lowHp);
-    this.vignette?.classList.toggle('active', this.lowHp);
-    if (damaged) this.flashHpBar();
+  private panelFor(idx: number): HTMLElement {
+    return idx === 1 ? this.hpWrap2 : this.hpWrap;
   }
 
-  private flashHpBar(): void {
-    this.hpWrap.style.filter = 'brightness(2.5)';
+  private setHp(idx: number, hp: number, maxHp: number, damaged: boolean): void {
+    const frac = Math.max(0, hp / maxHp);
+    const fill = idx === 1 ? this.hpFill2 : this.hpFill;
+    const chunk = idx === 1 ? this.hpChunk2 : this.hpChunk;
+    const text = idx === 1 ? this.hpText2 : this.hpText;
+    const wrap = this.panelFor(idx);
+    fill.style.transform = `scaleX(${frac.toFixed(3)})`;
+    // Delayed-Damage-Chunk laeuft per CSS-Transition verzoegert nach
+    chunk.style.transform = `scaleX(${frac.toFixed(3)})`;
+    text.textContent = `${Math.max(0, Math.ceil(hp))}`;
+    const low = frac < 0.3 && hp > 0;
+    wrap.classList.toggle('low', low);
+    // Herzschlag/Vignette: reagiert, sobald IRGENDEIN Spieler knapp ist
+    this.lowHp = this.hpWrap.classList.contains('low')
+      || (this.coopActive && this.hpWrap2.classList.contains('low'));
+    this.vignette?.classList.toggle('active', this.lowHp);
+    if (damaged) this.flashHpBar(idx);
+  }
+
+  private flashHpBar(idx = 0): void {
+    const wrap = this.panelFor(idx);
+    wrap.style.filter = 'brightness(2.5)';
     window.setTimeout(() => {
-      this.hpWrap.style.filter = '';
+      wrap.style.filter = '';
     }, 120);
   }
 
-  /** Pro Frame (Echtzeit): Dash-Ring, Combo-Ring, Gegner-Zaehler, Herzschlag. */
-  update(rawDt: number, world: World, score: ScoreSystem, enemiesLeft: number): void {
-    const dashFrac = world.player.dashChargeFrac;
+  /** Pro Frame (Echtzeit): Dash-Ringe, Combo-Ring, Gegner-Zaehler, Herzschlag. */
+  update(rawDt: number, world: World, score: ScoreSystem, enemiesLeft: number, coop?: CoopSystem): void {
+    const dashFrac = (world.players[0] ?? world.player).dashChargeFrac;
     this.dashEl.style.setProperty('--dash-t', dashFrac.toFixed(3));
     const ready = dashFrac >= 1;
     if (ready !== this.dashWasReady) this.dashWasReady = ready;
+
+    const p2 = world.players[1];
+    if (this.coopActive && p2) {
+      this.dashEl2.style.setProperty('--dash-t', p2.dashChargeFrac.toFixed(3));
+      // Down-Panels: Text zeigt den Revive-Fortschritt statt HP
+      for (let i = 0; i < 2; i++) {
+        if (!this.downed[i as 0 | 1] || !coop) continue;
+        const text = i === 1 ? this.hpText2 : this.hpText;
+        const fill = i === 1 ? this.hpFill2 : this.hpFill;
+        const prog = coop.progressOf(i);
+        text.textContent = STR.hudDown;
+        fill.style.transform = `scaleX(${prog.toFixed(3)})`;
+      }
+    }
 
     this.comboEl.style.setProperty('--combo-t', score.comboTimeFrac.toFixed(3));
 
@@ -186,9 +244,25 @@ export class Hud {
     this.vignette?.classList.remove('active');
   }
 
-  /** Beim Runstart: Anzeigen auf Anfangswerte. */
-  resetForRun(world: World): void {
-    this.setHp(world.player.hp, world.player.stats.maxHp, false);
+  /** Beim Runstart: Anzeigen auf Anfangswerte (Koop: zweites Panel an). */
+  resetForRun(world: World, names?: [string, string]): void {
+    this.coopActive = world.isCoop;
+    this.downed[0] = false;
+    this.downed[1] = false;
+    this.root.classList.toggle('coop', this.coopActive);
+    this.hpWrap.classList.remove('downed', 'low');
+    this.hpWrap2.classList.remove('downed', 'low');
+    this.hpWrap2.classList.toggle('hidden', !this.coopActive);
+    this.dashEl2.classList.toggle('hidden', !this.coopActive);
+    const p0 = world.players[0] ?? world.player;
+    this.setHp(0, p0.hp, p0.stats.maxHp, false);
+    const p1 = world.players[1];
+    if (this.coopActive && p1) this.setHp(1, p1.hp, p1.stats.maxHp, false);
+    // Namen nur im Koop anzeigen (Solo bleibt exakt wie bisher)
+    const nameEls = this.root.querySelectorAll<HTMLElement>('.hud-hp-name');
+    nameEls.forEach((el, i) => {
+      el.textContent = this.coopActive && names ? (names[i] ?? '') : '';
+    });
     this.scoreValue.textContent = '0';
     this.coresVal.textContent = '0';
     this.comboEl.classList.remove('visible');

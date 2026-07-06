@@ -3,6 +3,7 @@ import { ENEMY_BOMBER } from '../config/enemies';
 import { UPGRADE_VALUES as UV } from '../config/upgrades';
 import type { EventBus } from '../core/EventBus';
 import type { World } from '../core/World';
+import type { Player } from '../entities/Player';
 import { projectileHasHit, projectileMarkHit, type Projectile } from '../entities/Projectile';
 import { segPointDist2 } from '../utils/math';
 import type { CombatSystem } from './CombatSystem';
@@ -44,7 +45,7 @@ export class CollisionSystem {
 
   private updatePlayerProjectiles(dt: number): void {
     const pool = this.world.playerProjectiles;
-    const p = this.world.player;
+    const players = this.world.players;
 
     for (let i = pool.count - 1; i >= 0; i--) {
       const proj = pool.get(i);
@@ -58,7 +59,8 @@ export class CollisionSystem {
       }
 
       if (proj.returning) {
-        // Homing zurueck zum Spieler
+        // Homing zurueck zum SCHUETZEN (Koop: Bumerang kennt seinen Owner)
+        const p = (players[proj.ownerIdx] ?? players[0]) as Player;
         const dx = p.x - proj.x;
         const dz = p.z - proj.z;
         const d = Math.hypot(dx, dz);
@@ -129,7 +131,7 @@ export class CollisionSystem {
     if (hitIdx >= 0) {
       const e = world.enemies.get(hitIdx);
       projectileMarkHit(proj, e.uid);
-      this.combat.hitEnemy(e, proj.damage, true, proj.prevX, proj.prevZ, 7 + proj.knockback);
+      this.combat.hitEnemy(e, proj.damage, true, proj.prevX, proj.prevZ, 7 + proj.knockback, true, proj.ownerIdx);
 
       if (proj.pierceLeft > 0) {
         proj.pierceLeft--;
@@ -141,14 +143,15 @@ export class CollisionSystem {
       return !proj.boomerang || this.consumeBoomerangHit(proj);
     }
 
-    // Boss + Minis
+    // Boss + Minis (Crit/Boost des SCHUETZEN, nicht pauschal Spieler 1)
+    const owner = (world.players[proj.ownerIdx] ?? world.players[0]) as Player;
     const boss = world.boss;
     if (boss && boss.alive && !boss.hidden) {
       const rr = boss.def.radius + proj.radius;
       if (segPointDist2(proj.prevX, proj.prevZ, proj.x, proj.z, boss.x, boss.z) < rr * rr) {
-        const crit = Math.random() < world.player.stats.critChance;
+        const crit = Math.random() < owner.stats.critChance;
         const damage = Math.round(
-          proj.damage * (crit ? world.player.stats.critMultiplier : 1) * world.player.damageBoost,
+          proj.damage * (crit ? owner.stats.critMultiplier : 1) * owner.damageBoost,
         );
         boss.takeDamage(damage, this.events);
         this.events.emit('enemyHit', { x: proj.x, z: proj.z, damage, crit, enemyType: -1 });
@@ -164,9 +167,9 @@ export class CollisionSystem {
         if (!m.active || m.hp <= 0) continue;
         const rr = m.radius + proj.radius;
         if (segPointDist2(proj.prevX, proj.prevZ, proj.x, proj.z, m.x, m.z) < rr * rr) {
-          const crit = Math.random() < world.player.stats.critChance;
+          const crit = Math.random() < owner.stats.critChance;
           const damage = Math.round(
-            proj.damage * (crit ? world.player.stats.critMultiplier : 1) * world.player.damageBoost,
+            proj.damage * (crit ? owner.stats.critMultiplier : 1) * owner.damageBoost,
           );
           m.hp -= damage;
           m.flashTimer = 0.08;
@@ -227,7 +230,7 @@ export class CollisionSystem {
 
   private updateEnemyProjectiles(dt: number): void {
     const pool = this.world.enemyProjectiles;
-    const p = this.world.player;
+    const players = this.world.players;
 
     for (let i = pool.count - 1; i >= 0; i--) {
       const proj = pool.get(i);
@@ -242,13 +245,16 @@ export class CollisionSystem {
         continue;
       }
 
-      if (p.alive) {
+      // Koop: das Projektil trifft, wen es zuerst erwischt
+      for (let k = 0; k < players.length; k++) {
+        const p = players[k] as Player;
+        if (!p.targetable) continue;
         const rr = PLAYER.radius + proj.radius;
         if (segPointDist2(proj.prevX, proj.prevZ, proj.x, proj.z, p.x, p.z) < rr * rr) {
           const hit = p.takeDamage(proj.damage);
           if (hit) {
             pool.despawn(i);
-            continue;
+            break;
           }
         }
       }
@@ -258,9 +264,15 @@ export class CollisionSystem {
   // ------------------------------------------- Kontakt-Schaden
 
   private updateContactDamage(): void {
-    const p = this.world.player;
-    if (!p.alive || p.hasIFrames) return;
+    // Koop: jeder Spieler wird separat geprueft (continue statt return)
+    for (let k = 0; k < this.world.players.length; k++) {
+      const p = this.world.players[k] as Player;
+      if (!p.targetable || p.hasIFrames) continue;
+      this.contactDamageFor(p);
+    }
+  }
 
+  private contactDamageFor(p: Player): void {
     const found = this.world.spatialHash.queryCircle(p.x, p.z, 2.2, contactQueryBuf);
     for (let n = 0; n < found; n++) {
       const idx = contactQueryBuf[n] as number;
@@ -274,7 +286,7 @@ export class CollisionSystem {
       const rr = e.radius + PLAYER.radius;
       if (dx * dx + dz * dz < rr * rr) {
         p.takeDamage(e.damage);
-        return; // i-Frames aktiv — mehr Checks unnoetig
+        return; // i-Frames aktiv — mehr Checks fuer DIESEN Spieler unnoetig
       }
     }
 

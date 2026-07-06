@@ -45,6 +45,8 @@ export interface Enemy {
   carriedCores: number;
   /** Dieb entkommen: despawnt OHNE Kill-Pipeline (kein Loot/Combo/Nova). */
   escaped: boolean;
+  /** Koop: Index des Spielers, der zuletzt getroffen hat (Lifesteal/Nova). */
+  lastAttacker: number;
   yRot: number;
   rotSpeed: number;
   bobPhase: number;
@@ -58,7 +60,7 @@ export function makeEnemy(): Enemy {
     flashTimer: 0, scalePop: 0, slowTimer: 0, slowFactor: 1,
     fireTimer: 0, telegraphTimer: 0, spawnProtection: 0,
     orbCooldown: 0, dashHitToken: -1, novaDepth: 0,
-    eliteAffix: 0, shieldHp: 0, carriedCores: 0, escaped: false,
+    eliteAffix: 0, shieldHp: 0, carriedCores: 0, escaped: false, lastAttacker: 0,
     yRot: 0, rotSpeed: 0, bobPhase: 0,
   };
 }
@@ -112,6 +114,7 @@ export function initEnemy(
   e.shieldHp = 0;
   e.carriedCores = 0;
   e.escaped = false;
+  e.lastAttacker = 0;
   e.yRot = Math.random() * Math.PI * 2;
   e.rotSpeed = (Math.random() - 0.5) * 3;
   e.bobPhase = Math.random() * Math.PI * 2;

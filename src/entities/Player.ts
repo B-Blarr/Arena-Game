@@ -55,6 +55,12 @@ export class Player {
   velZ = 0;
   hp = PLAYER.maxHp;
   alive = true;
+  /** Koop: am Boden — unverwundbar, handlungsunfaehig, wartet auf Revive. */
+  downed = false;
+  /** Koop: mit Partner geht ein toedlicher Treffer in den Down-State. */
+  hasTeammate = false;
+  /** Auto-Aim-Setting DIESES Spielers (Koop: pro Profil). */
+  autoAim = true;
   iFrames = 0;
   /** Blickrichtung (letzte Ziel-/Bewegungsrichtung). */
   faceX = 0;
@@ -92,22 +98,31 @@ export class Player {
   private perma: Record<string, number> = {};
   private mods!: DifficultyMods;
 
-  constructor(private readonly events: EventBus) {}
+  constructor(
+    private readonly events: EventBus,
+    readonly index = 0,
+  ) {}
+
+  /** Kann Schaden nehmen / ist Gegner-Ziel — das EINZIGE Gate fuer beides. */
+  get targetable(): boolean {
+    return this.alive && !this.downed;
+  }
 
   /** Neuen Lauf initialisieren (Pools/Szene werden recycelt, nie neu gebaut). */
-  reset(hero: HeroDef, weaponId: string, mods: DifficultyMods, perma: Record<string, number>): void {
+  reset(hero: HeroDef, weaponId: string, mods: DifficultyMods, perma: Record<string, number>, startX = 0): void {
     this.hero = hero;
     this.weapon = getWeapon(weaponId, hero);
     this.mods = mods;
     this.perma = perma;
     this.stacks.clear();
-    this.x = 0;
+    this.x = startX;
     this.z = 0;
-    this.prevX = 0;
+    this.prevX = startX;
     this.prevZ = 0;
     this.velX = 0;
     this.velZ = 0;
     this.alive = true;
+    this.downed = false;
     this.iFrames = 0;
     this.faceX = 0;
     this.faceZ = 1;
@@ -257,7 +272,7 @@ export class Player {
         }
         this.iFrames = Math.max(this.iFrames, DASH.iFrames);
         this.dashReadyNotified = false;
-        this.events.emit('playerDashed', { x: this.x, z: this.z });
+        this.events.emit('playerDashed', { x: this.x, z: this.z, playerIndex: this.index });
         return true;
       }
     }
@@ -268,6 +283,19 @@ export class Player {
     this.prevX = this.x;
     this.prevZ = this.z;
 
+    // Am Boden: keine Bewegung/Aktionen — nur die Cooldowns ticken weiter,
+    // damit der Wiederbelebte nicht mit leeren Ladungen aufsteht
+    if (this.downed) {
+      this.velX = 0;
+      this.velZ = 0;
+      for (let i = 0; i < this.dashCooldowns.length; i++) {
+        const cd = this.dashCooldowns[i] as number;
+        if (cd > 0) this.dashCooldowns[i] = cd - dt;
+      }
+      if (this.fireCooldown > 0) this.fireCooldown -= dt;
+      return;
+    }
+
     if (this.iFrames > 0) this.iFrames -= dt;
     for (let i = 0; i < this.dashCooldowns.length; i++) {
       const cd = this.dashCooldowns[i] as number;
@@ -275,7 +303,7 @@ export class Player {
     }
     if (!this.dashReadyNotified && this.dashChargeFrac >= 1) {
       this.dashReadyNotified = true;
-      this.events.emit('dashReady', {});
+      this.events.emit('dashReady', { playerIndex: this.index });
     }
     if (this.fireCooldown > 0) this.fireCooldown -= dt;
     if (this.rapidFireTimer > 0) this.rapidFireTimer -= dt;
@@ -334,16 +362,25 @@ export class Player {
 
   /** true, wenn der Treffer durchging (keine i-Frames aktiv). */
   takeDamage(amount: number): boolean {
-    if (!this.alive || this.hasIFrames) return false;
+    // targetable-Gate ist zusaetzlich das Sicherheitsnetz gegen vergessene
+    // downed-Checks an einzelnen Schadensquellen
+    if (!this.targetable || this.hasIFrames) return false;
     this.hp -= amount;
     this.iFrames = PLAYER.iFramesAfterHit;
-    this.events.emit('playerHit', { damage: amount, hp: Math.max(0, this.hp), maxHp: this.stats.maxHp });
+    this.events.emit('playerHit', {
+      damage: amount, hp: Math.max(0, this.hp), maxHp: this.stats.maxHp, playerIndex: this.index,
+    });
     if (this.hp <= 0) {
       if (this.reviveAvailable) {
         this.reviveAvailable = false;
         this.hp = Math.round(this.stats.maxHp * 0.5);
         this.iFrames = 2;
-        this.events.emit('playerRevived', {});
+        this.events.emit('playerRevived', { playerIndex: this.index });
+      } else if (this.hasTeammate) {
+        // Koop: zu Boden statt tot — Partner kann wiederbeleben
+        this.downed = true;
+        this.hp = 0;
+        this.events.emit('playerDowned', { playerIndex: this.index, x: this.x, z: this.z });
       } else {
         this.alive = false;
         this.events.emit('playerDied', { x: this.x, z: this.z });
@@ -352,13 +389,29 @@ export class Player {
     return true;
   }
 
+  /** Koop-Wiederbelebung durch den Partner (oder am Wellenende). */
+  revive(hpFrac: number, iFramesSec: number): void {
+    if (!this.downed) return;
+    this.downed = false;
+    this.hp = Math.max(1, Math.round(this.stats.maxHp * hpFrac));
+    this.iFrames = iFramesSec;
+    this.events.emit('playerCoopRevived', { playerIndex: this.index, x: this.x, z: this.z });
+    // Als Heilung melden: HUD-Balken/-Text und "+40"-Popup laufen ueber
+    // die bestehende Pipeline (sonst bliebe "AM BODEN" stehen)
+    this.events.emit('playerHealed', {
+      amount: this.hp, hp: this.hp, maxHp: this.stats.maxHp, playerIndex: this.index,
+    });
+  }
+
   heal(amount: number): void {
-    if (!this.alive) return;
+    if (!this.alive || this.downed) return;
     const before = this.hp;
     this.hp = Math.min(this.stats.maxHp, this.hp + amount);
     const gained = this.hp - before;
     if (gained > 0) {
-      this.events.emit('playerHealed', { amount: gained, hp: this.hp, maxHp: this.stats.maxHp });
+      this.events.emit('playerHealed', {
+        amount: gained, hp: this.hp, maxHp: this.stats.maxHp, playerIndex: this.index,
+      });
     }
   }
 

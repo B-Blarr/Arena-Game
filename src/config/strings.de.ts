@@ -83,6 +83,26 @@ export const STR = {
   padNavHint: '🎮 Steuerkreuz: Auswählen · A: Bestätigen · B: Zurück',
   padSoundHint: '🔇 Einmal klicken oder Taste drücken, dann gibt es Sound — das Gamepad ist schon bereit!',
 
+  // Koop
+  coopButton: '🤝 Zusammen',
+  coopSetupTitle: 'Wer spielt mit?',
+  coopP1Label: 'Spieler 1',
+  coopP2Label: 'Spieler 2',
+  guest: 'Gast',
+  guestHint: 'Speichert nichts',
+  coopStart: 'Los geht’s!',
+  coopJoinHint: 'Spieler 2: Drück deine Dash-Taste zum Beitreten!',
+  coopSourcePad: (n: number) => `🎮 Gamepad ${n}`,
+  coopSourceArrows: '⌨ Pfeiltasten + Umschalt/Enter',
+  coopSourceWasd: '⌨ WASD + Leertaste',
+  coopSourceNone: 'Noch nicht beigetreten',
+  coopNeedsJoin: 'Spieler 2 muss erst beitreten!',
+  upgradeChooser: (name: string) => `${name} wählt`,
+  hudDown: 'AM BODEN',
+  downedBanner: (name: string) => `${name} ist am Boden! Lauf hin und hilf!`,
+  coopRevivedBanner: 'Gerettet!',
+  lbCoop: 'Koop',
+
   // Game Over
   gameOverTitle: 'Runde vorbei!',
   newRecord: 'Neuer Bestwert!',

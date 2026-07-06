@@ -55,6 +55,9 @@ export const RNG_STREAM_SUMMONS = 0xc2b2ae35;
 /** Ueberraschungs-Events (Goldene Welle, Versorgungskapsel): eigener Stream
  *  mit FESTEM Verbrauch pro Wellenstart — Daily Seed bleibt stabil. */
 export const RNG_STREAM_EVENTS = 0x27d4eb2f;
+/** Koop: Upgrade-Angebote fuer Spieler 2 — eigener Stream, damit P2s
+ *  Ziehungen weder P1 noch den Solo-Daily-Stream verschieben. */
+export const RNG_STREAM_UPGRADES_P2 = 0x94d049bb;
 
 export function makeRng(seed: number, stream: number): Rng {
   return new Rng((seed ^ stream) >>> 0);

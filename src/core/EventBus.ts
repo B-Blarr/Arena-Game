@@ -5,7 +5,7 @@
  */
 export interface GameEvents {
   // Kampf
-  shotFired: { x: number; z: number; dirX: number; dirZ: number };
+  shotFired: { x: number; z: number; dirX: number; dirZ: number; playerIndex: number };
   enemyHit: { x: number; z: number; damage: number; crit: boolean; enemyType: number };
   enemyKilled: { x: number; z: number; enemyType: number; points: number; scale: number; elite: boolean };
   explosion: { x: number; z: number; radius: number; color: number };
@@ -31,13 +31,13 @@ export interface GameEvents {
   /** WIRBEL: rein kosmetischer Wiederhol-Ring waehrend des Sogs (KEIN Warnton). */
   vortexRing: { x: number; z: number; radius: number; duration: number };
 
-  // Spieler
-  playerHit: { damage: number; hp: number; maxHp: number };
-  playerHealed: { amount: number; hp: number; maxHp: number };
+  // Spieler (playerIndex: 0/1 — Koop routet HUD/Rumble/Popups darueber)
+  playerHit: { damage: number; hp: number; maxHp: number; playerIndex: number };
+  playerHealed: { amount: number; hp: number; maxHp: number; playerIndex: number };
   playerDied: { x: number; z: number };
-  playerDashed: { x: number; z: number };
-  dashReady: Record<string, never>;
-  playerRevived: Record<string, never>;
+  playerDashed: { x: number; z: number; playerIndex: number };
+  dashReady: { playerIndex: number };
+  playerRevived: { playerIndex: number };
   /** Koop: Spieler geht zu Boden (statt zu sterben). */
   playerDowned: { playerIndex: number; x: number; z: number };
   /** Koop: Partner hat einen Spieler wiederbelebt. */
@@ -89,7 +89,7 @@ export interface GameEvents {
   // Ablauf / UI
   runStarted: Record<string, never>;
   gameOver: { score: number; wave: number; coresEarned: number; isRecord: boolean };
-  upgradeChosen: { id: string; rarity: string };
+  upgradeChosen: { id: string; rarity: string; playerIndex: number };
   /** Sticker-Album: neuer Sticker freigeschaltet (Toast + Fanfare). */
   stickerUnlocked: { id: string };
   /** Ein legendaeres Upgrade liegt im Angebot (Zeremonie/Fanfare). */

@@ -46,9 +46,11 @@ function clampToArena(boss: Boss): void {
   }
 }
 
+/** Verfolgt den jeweils NAECHSTEN angreifbaren Spieler (Solo: identisch). */
 function moveTowardPlayer(boss: Boss, dt: number, world: World, speed: number): void {
-  const dx = world.player.x - boss.x;
-  const dz = world.player.z - boss.z;
+  const target = world.nearestAlivePlayer(boss.x, boss.z);
+  const dx = target.x - boss.x;
+  const dz = target.z - boss.z;
   const d = Math.hypot(dx, dz);
   if (d > boss.def.radius + 1) {
     boss.x += (dx / d) * speed * dt;
@@ -76,8 +78,10 @@ function updateTrioShots(boss: Boss, dt: number, world: World, events: EventBus)
     if (boss.trioGapTimer <= 0) {
       boss.trioShotsLeft--;
       boss.trioGapTimer = def.trioShotGap ?? 0.3;
-      const dx = world.player.x - boss.x;
-      const dz = world.player.z - boss.z;
+      // Ziel pro Schuss neu: im Koop wandert das Trio zwischen den Spielern
+      const target = world.nearestAlivePlayer(boss.x, boss.z);
+      const dx = target.x - boss.x;
+      const dz = target.z - boss.z;
       const d = Math.hypot(dx, dz) || 1;
       world.spawnEnemyProjectile(
         boss.x, boss.z, dx / d, dz / d,
@@ -98,27 +102,31 @@ function updateTrioShots(boss: Boss, dt: number, world: World, events: EventBus)
 }
 
 /**
- * Expandierender Schockwellen-Ring: trifft den Spieler an der Ringkante,
- * per Dash-i-Frames ueberspringbar. Gibt true zurueck, solange aktiv.
+ * Expandierender Schockwellen-Ring: trifft JEDEN Spieler genau einmal an
+ * der Ringkante (Bitmaske pro playerIndex), per Dash-i-Frames
+ * ueberspringbar. Gibt true zurueck, solange aktiv.
  */
 function tickShockRing(
-  rActual: { r: number; hitDone: boolean },
+  state: { r: number; hitMask: number },
   centerX: number, centerZ: number,
   maxRadius: number, ringSpeed: number, damage: number,
   dt: number, world: World,
 ): boolean {
-  rActual.r += ringSpeed * dt;
-  const player = world.player;
-  const pd = Math.hypot(player.x - centerX, player.z - centerZ);
-  if (!rActual.hitDone && Math.abs(pd - rActual.r) < 0.6) {
-    rActual.hitDone = true;
-    player.takeDamage(damage);
+  state.r += ringSpeed * dt;
+  for (let i = 0; i < world.players.length; i++) {
+    const p = world.players[i];
+    if (!p || !p.targetable || (state.hitMask & (1 << i)) !== 0) continue;
+    const pd = Math.hypot(p.x - centerX, p.z - centerZ);
+    if (Math.abs(pd - state.r) < 0.6) {
+      state.hitMask |= 1 << i;
+      p.takeDamage(damage);
+    }
   }
-  return rActual.r < maxRadius;
+  return state.r < maxRadius;
 }
 
 // Wiederverwendete Puffer fuer tickShockRing (allokationsfrei)
-const shockBuf = { r: 0, hitDone: false };
+const shockBuf = { r: 0, hitMask: 0 };
 
 // ---------------------------------------------------------------- PRISMA
 
@@ -190,8 +198,10 @@ function updateGoliath(boss: Boss, dt: number, world: World, events: EventBus): 
         boss.stateTimer = def.chargeTelegraph ?? 1.2;
         // Phase 2: ein Billard-Abpraller pro Charge
         boss.bouncesLeft = boss.phase2 ? (def.chargeBouncesP2 ?? 1) : 0;
-        const dx = world.player.x - boss.x;
-        const dz = world.player.z - boss.z;
+        // Ziel: der zum Telegraph-Zeitpunkt naechste Spieler (lesbar, 1.2 s Vorwarnung)
+        const target = world.nearestAlivePlayer(boss.x, boss.z);
+        const dx = target.x - boss.x;
+        const dz = target.z - boss.z;
         const d = Math.hypot(dx, dz) || 1;
         boss.chargeDirX = dx / d;
         boss.chargeDirZ = dz / d;
@@ -302,7 +312,7 @@ function updateGoliath(boss: Boss, dt: number, world: World, events: EventBus): 
     if (boss.shockTelegraphLeft <= 0) {
       boss.shockActive = true;
       boss.shockR = 0;
-      boss.shockHitDone = false;
+      boss.shockHitMask = 0;
       events.emit('bossStomp', {
         x: boss.shockX, z: boss.shockZ,
         radius: def.shockRadius ?? 6, speed: def.shockRingSpeed ?? 10,
@@ -323,13 +333,13 @@ function updateGoliath(boss: Boss, dt: number, world: World, events: EventBus): 
   // Expandierender Schockwellen-Ring (laeuft in jedem State weiter)
   if (boss.shockActive) {
     shockBuf.r = boss.shockR;
-    shockBuf.hitDone = boss.shockHitDone;
+    shockBuf.hitMask = boss.shockHitMask;
     boss.shockActive = tickShockRing(
       shockBuf, boss.shockX, boss.shockZ,
       def.shockRadius ?? 6, def.shockRingSpeed ?? 10, shockDamage, dt, world,
     );
     boss.shockR = shockBuf.r;
-    boss.shockHitDone = shockBuf.hitDone;
+    boss.shockHitMask = shockBuf.hitMask;
   }
 
   // Zweite Schockwelle (Phase 2)
@@ -338,7 +348,7 @@ function updateGoliath(boss: Boss, dt: number, world: World, events: EventBus): 
     if (boss.shock2Countdown <= 0) {
       boss.shock2Active = true;
       boss.shock2R = 0;
-      boss.shock2HitDone = false;
+      boss.shock2HitMask = 0;
       events.emit('bossStomp', {
         x: boss.shockX, z: boss.shockZ,
         radius: def.shockRadius ?? 6, speed: def.shockRingSpeed ?? 10,
@@ -347,13 +357,13 @@ function updateGoliath(boss: Boss, dt: number, world: World, events: EventBus): 
   }
   if (boss.shock2Active) {
     shockBuf.r = boss.shock2R;
-    shockBuf.hitDone = boss.shock2HitDone;
+    shockBuf.hitMask = boss.shock2HitMask;
     boss.shock2Active = tickShockRing(
       shockBuf, boss.shockX, boss.shockZ,
       def.shockRadius ?? 6, def.shockRingSpeed ?? 10, shockDamage, dt, world,
     );
     boss.shock2R = shockBuf.r;
-    boss.shock2HitDone = shockBuf.hitDone;
+    boss.shock2HitMask = shockBuf.hitMask;
   }
 }
 
@@ -387,9 +397,9 @@ function minosPlantBomb(boss: Boss, events: EventBus, x: number, z: number, fuse
 function updateMinos(boss: Boss, dt: number, world: World, events: EventBus): void {
   const def = boss.def;
   checkPhase2(boss, 0.45, events);
-  const player = world.player;
+  const player = world.nearestAlivePlayer(boss.x, boss.z);
 
-  // Orbit-Movement: Abstand halten und um den Spieler tanzen
+  // Orbit-Movement: Abstand halten und um den naechsten Spieler tanzen
   const dx = player.x - boss.x;
   const dz = player.z - boss.z;
   const dist = Math.hypot(dx, dz) || 1;
@@ -413,7 +423,8 @@ function updateMinos(boss: Boss, dt: number, world: World, events: EventBus): vo
   }
   boss.contactDamageNow = def.contactDamage;
 
-  // Bomben legen
+  // Bomben legen — Ziel alterniert im Koop deterministisch zwischen den
+  // Spielern (bombTargetIdx, kein zusaetzlicher RNG-Zug)
   const fuseMult = world.difficulty === 'easy' ? 1.5 : 1;
   boss.plantTimer -= dt;
   if (boss.plantTimer <= 0) {
@@ -421,9 +432,15 @@ function updateMinos(boss: Boss, dt: number, world: World, events: EventBus): vo
     boss.plantTimer = interval;
     boss.telegraphGlow = 0.4;
     const fuse = (def.bombFuse ?? 2.5) * fuseMult;
-    // Querachse: senkrecht zur Boss->Spieler-Linie
-    const qx = -nz;
-    const qz = nx;
+    let bombTarget = world.players[boss.bombTargetIdx % world.players.length];
+    if (!bombTarget || !bombTarget.targetable) bombTarget = player;
+    boss.bombTargetIdx++;
+    // Querachse: senkrecht zur Boss->Ziel-Linie
+    const tdx = bombTarget.x - boss.x;
+    const tdz = bombTarget.z - boss.z;
+    const td = Math.hypot(tdx, tdz) || 1;
+    const qx = -tdz / td;
+    const qz = tdx / td;
     if (boss.phase2) {
       // Bomben-Teppich: 5er-Linie quer durch die Spielerposition, gestaffelt
       // gezuendet — das Domino zeigt die Fluchtrichtung (parallel zur Boss-Achse)
@@ -434,27 +451,27 @@ function updateMinos(boss: Boss, dt: number, world: World, events: EventBus): vo
         const t = i - (size - 1) / 2;
         minosPlantBomb(
           boss, events,
-          player.x + qx * t * spacing, player.z + qz * t * spacing,
+          bombTarget.x + qx * t * spacing, bombTarget.z + qz * t * spacing,
           fuse + (i * stagger) * fuseMult,
         );
       }
     } else {
       // Cluster: eine auf den Spieler, zwei quer daneben (leichter Jitter)
       const spread = 4;
-      minosPlantBomb(boss, events, player.x, player.z, fuse);
+      minosPlantBomb(boss, events, bombTarget.x, bombTarget.z, fuse);
       for (const side of [-1, 1]) {
         const jx = (world.rngSummons.next() - 0.5) * 1.6;
         const jz = (world.rngSummons.next() - 0.5) * 1.6;
         minosPlantBomb(
           boss, events,
-          player.x + qx * side * spread + jx, player.z + qz * side * spread + jz,
+          bombTarget.x + qx * side * spread + jx, bombTarget.z + qz * side * spread + jz,
           fuse,
         );
       }
     }
   }
 
-  // Bomben ticken + detonieren
+  // Bomben ticken + detonieren — jede Detonation prueft ALLE Spieler
   const bombRadius = def.bombRadius ?? 3;
   const bombDamage = Math.round(boss.projectileDamage * (def.bombDamageMult ?? 1.4));
   for (const b of boss.bombs) {
@@ -463,9 +480,11 @@ function updateMinos(boss: Boss, dt: number, world: World, events: EventBus): vo
     if (b.fuseLeft > 0) continue;
     b.active = false;
     events.emit('explosion', { x: b.x, z: b.z, radius: bombRadius, color: 0xff8c1a });
-    const pd = Math.hypot(player.x - b.x, player.z - b.z);
-    if (player.alive && pd < bombRadius + PLAYER.radius) {
-      player.takeDamage(bombDamage);
+    for (let i = 0; i < world.players.length; i++) {
+      const victim = world.players[i];
+      if (!victim || !victim.targetable) continue;
+      const pd = Math.hypot(victim.x - b.x, victim.z - b.z);
+      if (pd < bombRadius + PLAYER.radius) victim.takeDamage(bombDamage);
     }
   }
 
@@ -496,8 +515,12 @@ function updateHydra(boss: Boss, dt: number, world: World, events: EventBus): vo
       m.prevZ = m.z;
       if (m.flashTimer > 0) m.flashTimer -= dt;
       if (m.scalePop > 0) m.scalePop = Math.max(0, m.scalePop - dt * 6);
-      const dx = world.player.x - m.x;
-      const dz = world.player.z - m.z;
+      // Koop: Mini i jagt Spieler i%n — das Team teilt sich die Mini-Phase
+      const idx = boss.minis.indexOf(m) % world.players.length;
+      const preferred = world.players[idx];
+      const target = preferred?.targetable ? preferred : world.nearestAlivePlayer(m.x, m.z);
+      const dx = target.x - m.x;
+      const dz = target.z - m.z;
       const d = Math.hypot(dx, dz) || 1;
       if (d > 3) {
         m.x += (dx / d) * (def.miniSpeed ?? 3.2) * dt;
@@ -565,8 +588,9 @@ function updateHydra(boss: Boss, dt: number, world: World, events: EventBus): vo
   if (boss.fanTimer <= 0) {
     boss.fanTimer = (def.fanInterval ?? 3.5) * boss.cdMult;
     boss.fanTelegraphed = false;
-    const dx = world.player.x - boss.x;
-    const dz = world.player.z - boss.z;
+    const target = world.nearestAlivePlayer(boss.x, boss.z);
+    const dx = target.x - boss.x;
+    const dz = target.z - boss.z;
     const d = Math.hypot(dx, dz) || 1;
     fireFan(world, boss.x, boss.z, dx / d, dz / d, def.fanCount ?? 5, def.fanAngle ?? 0.7,
       (def.fanProjectileSpeed ?? 7) * boss.projSpeedMult, boss.projectileDamage);
@@ -586,7 +610,6 @@ function updateHydra(boss: Boss, dt: number, world: World, events: EventBus): vo
 function updateVortex(boss: Boss, dt: number, world: World, events: EventBus): void {
   const def = boss.def;
   checkPhase2(boss, 0.5, events);
-  const player = world.player;
 
   // Movement: beansprucht die Arena-Mitte (P2: jagt den Spieler)
   if (boss.phase2) {
@@ -625,12 +648,15 @@ function updateVortex(boss: Boss, dt: number, world: World, events: EventBus): v
     boss.suctionLeft -= dt;
 
     // Spieler-Pull: reine Positions-Spannung, macht selbst NULL Schaden.
-    // Der Dash bricht den Sog immer (waehrenddessen kein Pull).
+    // Der Dash bricht den Sog immer (waehrenddessen kein Pull); Koop: der
+    // Sog zieht ALLE angreifbaren Spieler (downed rutscht nicht mit).
     // Stoppgrenze MIT Marge ueber der Kontakt-Hitbox (radius + 0.5 = 2.2) und
     // geclampter Schritt — der Sog traegt den Spieler nie in den Kontaktschaden.
     const range = boss.phase2 ? (def.suctionRangeP2 ?? 99) : (def.suctionRange ?? 14);
     const pull = (boss.phase2 ? (def.suctionPullP2 ?? 3.2) : (def.suctionPull ?? 2.6)) * world.mods.enemySpeed;
-    if (player.alive && !player.isDashing) {
+    for (let i = 0; i < world.players.length; i++) {
+      const player = world.players[i];
+      if (!player || !player.targetable || player.isDashing) continue;
       const pdx = boss.x - player.x;
       const pdz = boss.z - player.z;
       const pd = Math.hypot(pdx, pdz);
@@ -676,7 +702,7 @@ function updateVortex(boss: Boss, dt: number, world: World, events: EventBus): v
     if (boss.suctionLeft <= 0) {
       boss.shockActive = true;
       boss.shockR = 0;
-      boss.shockHitDone = false;
+      boss.shockHitMask = 0;
       events.emit('bossStomp', {
         x: boss.shockX, z: boss.shockZ,
         radius: collapseRadius, speed: def.collapseRingSpeed ?? 12,
@@ -688,14 +714,14 @@ function updateVortex(boss: Boss, dt: number, world: World, events: EventBus): v
   if (boss.shockActive) {
     const collapseRadius = boss.phase2 ? (def.collapseRadiusP2 ?? 6) : (def.collapseRadius ?? 5);
     shockBuf.r = boss.shockR;
-    shockBuf.hitDone = boss.shockHitDone;
+    shockBuf.hitMask = boss.shockHitMask;
     boss.shockActive = tickShockRing(
       shockBuf, boss.shockX, boss.shockZ,
       collapseRadius, def.collapseRingSpeed ?? 12,
       Math.round(boss.projectileDamage * 1.2), dt, world,
     );
     boss.shockR = shockBuf.r;
-    boss.shockHitDone = shockBuf.hitDone;
+    boss.shockHitMask = shockBuf.hitMask;
   }
 
   updateTrioShots(boss, dt, world, events);

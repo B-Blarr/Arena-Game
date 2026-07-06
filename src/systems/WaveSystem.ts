@@ -1,12 +1,13 @@
 import {
   ARENA_RADIUS,
-  LIMITS,
+  COOP,
   SPAWN,
   enemyDamageFactor,
   enemyHpFactor,
   isBossWave,
   waveBudget,
 } from '../config/balance';
+import type { Player } from '../entities/Player';
 import { AFFIX_RAGE, AFFIX_SHIELD, ELITE, ENEMIES, ENEMY_CHASER, type EnemyDef } from '../config/enemies';
 import { bossForWave, bossHp } from '../config/bosses';
 import type { EventBus } from '../core/EventBus';
@@ -64,7 +65,9 @@ export class WaveSystem {
   /** Boss-Wellen haben KEIN Budget — nur der Boss (uebersichtlich fuer Kinder). */
   private spawnBoss(w: number): void {
     const { def, tier } = bossForWave(w);
-    const hp = bossHp(w, enemyHpFactor(w), this.world.mods.enemyHp);
+    // Koop: Boss-HP zusaetzlich erhoeht — Einzelziel gegen doppelten DPS
+    const coopMult = this.world.isCoop ? COOP.bossHpExtra : 1;
+    const hp = Math.round(bossHp(w, enemyHpFactor(w), this.world.mods.enemyHp) * coopMult);
     const projDamage = Math.max(4, Math.round(10 * enemyDamageFactor(w) * this.world.mods.enemyDamage));
     this.bossInstance.init(def, tier, hp, projDamage);
     this.world.boss = this.bossInstance;
@@ -179,16 +182,17 @@ export class WaveSystem {
 
   private emitPack(): void {
     const world = this.world;
-    const headroom = LIMITS.maxEnemies - world.enemies.count - this.telegraphs.length;
+    const headroom = world.maxEnemiesLimit - world.enemies.count - this.telegraphs.length;
     if (headroom <= 0) {
       this.packTimer = 1; // frueh wieder pruefen
       return;
     }
 
+    const packBudget = world.isCoop ? COOP.packBudget : SPAWN.packBudget;
     let cost = 0;
     let spawned = 0;
     let attempts = 0;
-    while (this.pending.length > 0 && cost < SPAWN.packBudget && spawned < headroom && attempts < 50) {
+    while (this.pending.length > 0 && cost < packBudget && spawned < headroom && attempts < 50) {
       attempts++;
       // Eintraege sind kodiert: Typ in Bit 0-7, Elite-Affix ab Bit 8
       const raw = this.pending[0] as number;
@@ -212,7 +216,8 @@ export class WaveSystem {
     }
   }
 
-  /** 6 feste Portale am Rand; nie naeher als 8 u am Spieler. */
+  /** 6 feste Portale am Rand; nie naeher als 8 u an IRGENDEINEM Spieler.
+   *  RNG-Zugzahl bleibt exakt wie im Solo (Daily-Determinismus). */
   private pickPortal(): { x: number; z: number } {
     const world = this.world;
     const rng = world.rngWaves;
@@ -224,7 +229,14 @@ export class WaveSystem {
       const a = (i / SPAWN.portalCount) * Math.PI * 2;
       const x = Math.cos(a) * r;
       const z = Math.sin(a) * r;
-      const d = Math.hypot(x - world.player.x, z - world.player.z);
+      let d = Infinity;
+      for (let k = 0; k < world.players.length; k++) {
+        const p = world.players[k] as Player;
+        if (!p.targetable) continue;
+        const pd = Math.hypot(x - p.x, z - p.z);
+        if (pd < d) d = pd;
+      }
+      if (d === Infinity) d = Math.hypot(x - world.player.x, z - world.player.z);
       if (d >= SPAWN.minPlayerDistance) eligible.push(i);
       if (d > farthestDist) {
         farthestDist = d;

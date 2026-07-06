@@ -6,6 +6,7 @@ import type { SaveManager } from '../../save/SaveManager';
 
 export interface MenuCallbacks {
   onPlay: (daily: boolean) => void;
+  onCoop: () => void;
   onShop: () => void;
   onProfiles: () => void;
   onLeaderboard: () => void;
@@ -63,7 +64,10 @@ export class MenuScreen {
       <div class="hero-row"></div>
       <div class="menu-colorways"></div>
       <div class="menu-buttons">
-        <button class="btn btn-primary menu-play" data-nav-default data-key="menu-play">${STR.play}</button>
+        <div class="menu-buttons-row">
+          <button class="btn btn-primary menu-play" data-nav-default data-key="menu-play">${STR.play}</button>
+          <button class="btn menu-coop" data-key="menu-coop">${STR.coopButton}</button>
+        </div>
         <div class="menu-buttons-row">
           <button class="btn menu-shop" data-key="menu-shop">🛠 ${STR.shop}</button>
           <button class="btn btn-gold menu-leaderboard" data-key="menu-lb">🏆 ${STR.leaderboard}</button>
@@ -97,6 +101,9 @@ export class MenuScreen {
 
     (this.root.querySelector('.menu-play') as HTMLButtonElement).addEventListener('click', () => {
       this.cb.onPlay(this.dailyMode);
+    });
+    (this.root.querySelector('.menu-coop') as HTMLButtonElement).addEventListener('click', () => {
+      this.cb.onCoop();
     });
     (this.root.querySelector('.menu-shop') as HTMLButtonElement).addEventListener('click', () => {
       this.cb.onShop();

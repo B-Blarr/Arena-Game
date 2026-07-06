@@ -14,6 +14,7 @@ import { UPGRADE_VALUES as UV } from '../config/upgrades';
 import type { EventBus } from '../core/EventBus';
 import type { World } from '../core/World';
 import type { Enemy } from '../entities/Enemy';
+import type { Player } from '../entities/Player';
 import { initProjectile } from '../entities/Projectile';
 import type { InputState } from '../input/InputManager';
 import type { PickupSystem } from './PickupSystem';
@@ -29,35 +30,37 @@ const MAX_ENEMY_RADIUS = 1.0;
  * Kill-Verarbeitung inkl. Lebensraub, Frost, Nova-Ketten und Splitter-Kindern.
  * Dazu die legendaeren Effekte: Spiegelklon-Salve, Orbital-Laser,
  * Schwarzes-Loch-Dash und Ueberladung (damageBoost).
+ * Koop: laeuft pro Spieler; Kills werden dem Verursacher (lastAttacker)
+ * zugerechnet, damit Lifesteal/Nova/Crit beim Richtigen landen.
  * Gegner sterben nie sofort — sie werden markiert und am Step-Ende in
  * einem Sweep entfernt (stabile Pool-Indizes waehrend der Kollisionen).
  */
 export class CombatSystem {
-  /** Aus den Settings: Auto-Aim an/aus. */
-  autoAimEnabled = true;
-
   constructor(
     private readonly world: World,
     private readonly events: EventBus,
     private readonly pickups: PickupSystem,
   ) {}
 
-  update(dt: number, input: InputState): void {
-    const p = this.world.player;
-    if (!p.alive) return;
-
-    this.updateFiring(input);
-    this.updateOrbs(dt);
-    this.updateDashBlade();
-    this.updateBlackHole(dt);
-    this.updateOrbital(dt);
+  update(dt: number, inputs: readonly InputState[]): void {
+    const players = this.world.players;
+    for (let i = 0; i < players.length; i++) {
+      const p = players[i] as Player;
+      // Geworfenes Schwarzes Loch tickt weiter, auch wenn der Werfer faellt
+      this.updateBlackHole(p, dt);
+      if (!p.targetable) continue;
+      const input = inputs[i];
+      if (input) this.updateFiring(p, input);
+      this.updateOrbs(p, dt);
+      this.updateDashBlade(p);
+      this.updateOrbital(p, dt);
+    }
     this.sweepDead();
   }
 
   // ---------------------------------------------------------- Feuern
 
-  private updateFiring(input: InputState): void {
-    const p = this.world.player;
+  private updateFiring(p: Player, input: InputState): void {
     const stats = p.stats;
 
     let aimX = 0;
@@ -65,7 +68,7 @@ export class CombatSystem {
     let haveTarget = false;
     let manual = false;
 
-    if (!this.autoAimEnabled && input.hasManualAim) {
+    if (!p.autoAim && input.hasManualAim) {
       aimX = input.aimDirX;
       aimZ = input.aimDirZ;
       haveTarget = true;
@@ -136,7 +139,7 @@ export class CombatSystem {
 
     // Skill-Anreiz: manuelles Zielen gibt +10 % Schaden
     const damage = stats.damage * (manual ? AIM.manualDamageBonus : 1);
-    this.fireSalvo(p.x, p.z, aimX, aimZ, damage);
+    this.fireSalvo(p, p.x, p.z, aimX, aimZ, damage);
     // Spiegelklon: Geist hinter dem Spieler feuert dieselbe Salve mit.
     // Ursprung in die Arena clampen — mit dem Ruecken zur Wand laege er
     // sonst hinter der Projektil-Despawn-Grenze und die Salve verpufft.
@@ -149,14 +152,14 @@ export class CombatSystem {
         cx = (cx / cd) * maxR;
         cz = (cz / cd) * maxR;
       }
-      this.fireSalvo(cx, cz, aimX, aimZ, damage * stats.cloneDamageFrac);
+      this.fireSalvo(p, cx, cz, aimX, aimZ, damage * stats.cloneDamageFrac);
     }
-    this.events.emit('shotFired', { x: p.x, z: p.z, dirX: aimX, dirZ: aimZ });
+    this.events.emit('shotFired', { x: p.x, z: p.z, dirX: aimX, dirZ: aimZ, playerIndex: p.index });
   }
 
   /** Eine komplette Faecher-Salve ab (x, z) in Zielrichtung. */
-  private fireSalvo(x: number, z: number, aimX: number, aimZ: number, damage: number): void {
-    const stats = this.world.player.stats;
+  private fireSalvo(p: Player, x: number, z: number, aimX: number, aimZ: number, damage: number): void {
+    const stats = p.stats;
     const count = stats.projectileCount;
     const baseAngle = Math.atan2(aimZ, aimX);
     for (let i = 0; i < count; i++) {
@@ -170,13 +173,13 @@ export class CombatSystem {
       proj.ricochetLeft = stats.ricochet;
       proj.knockback = stats.knockback;
       proj.boomerang = stats.boomerang;
+      proj.ownerIdx = p.index;
     }
   }
 
   // ---------------------------------------------------------- Orbs
 
-  private updateOrbs(dt: number): void {
-    const p = this.world.player;
+  private updateOrbs(p: Player, dt: number): void {
     const stats = p.stats;
     if (stats.orbCount <= 0) return;
     void dt;
@@ -195,7 +198,7 @@ export class CombatSystem {
         const dz = e.z - oz;
         if (dx * dx + dz * dz < (0.35 + e.radius) * (0.35 + e.radius)) {
           e.orbCooldown = UV.orbHitCooldown;
-          this.hitEnemy(e, stats.orbDamage, false, ox, oz, 4);
+          this.hitEnemy(e, stats.orbDamage, false, ox, oz, 4, true, p.index);
         }
       }
     }
@@ -203,21 +206,23 @@ export class CombatSystem {
 
   // ---------------------------------------------------------- Dash-Klinge
 
-  private updateDashBlade(): void {
-    const p = this.world.player;
+  private updateDashBlade(p: Player): void {
     if (!p.isDashing || p.stats.dashDamage <= 0) return;
+    // Token pro Spieler versetzt — sonst ueberspringt P2s Dash Gegner,
+    // die P1s gleichnummerierter Dash schon markiert hat
+    const token = p.dashId * 2 + p.index;
     const found = this.world.spatialHash.queryCircle(p.x, p.z, 1.3 + MAX_ENEMY_RADIUS, dashQueryBuf);
     for (let n = 0; n < found; n++) {
       const idx = dashQueryBuf[n] as number;
       if (idx >= this.world.enemies.count) continue;
       const e = this.world.enemies.get(idx);
-      if (e.hp <= 0 || e.dashHitToken === p.dashId) continue;
+      if (e.hp <= 0 || e.dashHitToken === token) continue;
       const dx = e.x - p.x;
       const dz = e.z - p.z;
       const rr = e.radius + 0.8;
       if (dx * dx + dz * dz < rr * rr) {
-        e.dashHitToken = p.dashId;
-        this.hitEnemy(e, p.stats.dashDamage, false, p.x, p.z, 8);
+        e.dashHitToken = token;
+        this.hitEnemy(e, p.stats.dashDamage, false, p.x, p.z, 8, true, p.index);
       }
     }
   }
@@ -230,8 +235,7 @@ export class CombatSystem {
    * alte kv-Variante wurde von der Knockback-Daempfung aufgefressen und war
    * praktisch unsichtbar. Am Lebensende: Kollaps-Explosion.
    */
-  private updateBlackHole(dt: number): void {
-    const p = this.world.player;
+  private updateBlackHole(p: Player, dt: number): void {
     if (p.blackHoleTimer <= 0) return;
     p.blackHoleTimer -= dt;
     const hx = p.blackHoleX;
@@ -241,7 +245,7 @@ export class CombatSystem {
       // Kollaps-Crunch: komplette Explosions-Pipeline gratis (Ring, Partikel,
       // Sfx, Trauma, Nova-Synergie); Knockback wirft den Knaeuel wieder auf
       this.events.emit('blackHoleCollapsed', { x: hx, z: hz });
-      this.explode(hx, hz, UV.blackHoleCrushRadius, UV.blackHoleCrushDamage, 1, 0x9b5cff);
+      this.explode(hx, hz, UV.blackHoleCrushRadius, UV.blackHoleCrushDamage, 1, 0x9b5cff, true, p.index);
       return;
     }
 
@@ -272,8 +276,7 @@ export class CombatSystem {
   // ---------------------------------------------------------- Orbital-Laser
 
   /** Legendaer: alle 5 s ein Einschlag auf den Boss bzw. den zaehesten Gegner. */
-  private updateOrbital(dt: number): void {
-    const p = this.world.player;
+  private updateOrbital(p: Player, dt: number): void {
     if (p.stats.orbitalDamage <= 0) return;
     if (p.orbitalTimer > 0) {
       p.orbitalTimer -= dt;
@@ -297,7 +300,7 @@ export class CombatSystem {
     }
     // Kein Ziel (Wellenpause): Timer bleibt bei 0 — feuert sofort beim naechsten Gegner
     if (!best) return;
-    this.hitEnemy(best, p.stats.orbitalDamage, false, best.x, best.z, 6);
+    this.hitEnemy(best, p.stats.orbitalDamage, false, best.x, best.z, 6, true, p.index);
     this.events.emit('orbitalStrike', { x: best.x, z: best.z });
     p.orbitalTimer = UV.orbitalLaserInterval;
   }
@@ -308,6 +311,7 @@ export class CombatSystem {
    * Schaden auf einen Gegner anwenden (crit wird hier gerollt, wenn erlaubt).
    * fromPlayer=false (Bomber-Detonation): kein Overcharge-Boost und der
    * Elite-Schild bleibt intakt — er schuetzt nur vor SPIELER-Treffern.
+   * attackerIdx: welcher Spieler verursacht (Crit/Boost/Kill-Zurechnung).
    */
   hitEnemy(
     e: Enemy,
@@ -317,9 +321,10 @@ export class CombatSystem {
     sourceZ: number,
     knockback: number,
     fromPlayer = true,
+    attackerIdx = 0,
   ): void {
     if (e.hp <= 0) return;
-    const p = this.world.player;
+    const p = (this.world.players[attackerIdx] ?? this.world.players[0]) as Player;
 
     // Elite-Schild: erster Spieler-Treffer wird nullifiziert — egal ob
     // Projektil, Orb, Dash-Klinge oder Nova (EIN Codepfad fuer alle Quellen).
@@ -330,6 +335,7 @@ export class CombatSystem {
       return;
     }
 
+    if (fromPlayer) e.lastAttacker = p.index;
     const crit = allowCrit && Math.random() < p.stats.critChance;
     // damageBoost: Ueberladung (legendaer) unter 30 % HP, nur Spieler-Quellen
     const boost = fromPlayer ? p.damageBoost : 1;
@@ -377,7 +383,8 @@ export class CombatSystem {
   }
 
   private processKill(e: Enemy): void {
-    const p = this.world.player;
+    // Kill gehoert dem letzten Verursacher (Solo immer Spieler 0)
+    const p = (this.world.players[e.lastAttacker] ?? this.world.players[0]) as Player;
     const def = e.type;
 
     this.events.emit('enemyKilled', {
@@ -389,7 +396,8 @@ export class CombatSystem {
     if (p.stats.lifestealPerKill > 0) p.healFractional(p.stats.lifestealPerKill);
     this.pickups.dropFrom(e);
 
-    // Splitter teilt sich in 2 Kinder (Kinder splitten NIE erneut)
+    // Splitter teilt sich in 2 Kinder (Kinder splitten NIE erneut);
+    // Fluchtwinkel weg vom Verursacher
     if (def === ENEMY_SPLITTER) {
       const scaling = this.world.scalingForWave(this.world.wave);
       const baseAngle = Math.atan2(e.z - p.z, e.x - p.x);
@@ -407,11 +415,16 @@ export class CombatSystem {
 
     // Bomber: Tod WAEHREND der Zuendung -> Detonation. Auf Distanz getoetet
     // (Zuendung nie gestartet) stirbt er harmlos — der Auto-Aim-Konter.
+    // Koop: der Blast prueft ALLE angreifbaren Spieler.
     if (def === ENEMY_BOMBER && e.telegraphTimer > 0) {
-      const dx = p.x - e.x;
-      const dz = p.z - e.z;
       const rr = BOMBER_AI.blastRadius + PLAYER.radius;
-      if (p.alive && dx * dx + dz * dz < rr * rr) p.takeDamage(e.damage);
+      for (let i = 0; i < this.world.players.length; i++) {
+        const victim = this.world.players[i] as Player;
+        if (!victim.targetable) continue;
+        const dx = victim.x - e.x;
+        const dz = victim.z - e.z;
+        if (dx * dx + dz * dz < rr * rr) victim.takeDamage(e.damage);
+      }
       // depth 99: Bomber-Explosionen zaehlen nicht als Nova-Kette;
       // fromPlayer=false: kein Overcharge-Boost, bricht keine Elite-Schilde
       this.explode(e.x, e.z, BOMBER_AI.blastRadius, e.damage * BOMBER_AI.enemyDamageMult, 99, 0xff3b30, false);
@@ -429,7 +442,7 @@ export class CombatSystem {
     // Nova-Kill: Explosionskette mit begrenzter Tiefe
     const depth = e.novaDepth;
     if (p.stats.novaChance > 0 && depth < UV.novaChainDepth && Math.random() < p.stats.novaChance) {
-      this.explode(e.x, e.z, UV.novaRadius, p.stats.novaDamage, depth + 1);
+      this.explode(e.x, e.z, UV.novaRadius, p.stats.novaDamage, depth + 1, 0xffc83d, true, p.index);
     }
   }
 
@@ -442,7 +455,7 @@ export class CombatSystem {
   explode(
     x: number, z: number,
     radius: number, damage: number, depth: number,
-    color = 0xffc83d, fromPlayer = true,
+    color = 0xffc83d, fromPlayer = true, attackerIdx = 0,
   ): void {
     this.events.emit('explosion', { x, z, radius, color });
     const pool = this.world.enemies;
@@ -453,7 +466,7 @@ export class CombatSystem {
       const dz = e.z - z;
       const rr = radius + e.radius;
       if (dx * dx + dz * dz < rr * rr) {
-        this.hitEnemy(e, damage, false, x, z, 6, fromPlayer);
+        this.hitEnemy(e, damage, false, x, z, 6, fromPlayer, attackerIdx);
         // Ketten-Tiefe nur bei TOTEN stempeln: Ueberlebende (Tank, Schild-
         // Elite) sollen bei ihrem spaeteren Tod normal Nova rollen koennen.
         if (e.hp <= 0 && e.novaDepth < depth) e.novaDepth = depth;
@@ -465,7 +478,8 @@ export class CombatSystem {
       const dz = boss.z - z;
       const rr = radius + boss.def.radius;
       if (dx * dx + dz * dz < rr * rr) {
-        const boost = fromPlayer ? this.world.player.damageBoost : 1;
+        const attacker = (this.world.players[attackerIdx] ?? this.world.players[0]) as Player;
+        const boost = fromPlayer ? attacker.damageBoost : 1;
         boss.takeDamage(Math.round(damage * boost), this.events);
       }
     }

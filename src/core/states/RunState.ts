@@ -1,4 +1,4 @@
-import { HARD_UNLOCK_WAVE, META, isBossWave } from '../../config/balance';
+import { COOP, HARD_UNLOCK_WAVE, META, isBossWave } from '../../config/balance';
 import { getHero } from '../../config/heroes';
 import { getColorway } from '../../config/stickers';
 import { STR } from '../../config/strings.de';
@@ -6,6 +6,9 @@ import { PICKUP_CORE } from '../../entities/Pickup';
 import { updateEnemies } from '../../entities/behaviors';
 import { updateBoss } from '../../entities/bossPatterns';
 import type { Boss } from '../../entities/Boss';
+import type { Player } from '../../entities/Player';
+import type { InputState } from '../../input/InputManager';
+import type { PlayerConfig } from '../World';
 import type { GameState } from '../StateMachine';
 import type { Game } from '../Game';
 
@@ -24,9 +27,13 @@ export class RunState implements GameState {
   private phaseTimer = 0;
   private tookDamageThisWave = false;
   private pendingGuaranteeRare = false;
+  /** Koop-Upgrade-Sequenz: wessen Wahl gerade laeuft (0 -> 1 -> weiter). */
+  private chooserIdx: 0 | 1 = 0;
   private tutStage: TutStage = 'done';
   private collectPromptShown = false;
   private pauseKeyHandler: ((e: KeyboardEvent) => void) | null = null;
+  /** Wiederverwendetes Input-Array fuer combat.update (keine Allokationen). */
+  private readonly inputs: InputState[] = [];
   private readonly unsubs: Array<() => void> = [];
 
   constructor(private readonly game: Game) {
@@ -52,13 +59,43 @@ export class RunState implements GameState {
     const s = g.save.data.settings;
     const hero = getHero(s.heroId);
 
-    g.world.reset(g.runSeed, g.runDifficulty, hero, s.weaponId, g.save.data.permaUpgrades, g.runIsDaily);
+    // Spieler-Aufstellung: P1 aus dem aktiven Profil; P2 (Koop) aus dem
+    // gewaehlten Partner-Profil oder als Gast mit frischen Defaults
+    const configs: PlayerConfig[] = [{
+      hero,
+      weaponId: s.weaponId,
+      perma: g.save.data.permaUpgrades,
+      autoAim: s.autoAim,
+    }];
+    const p2 = g.runCoopP2;
+    if (p2) {
+      if (p2.profileId) {
+        const data = g.save.profileData(p2.profileId);
+        configs.push({
+          hero: getHero(data.settings.heroId),
+          weaponId: data.settings.weaponId,
+          perma: data.permaUpgrades,
+          autoAim: data.settings.autoAim,
+        });
+        g.instRenderer.setHero(
+          getHero(data.settings.heroId),
+          getColorway(data.settings.colorwayId, data.unlockedColorways),
+          1,
+        );
+      } else {
+        configs.push({ hero: getHero('volt'), weaponId: 'default', perma: {}, autoAim: true });
+        g.instRenderer.setHero(getHero('volt'), undefined, 1);
+      }
+    }
+
+    g.world.reset(g.runSeed, g.runDifficulty, configs, g.runIsDaily);
     g.waves.reset();
     g.score.reset();
     g.pickupSystem.reset();
     g.surprise.reset();
     g.runStats.reset();
     g.upgrades.reset();
+    g.coopSystem.reset();
     g.particles.reset();
     g.instRenderer.reset();
     g.instRenderer.setHero(hero, getColorway(s.colorwayId, g.save.data.unlockedColorways));
@@ -66,13 +103,16 @@ export class RunState implements GameState {
     g.time.reset();
     g.cameraRig.reset();
     g.cameraRig.snapTo(0, 0);
-    g.combat.autoAimEnabled = s.autoAim;
     g.popups.reset();
-    g.hud.resetForRun(g.world);
+    g.popups.coopNames = g.world.isCoop ? g.coopNames() : null;
+    g.hud.resetForRun(g.world, g.coopNames());
     g.hud.show();
     g.ui.showScreen(null);
 
-    if ((g.save.data.permaUpgrades.headstart ?? 0) > 0) g.upgrades.applyHeadstart();
+    if ((g.save.data.permaUpgrades.headstart ?? 0) > 0) g.upgrades.applyHeadstart(0);
+    if (p2?.profileId && (g.save.profileData(p2.profileId).permaUpgrades.headstart ?? 0) > 0) {
+      g.upgrades.applyHeadstart(1);
+    }
 
     g.music.start();
     g.music.setWave(1);
@@ -82,11 +122,14 @@ export class RunState implements GameState {
     this.isActive = true;
     this.phase = 'wave';
     this.pendingGuaranteeRare = false;
+    this.chooserIdx = 0;
     // Menue-Klick/A-Button darf nicht als erster Dash im Run feuern
     g.input.resetTransient();
     g.events.emit('runStarted', {});
     this.startWave(1);
-    this.initTutorial();
+    // Onboarding nur solo — im Koop erklaeren sich die Spieler gegenseitig
+    if (g.world.isCoop) this.tutStage = 'done';
+    else this.initTutorial();
 
     this.pauseKeyHandler = (e: KeyboardEvent): void => {
       if ((e.code === 'KeyP' || e.code === 'Escape') && !e.repeat) this.togglePause();
@@ -101,6 +144,7 @@ export class RunState implements GameState {
       window.removeEventListener('keydown', this.pauseKeyHandler);
       this.pauseKeyHandler = null;
     }
+    g.uiNav.setInputFilter(null);
     g.upgradeScreen.hide();
     g.ui.hidePrompt();
     g.hud.hide();
@@ -147,7 +191,6 @@ export class RunState implements GameState {
   update(dt: number): void {
     const g = this.game;
     const world = g.world;
-    const player = world.player;
     world.elapsed += dt;
 
     if (this.phase === 'dying') {
@@ -162,10 +205,15 @@ export class RunState implements GameState {
       return;
     }
 
-    const input = g.input.sample(0, g.cameraRig.camera, player.x, player.z);
-
-    player.update(dt, input.moveX, input.moveZ, input.dashJustPressed);
-    if (player.isDashing) g.particles.dashTrail(player.x, player.z);
+    // Input + Bewegung pro Spieler (Solo: nur Slot 0)
+    this.inputs.length = 0;
+    for (let i = 0; i < world.players.length; i++) {
+      const p = world.players[i] as Player;
+      const input = g.input.sample(i as 0 | 1, g.cameraRig.camera, p.x, p.z);
+      this.inputs.push(input);
+      p.update(dt, input.moveX, input.moveZ, input.dashJustPressed);
+      if (p.isDashing) g.particles.dashTrail(p.x, p.z);
+    }
 
     g.collision.fillSpatialHash();
     updateEnemies(world, dt, g.events);
@@ -178,13 +226,22 @@ export class RunState implements GameState {
 
     g.waves.update(dt);
     g.collision.update(dt);
-    g.combat.update(dt, input);
+    g.combat.update(dt, this.inputs);
+    g.coopSystem.update(dt);
     g.pickupSystem.update(dt);
     g.surprise.update(dt);
     g.score.update(dt);
     g.particles.update(dt);
 
-    this.updateTutorial(input.moveX, input.moveZ);
+    // Koop-Game-Over: erst wenn BEIDE gleichzeitig am Boden sind
+    if (world.isCoop && world.allPlayersDown()) {
+      const p0 = world.players[0] as Player;
+      g.events.emit('playerDied', { x: p0.x, z: p0.z });
+      return;
+    }
+
+    const input0 = this.inputs[0];
+    if (input0) this.updateTutorial(input0.moveX, input0.moveZ);
 
     if (this.phase === 'wave' && g.waves.isWaveCleared()) {
       this.onWaveCleared();
@@ -199,6 +256,8 @@ export class RunState implements GameState {
     const w = g.world.wave;
     this.phase = 'waveEnd';
     this.phaseTimer = 1.6;
+    // Koop: niemand sitzt die Upgrade-Phase am Boden ab (VOR dem Banner)
+    g.coopSystem.reviveAll();
     g.pickupSystem.collectAllCores();
     const perfect = !this.tookDamageThisWave;
     const bonus = g.score.waveBonus(w, perfect);
@@ -215,21 +274,53 @@ export class RunState implements GameState {
   private openUpgradeChoice(): void {
     const g = this.game;
     this.phase = 'upgrade';
-    const offers = g.upgrades.rollOffers(this.pendingGuaranteeRare);
-    this.pendingGuaranteeRare = false;
+    this.chooserIdx = 0;
+    // Auch wer im kurzen Wellenende-Fenster fiel, steht zur Wahl wieder auf
+    g.coopSystem.reviveAll();
     g.time.baseScale = 0;
     g.audioEngine.duckMusic(true);
-    g.upgradeScreen.show(offers, true, g.world.player);
+    this.showChoiceFor(0, this.pendingGuaranteeRare);
     g.ui.showScreen('screen-upgrade');
   }
 
-  /** Callback der Upgrade-Karten (Maus oder Tasten 1/2/3). */
+  /** Angebot fuer einen Spieler wuerfeln und den Screen entsprechend gaten. */
+  private showChoiceFor(idx: 0 | 1, guaranteeRare: boolean): void {
+    const g = this.game;
+    const offers = g.upgrades.rollOffers(guaranteeRare, idx);
+    const player = (g.world.players[idx] ?? g.world.players[0]) as Player;
+    if (g.world.isCoop) {
+      const source = g.input.sourceOfSlot(idx);
+      const names = g.coopNames();
+      g.uiNav.setInputFilter(idx);
+      g.upgradeScreen.show(offers, true, player, {
+        slot: idx,
+        label: STR.upgradeChooser(names[idx] ?? `Spieler ${idx + 1}`),
+        allowKeys: source === 'wasd+mouse' || source === 'arrows',
+        allowMouse: source === 'wasd+mouse',
+      });
+    } else {
+      g.upgradeScreen.show(offers, true, player);
+    }
+  }
+
+  /** Callback der Upgrade-Karten (Maus, Tasten 1/2/3 oder Pad). */
   chooseUpgrade(index: number): void {
     const g = this.game;
     if (this.phase !== 'upgrade') return;
     const def = g.upgrades.currentOffers[index];
     if (!def) return;
-    g.upgrades.apply(def);
+    g.upgrades.apply(def, this.chooserIdx);
+
+    // Koop: nach Spieler 1 waehlt Spieler 2 (eigener Stream, eigener Reroll);
+    // das garantierte Rare nach Bossen bekommen BEIDE
+    if (g.world.isCoop && this.chooserIdx === 0) {
+      this.chooserIdx = 1;
+      this.showChoiceFor(1, this.pendingGuaranteeRare);
+      return;
+    }
+
+    this.pendingGuaranteeRare = false;
+    g.uiNav.setInputFilter(null);
     g.upgradeScreen.hide();
     g.ui.showScreen(null);
     g.time.baseScale = 1;
@@ -242,8 +333,21 @@ export class RunState implements GameState {
   rerollUpgrades(): void {
     const g = this.game;
     if (this.phase !== 'upgrade') return;
-    const offers = g.upgrades.reroll(false);
-    if (offers) g.upgradeScreen.show(offers, false, g.world.player);
+    const offers = g.upgrades.reroll(false, this.chooserIdx);
+    if (!offers) return;
+    const player = (g.world.players[this.chooserIdx] ?? g.world.players[0]) as Player;
+    if (g.world.isCoop) {
+      const source = g.input.sourceOfSlot(this.chooserIdx);
+      const names = g.coopNames();
+      g.upgradeScreen.show(offers, false, player, {
+        slot: this.chooserIdx,
+        label: STR.upgradeChooser(names[this.chooserIdx] ?? `Spieler ${this.chooserIdx + 1}`),
+        allowKeys: source === 'wasd+mouse' || source === 'arrows',
+        allowMouse: source === 'wasd+mouse',
+      });
+    } else {
+      g.upgradeScreen.show(offers, false, player);
+    }
   }
 
   private handleBossDeath(boss: Boss): void {
@@ -251,9 +355,12 @@ export class RunState implements GameState {
     const bossNr = Math.max(1, Math.floor(g.world.wave / 5));
     g.events.emit('bossDied', { x: boss.x, z: boss.z, color: boss.def.color, id: boss.def.id });
     g.score.bossBonus(bossNr);
-    // Belohnung: Kern-Fontaene + Heilung + garantiert Rare-Upgrade danach
+    // Belohnung: Kern-Fontaene + Heilung fuer ALLE Lebenden + Rare danach
     g.pickupSystem.spawnCoreFountain(boss.x, boss.z, META.bossCoresBase + META.bossCoresPerNr * bossNr);
-    g.world.player.heal(Math.round(g.world.player.stats.maxHp * META.bossHealFrac));
+    for (let i = 0; i < g.world.players.length; i++) {
+      const p = g.world.players[i] as Player;
+      if (p.targetable) p.heal(Math.round(p.stats.maxHp * META.bossHealFrac));
+    }
     g.music.setBossMode(false);
     g.waves.bossDefeated();
     this.pendingGuaranteeRare = true;
@@ -344,12 +451,34 @@ export class RunState implements GameState {
 
   render(alpha: number, rawDt: number): void {
     const g = this.game;
-    const p = g.world.player;
+    const world = g.world;
     g.arena.update(rawDt);
-    g.instRenderer.render(g.world, alpha, rawDt, g.time.scale > 0);
+    // Revive-Fortschritt fuer die Gold-Ringe der Figuren
+    g.instRenderer.reviveProgress[0] = g.coopSystem.progressOf(0);
+    g.instRenderer.reviveProgress[1] = g.coopSystem.progressOf(1);
+    g.instRenderer.render(world, alpha, rawDt, g.time.scale > 0);
     g.particles.render();
-    g.cameraRig.update(rawDt, p.x, p.z, p.velX, p.velZ);
-    g.hud.update(rawDt, g.world, g.score, g.world.enemies.count);
+
+    if (world.isCoop) {
+      // Kamera: Mittelpunkt beider Spieler + Dolly-out, damit beide (plus
+      // Rand) sichtbar bleiben; Lookahead aus (vel 0) — zwei Richtungen
+      // ergaeben nur Gezerre
+      const p0 = world.players[0] as Player;
+      const p1 = world.players[1] as Player;
+      const cx = (p0.x + p1.x) / 2;
+      const cz = (p0.z + p1.z) / 2;
+      const cc = COOP.camera;
+      const kNeeded = Math.min(cc.zoomMax, Math.max(
+        1,
+        (Math.abs(p0.z - p1.z) / 2 + cc.margin) / cc.nearHalfZ,
+        (Math.abs(p0.x - p1.x) / 2 + cc.margin) / cc.halfX,
+      ));
+      g.cameraRig.update(rawDt, cx, cz, 0, 0, kNeeded);
+    } else {
+      const p = world.player;
+      g.cameraRig.update(rawDt, p.x, p.z, p.velX, p.velZ);
+    }
+    g.hud.update(rawDt, world, g.score, world.enemies.count, g.coopSystem);
     g.popups.update(rawDt, g.cameraRig.camera);
 
     // Pad-Start toggelt die Pause — laeuft ueber den UI-Edge-Puffer und

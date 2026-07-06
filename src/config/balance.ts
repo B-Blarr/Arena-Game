@@ -34,6 +34,50 @@ export const LIMITS = {
   maxEnemyProjectiles: 60,
 };
 
+/**
+ * Pool-Kapazitaeten — Single Source fuer World UND InstancedRenderer,
+ * damit Pool und Instanz-Mesh nie auseinanderlaufen koennen.
+ */
+export const POOLS = {
+  enemies: 192,
+  /** Zwei Multishot-Builds im Koop brauchen Luft (vorher 256). */
+  playerProjectiles: 384,
+  enemyProjectiles: 128,
+  pickups: 256,
+};
+
+// ---------- Koop (lokaler 2-Spieler-Modus) ----------
+
+export const COOP = {
+  /** Mehr Gegner, aber nicht 2x — zwei Builds stacken ueberproportional. */
+  budgetMult: 1.5,
+  enemyHpMult: 1.2,
+  /** Zusaetzlich zu enemyHpMult auf Boss-HP (~1.7x gesamt). */
+  bossHpExtra: 1.42,
+  /** Zwei Sammler = doppelte effektive Herz-Rate -> leicht daempfen. */
+  heartChanceMult: 0.8,
+  maxEnemies: 60,
+  packBudget: 9,
+  /** Spieler-Startpositionen (nebeneinander statt uebereinander). */
+  spawnOffsetX: 1.6,
+  revive: {
+    radius: 2.0,
+    holdTime: 1.5,
+    /** Ausserhalb der Zone verfaellt Fortschritt nur langsam (verzeihend). */
+    decayMult: 2,
+    hpFrac: 0.4,
+    iFrames: 2.0,
+  },
+  camera: {
+    /** Sichtbarer Boden-Halbraum: Sued-Rand ist der Engpass. */
+    nearHalfZ: 12,
+    halfX: 20,
+    margin: 2.5,
+    zoomMax: 2.0,
+    zoomDamp: 3,
+  },
+};
+
 export type Difficulty = 'easy' | 'normal' | 'hard';
 
 export interface DifficultyMods {

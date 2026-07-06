@@ -7,7 +7,7 @@ export class GameOverState implements GameState {
   /** Wird von RunState vor dem Wechsel gesetzt. */
   result: GameOverResult = {
     score: 0, wave: 1, isRecord: false, best: 0, coresEarned: 0, totalCores: 0, teaser: null,
-    dps: 0, strongestHit: 0, maxCombo: 1, build: [], newStickers: [],
+    dps: 0, strongestHit: 0, maxCombo: 1, build: [], build2: null, buildLabels: null, newStickers: [],
   };
 
   constructor(private readonly game: Game) {}

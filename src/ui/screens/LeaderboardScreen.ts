@@ -41,13 +41,14 @@ export class LeaderboardScreen {
         easy: data.bestScores.easy,
         normal: data.bestScores.normal,
         hard: data.bestScores.hard,
+        coop: Math.max(data.bestScoresCoop.easy, data.bestScoresCoop.normal, data.bestScoresCoop.hard),
         bestWave: Math.max(data.bestWaves.easy, data.bestWaves.normal, data.bestWaves.hard),
         best: Math.max(data.bestScores.easy, data.bestScores.normal, data.bestScores.hard),
       };
     });
     rows.sort((a, b) => b.best - a.best);
 
-    const anyScore = rows.some((r) => r.best > 0);
+    const anyScore = rows.some((r) => r.best > 0 || r.coop > 0);
     let html = `
       <table class="leaderboard-table">
         <thead>
@@ -57,6 +58,7 @@ export class LeaderboardScreen {
             <th>${STR.difficulties.easy}</th>
             <th>${STR.difficulties.normal}</th>
             <th>${STR.difficulties.hard}</th>
+            <th>${STR.lbCoop}</th>
             <th>${STR.lbBestWave}</th>
           </tr>
         </thead>
@@ -72,6 +74,7 @@ export class LeaderboardScreen {
           <td>${r.easy || '–'}</td>
           <td>${r.normal || '–'}</td>
           <td>${r.hard || '–'}</td>
+          <td>${r.coop || '–'}</td>
           <td>${r.bestWave || '–'}</td>
         </tr>
       `;
