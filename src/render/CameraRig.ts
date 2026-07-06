@@ -116,5 +116,6 @@ export class CameraRig {
   reset(): void {
     this.trauma = 0;
     this.fovKick = 0;
+    this.zoomK = 1;
   }
 }

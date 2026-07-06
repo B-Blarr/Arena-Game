@@ -134,6 +134,15 @@ export class UpgradeScreen {
     this.chooseTimeout = window.setTimeout(() => this.cb.onChoose(index), 260);
   }
 
+  /**
+   * Notausgang: alle Eingabesperren aufheben (Pad des Waehlers getrennt) —
+   * jede Quelle darf die haengende Wahl zu Ende bringen.
+   */
+  unlockInputs(): void {
+    this.acceptDigits = true;
+    this.root.classList.remove('input-locked');
+  }
+
   hide(): void {
     window.clearTimeout(this.chooseTimeout);
     window.clearTimeout(this.revealTimeout);

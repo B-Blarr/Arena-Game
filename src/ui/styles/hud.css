@@ -535,3 +535,14 @@ body.reduce-fx .hud-combo.c3 .hud-combo-ring {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.35; }
 }
+
+/* Schmale Fenster: Namen weichen, Balken schrumpfen — keine Kollision */
+@media (max-width: 1023px) {
+  #hud.coop .hud-hp-name {
+    display: none;
+  }
+
+  #hud.coop .hud-hp-bar {
+    width: 150px;
+  }
+}

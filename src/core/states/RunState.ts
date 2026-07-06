@@ -47,9 +47,18 @@ export class RunState implements GameState {
           this.phaseTimer = 1.9;
         }
       }),
-      // Pad eines Spielers abgezogen -> Auto-Pause (Kind stolpert ueber Kabel)
+      // Pad eines Spielers abgezogen -> Auto-Pause (Kind stolpert ueber Kabel).
+      // Waehrend der Upgrade-Wahl stattdessen: ALLE Sperren loesen — sonst
+      // haette der Screen ohne das tote Pad keine berechtigte Quelle mehr
+      // (Softlock bei timeScale 0)
       game.events.on('padDisconnected', (e) => {
-        if (e.slot >= 0) this.pauseIfActive();
+        if (e.slot < 0 || !this.isActive) return;
+        if (this.phase === 'upgrade') {
+          game.uiNav.setInputFilter(null);
+          game.upgradeScreen.unlockInputs();
+        } else {
+          this.pauseIfActive();
+        }
       }),
     );
   }

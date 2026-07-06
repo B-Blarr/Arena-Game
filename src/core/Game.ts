@@ -1,5 +1,5 @@
 import { Scene } from 'three';
-import { DIFFICULTIES, META, type Difficulty } from '../config/balance';
+import { DIFFICULTIES, HARD_UNLOCK_WAVE, META, type Difficulty } from '../config/balance';
 import { RUMBLE } from '../config/input';
 import { getHero, getWeapon, HEROES, PERMA_BONI, UNLOCKABLE_WEAPONS } from '../config/heroes';
 import { getColorway } from '../config/stickers';
@@ -145,6 +145,13 @@ export class Game {
     this.upgrades = new UpgradeSystem(this.world, this.events, this.score);
     this.surprise = new SurpriseDirector(this.world, this.events, this.pickupSystem);
     this.runStats = new RunStats(this.events);
+    // Kill-Zaehler MUSS vor dem StickerSystem abonnieren: dessen
+    // kills-Check liest stats.totalKills und soll den frischen Kill sehen
+    this.disposers.push(
+      this.events.on('enemyKilled', () => {
+        this.save.data.stats.totalKills++;
+      }),
+    );
     this.stickers = new StickerSystem(this.events, this.save, this.world);
     this.juice = new JuiceDirector(this.events, this.time, this.cameraRig, this.world, this.renderer);
 
@@ -295,9 +302,6 @@ export class Game {
     // Musik-Takt pulst das Boden-Grid
     this.disposers.push(
       this.events.on('musicBeat', () => this.arena.pulse()),
-      this.events.on('enemyKilled', () => {
-        this.save.data.stats.totalKills++;
-      }),
       // Arena-Biome: alle 5 Wellen neue Farbstimmung, Boss-Wellen dunkler
       this.events.on('waveStarted', (e) => {
         this.arena.setBiome(Math.floor((e.wave - 1) / 5), e.isBossWave);
@@ -414,12 +418,15 @@ export class Game {
       p2Data.stats.totalRuns++;
       if (finalScore > p2Data.bestScoresCoop[diff]) p2Data.bestScoresCoop[diff] = finalScore;
       if (wave > p2Data.bestWavesCoop[diff]) p2Data.bestWavesCoop[diff] = wave;
+      // "Schwer"-Freischaltung gilt fuer beide, die dabei waren
+      if (diff === 'normal' && wave >= HARD_UNLOCK_WAVE) p2Data.hardUnlocked = true;
+      // Held/Waffe des Partners zaehlen fuer SEINE Sammel-Sticker —
+      // VOR applyDeltasTo, damit heldenTrio & Co. sofort pruefen
       const p2Hero = getHero(p2Data.settings.heroId);
-      this.stickers.applyDeltasTo(p2Data);
-      // Held/Waffe des Partners zaehlen fuer SEINE Sammel-Sticker
       p2Data.stickerCounters[`hero:${p2Hero.id}`] = (p2Data.stickerCounters[`hero:${p2Hero.id}`] ?? 0) + 1;
       const p2Weapon = getWeapon(p2Data.settings.weaponId, p2Hero).id;
       p2Data.stickerCounters[`weapon:${p2Weapon}`] = (p2Data.stickerCounters[`weapon:${p2Weapon}`] ?? 0) + 1;
+      this.stickers.applyDeltasTo(p2Data);
       this.save.writeProfile(p2Id, p2Data);
     }
 

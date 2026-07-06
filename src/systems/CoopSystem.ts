@@ -51,11 +51,12 @@ export class CoopSystem {
     }
   }
 
-  /** Wellenende: niemand sitzt die Upgrade-Phase am Boden ab. */
+  /** Wellenende: niemand sitzt die Upgrade-Phase am Boden ab.
+   *  byPartner=false — kein "Gerettet!"-Banner, kein Retter-Sticker. */
   reviveAll(): void {
     for (let i = 0; i < this.world.players.length; i++) {
       const p = this.world.players[i] as Player;
-      if (p.downed) p.revive(COOP.revive.hpFrac, COOP.revive.iFrames);
+      if (p.downed) p.revive(COOP.revive.hpFrac, COOP.revive.iFrames, false);
       this.progress[i as 0 | 1] = 0;
     }
   }

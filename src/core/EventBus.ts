@@ -40,8 +40,8 @@ export interface GameEvents {
   playerRevived: { playerIndex: number };
   /** Koop: Spieler geht zu Boden (statt zu sterben). */
   playerDowned: { playerIndex: number; x: number; z: number };
-  /** Koop: Partner hat einen Spieler wiederbelebt. */
-  playerCoopRevived: { playerIndex: number; x: number; z: number };
+  /** Koop: Spieler steht wieder (byPartner false = Auto-Aufstehen am Wellenende). */
+  playerCoopRevived: { playerIndex: number; x: number; z: number; byPartner: boolean };
 
   // Boss
   bossSpawned: { name: string; maxHp: number; x: number; z: number };

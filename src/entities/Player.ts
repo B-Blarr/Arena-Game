@@ -389,13 +389,13 @@ export class Player {
     return true;
   }
 
-  /** Koop-Wiederbelebung durch den Partner (oder am Wellenende). */
-  revive(hpFrac: number, iFramesSec: number): void {
+  /** Koop-Wiederbelebung durch den Partner (oder Auto-Aufstehen am Wellenende). */
+  revive(hpFrac: number, iFramesSec: number, byPartner = true): void {
     if (!this.downed) return;
     this.downed = false;
     this.hp = Math.max(1, Math.round(this.stats.maxHp * hpFrac));
     this.iFrames = iFramesSec;
-    this.events.emit('playerCoopRevived', { playerIndex: this.index, x: this.x, z: this.z });
+    this.events.emit('playerCoopRevived', { playerIndex: this.index, x: this.x, z: this.z, byPartner });
     // Als Heilung melden: HUD-Balken/-Text und "+40"-Popup laufen ueber
     // die bestehende Pipeline (sonst bliebe "AM BODEN" stehen)
     this.events.emit('playerHealed', {

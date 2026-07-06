@@ -591,8 +591,9 @@ export class InstancedRenderer {
     fig.engineMat.opacity = p.isDashing ? 1.0 : 0.6 + 0.2 * Math.sin(world.elapsed * 22);
 
     // Koop-Down: Figur kippt, sinkt und dimmt; Triebwerk aus;
-    // Zonen-Ring zeigt Kindern "hier hinstellen", Gold-Ring den Fortschritt
-    if (p.downed) {
+    // Zonen-Ring zeigt Kindern "hier hinstellen", Gold-Ring den Fortschritt.
+    // heroPreview (Menue nach Koop-Game-Over): Figur steht IMMER aufrecht
+    if (p.downed && !this.heroPreview) {
       fig.group.rotation.x = 1.15;
       fig.group.position.y = -0.2;
       fig.bodyMat.color.set(fig.bodyColor).multiplyScalar(0.55);

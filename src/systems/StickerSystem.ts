@@ -14,8 +14,12 @@ import type { SaveData, SaveManager } from '../save/SaveManager';
  * Bestandsprofile behalten so ihren Schlaechter-/Stammgast-Fortschritt.
  */
 export class StickerSystem {
-  /** Im Run freigeschaltete Sticker (fuer den GameOver-Screen). */
+  /** Im Run NEU freigeschaltete Sticker (fuer den GameOver-Screen). */
   unlockedThisRun: string[] = [];
+  /** Alle in diesem Run ERFUELLTEN Bedingungen — auch wenn das aktive
+   *  Profil den Sticker laengst hat (Koop: das Team-Erlebnis zaehlt fuer
+   *  den Partner trotzdem). */
+  private readonly earnedThisRun = new Set<string>();
   /** Zaehler-Deltas dieses Runs (Koop: aufs Partner-Profil anwenden). */
   runDeltas: Record<string, number> = {};
 
@@ -62,6 +66,8 @@ export class StickerSystem {
       events.on('runStarted', () => this.resetRun()),
       events.on('enemyKilled', (e) => {
         this.checkCounter('kills'); // stats.totalKills erhoeht Game separat
+        // Koop: Team-Kills wandern als Delta mit aufs Partner-Profil
+        if (this.world.isCoop) this.runDeltas.kills = (this.runDeltas.kills ?? 0) + 1;
         if (e.enemyType >= 0) this.bump(`killsType:${e.enemyType}`);
         if (e.elite) this.bump('killsElite');
         // Geheim: Dieb erwischt, bevor er in dieser Welle geklaut hat
@@ -92,7 +98,9 @@ export class StickerSystem {
       events.on('playerDowned', () => {
         if (this.bossActive) this.bossAnyDown = true;
       }),
-      events.on('playerCoopRevived', () => this.bump('coopRevives')),
+      events.on('playerCoopRevived', (e) => {
+        if (e.byPartner) this.bump('coopRevives');
+      }),
       events.on('playerRevived', () => this.bump('revives')),
       events.on('upgradeChosen', (e) => {
         this.bump('upgrades');
@@ -175,9 +183,11 @@ export class StickerSystem {
    */
   finishRun(ctx: { difficulty: string; isDaily: boolean; wave: number; heroId: string; weaponId: string; isCoop: boolean }): string[] {
     this.inFinishRun = true;
-    this.bump(`hero:${ctx.heroId}`);
-    this.bump(`weapon:${ctx.weaponId}`);
-    if (ctx.isDaily) this.bump('dailyRuns');
+    // Held/Waffe zaehlen NUR fuers eigene Profil (bumpOwn) — der Partner
+    // bekommt in Game.finishRun seine EIGENEN Werte gutgeschrieben
+    this.bumpOwn(`hero:${ctx.heroId}`);
+    this.bumpOwn(`weapon:${ctx.weaponId}`);
+    if (ctx.isDaily) this.bumpOwn('dailyRuns');
     if (ctx.isCoop) this.bump('coopRuns');
     if (ctx.difficulty === 'hard' && ctx.wave >= 10) this.setFlag('hardWave10');
     this.checkCounter('runs');
@@ -189,6 +199,7 @@ export class StickerSystem {
   /**
    * Koop: die Zaehler-Deltas dieses Runs auf ein Partner-Profil anwenden und
    * dessen Sticker pruefen. Gibt die NEU freigeschalteten IDs zurueck.
+   * WICHTIG: Partner-eigene Zaehler (hero:/weapon:) vorher inkrementieren.
    */
   applyDeltasTo(data: SaveData): string[] {
     const fresh: string[] = [];
@@ -197,11 +208,16 @@ export class StickerSystem {
       else if (counter === 'runs') data.stats.totalRuns += delta;
       else data.stickerCounters[counter] = (data.stickerCounters[counter] ?? 0) + delta;
     }
-    // Alle Sticker gegen den Partner-Stand pruefen (Run-Flags gelten teamweit:
-    // was das Team geschafft hat, kriegen beide)
+    // Alle Sticker gegen den Partner-Stand pruefen. Ereignis-Sticker
+    // (Wellen/Score/Combo/Flags) gelten teamweit: was das Team in DIESEM
+    // Run geschafft hat (earnedThisRun), kriegt der Partner auch dann,
+    // wenn das aktive Profil den Sticker laengst besitzt. Persoenliche
+    // Sammelzaehler laufen dagegen NUR ueber die eigenen Counter-Deltas.
     for (const def of STICKERS) {
       if (data.stickers[def.id]) continue;
-      if (this.isMetFor(def, data) || this.unlockedThisRun.includes(def.id)) {
+      const kind = def.trigger.kind;
+      const teamEvent = kind !== 'counter' && kind !== 'counterSet';
+      if (this.isMetFor(def, data) || (teamEvent && this.earnedThisRun.has(def.id))) {
         data.stickers[def.id] = new Date().toISOString();
         fresh.push(def.id);
       }
@@ -237,6 +253,14 @@ export class StickerSystem {
     this.checkCounter(name);
   }
 
+  /** Wie bump, aber OHNE Partner-Delta (persoenliche Zaehler wie hero:/weapon:). */
+  private bumpOwn(name: string, n = 1): void {
+    if (!this.counterWatch.has(name)) return;
+    const data = this.save.data;
+    data.stickerCounters[name] = (data.stickerCounters[name] ?? 0) + n;
+    this.checkCounter(name);
+  }
+
   private checkCounter(name: string): void {
     const defs = this.counterWatch.get(name);
     if (!defs) return;
@@ -259,6 +283,9 @@ export class StickerSystem {
   }
 
   private unlock(id: string): void {
+    // Erfuellt-Markierung VOR dem Besitz-Guard: der Koop-Partner soll auch
+    // Team-Leistungen bekommen, die das aktive Profil laengst gesammelt hat
+    this.earnedThisRun.add(id);
     const data = this.save.data;
     if (data.stickers[id]) return;
     data.stickers[id] = new Date().toISOString();
@@ -268,6 +295,7 @@ export class StickerSystem {
 
   private resetRun(): void {
     this.unlockedThisRun = [];
+    this.earnedThisRun.clear();
     this.runDeltas = {};
     this.perfectWavesThisRun = 0;
     this.bossActive = false;

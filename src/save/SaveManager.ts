@@ -1,4 +1,5 @@
 import type { Difficulty } from '../config/balance';
+import { ALBUM_PAGES, GOLD_REWARD_ID } from '../config/stickers';
 
 /**
  * localStorage-Persistenz mit Versionsfeld, Shape-Guard und
@@ -198,6 +199,19 @@ function sanitize(raw: unknown): SaveData {
     d.unlockedColorways = r.unlockedColorways.filter((c): c is string => typeof c === 'string');
   }
   if (typeof r.lastAlbumSeen === 'string') d.lastAlbumSeen = r.lastAlbumSeen;
+  // Kreuz-Konsistenz: eine abgeholte Seiten-Belohnung MUSS ihre Farbvariante
+  // freigeschaltet haben (sonst waere sie unwiederbringlich verloren, weil
+  // claim() abgeholte Seiten ueberspringt)
+  for (const claimed of d.stickerPageRewards) {
+    if (claimed === GOLD_REWARD_ID) {
+      if (!d.unlockedColorways.includes('gold')) d.unlockedColorways.push('gold');
+      continue;
+    }
+    const page = ALBUM_PAGES.find((p) => p.id === claimed);
+    if (page?.reward.kind === 'colorway' && !d.unlockedColorways.includes(page.reward.colorwayId)) {
+      d.unlockedColorways.push(page.reward.colorwayId);
+    }
+  }
 
   // Schwierigkeit "Schwer" nie ohne Freischaltung aktiv lassen
   if (d.settings.difficulty === 'hard' && !d.hardUnlocked) d.settings.difficulty = 'normal';

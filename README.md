@@ -52,8 +52,27 @@ npm run preview
 | **R** | Nach „Runde vorbei" sofort neu starten |
 
 Geschossen wird **automatisch** — auch das Zielen übernimmt das Spiel
-(„Auto-Zielen", standardmäßig an). Ein Gamepad funktioniert ebenfalls:
-linker Stick laufen, rechter Stick zielen, A/RT = Dash, Start = Pause.
+(„Auto-Zielen", standardmäßig an).
+
+**🎮 Gamepad** (Xbox-Layout, einfach anstecken):
+
+| Eingabe | Aktion |
+|---|---|
+| **Linker Stick** | Laufen |
+| **Rechter Stick** | Zielen (bei Auto-Zielen aus) |
+| **A** oder **RT** | Dash · in Menüs: Bestätigen |
+| **B** | In Menüs: Zurück |
+| **Steuerkreuz / linker Stick** | In Menüs: Auswahl bewegen |
+| **Y** | Upgrade-Wahl: Neu würfeln |
+| **Start** | Pause |
+
+Das komplette Spiel ist ohne Maus bedienbar; bei Treffern und Boss-Stampfern
+vibriert der Controller (abschaltbar in der Pause unter „Vibration").
+Wird ein Controller im Spiel abgezogen, pausiert das Spiel automatisch.
+
+**🤝 Zu zweit** (Knopf „Zusammen" im Menü): Spieler 2 drückt einfach seine
+Dash-Taste zum Beitreten — zweites Gamepad, oder Pfeiltasten + rechte
+Umschalttaste/Enter, während Spieler 1 WASD + Leertaste behält.
 
 ## 🕹️ So funktioniert's
 
@@ -67,7 +86,28 @@ und Rot heißt immer: ausweichen! „Schwer" schaltest du frei, wenn du auf
 „Normal" Welle 10 erreichst. In der **Tages-Arena** spielen alle weltweit
 dieselben Wellen — jeden Tag neue.
 
-## ✨ Was ist neu (Update 2 „Bosse, Spieler, Balance")
+## ✨ Was ist neu (Update 3 „Zusammen spielen")
+
+- **Lokaler 2-Spieler-Koop** 🤝 — der Knopf „Zusammen" im Menü: gleiche
+  Arena, geteilte Kamera (zoomt automatisch raus, wenn ihr euch trennt),
+  jeder mit eigenem Helden, eigenen Upgrades und eigener Lebensleiste.
+  Wer fällt, geht **zu Boden** statt zu sterben — der Partner stellt sich
+  kurz dazu und hilft wieder auf. Verloren ist erst, wenn beide gleichzeitig
+  liegen; am Wellenende stehen sowieso alle wieder. Spieler 2 kann ein
+  eigenes Profil mitbringen (bekommt Kerne, Sticker und Koop-Bestwerte
+  gutgeschrieben) oder als Gast spielen.
+- **Volle Gamepad-Unterstützung** 🎮 — vom Menü bis zum Upgrade-Screen
+  komplett ohne Maus spielbar, mit Controller-Vibration und automatischer
+  Pause, wenn ein Pad abgezogen wird. Zwei Pads für den Koop, oder
+  Tastatur-Hälften (WASD gegen Pfeiltasten).
+- **Sticker-Album** 📔 — 54 Sammel-Sticker auf 7 Seiten, von „Erster
+  Funke" bis „Schlächter III" (20.000 Gegner), inklusive 6 geheimer
+  Rätsel-Sticker. Volle Seiten geben Belohnungen: Kerne und **neue
+  Farbvarianten** für die Helden (im Menü unter der Heldenreihe wählbar,
+  färben auch Schüsse und Dash-Spur um). Wer ALLE 54 sammelt, schaltet
+  die Gold-Farbe frei. Fortschritt zählt pro Profil und über alle Runden.
+
+## ✨ Update 2 „Bosse, Spieler, Balance"
 
 - **Zwei neue Bosse:** **MINOS**, der Minenkönig (Welle 15) — ein rasender
   oranger Ring, der die Arena mit tickenden Sprengzonen pflastert; und

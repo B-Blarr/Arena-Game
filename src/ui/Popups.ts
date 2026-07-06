@@ -125,7 +125,9 @@ export class Popups {
         const name = this.coopNames?.[e.playerIndex as 0 | 1] ?? `Spieler ${e.playerIndex + 1}`;
         this.banner(STR.downedBanner(name), 'boss-banner');
       }),
-      events.on('playerCoopRevived', () => this.banner(STR.coopRevivedBanner, 'gold-banner')),
+      events.on('playerCoopRevived', (e) => {
+        if (e.byPartner) this.banner(STR.coopRevivedBanner, 'gold-banner');
+      }),
     );
   }
 
