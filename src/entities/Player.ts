@@ -205,12 +205,16 @@ export class Player {
 
     const multishot = st('multishot');
     const hasMega = st('megaShots') > 0;
+    // Mehrfachschuss-Malus (jede Kugel x0.9 pro Stack) separat halten: die
+    // Prisma-Salve feuert immer nur EINE Kugel und soll den Malus daher NICHT
+    // erben (sonst reiner Nachteil) — s. prismShotDamage unten.
+    const multishotPenalty = Math.pow(UV.multishotDamageMult, multishot);
     // megaShots-Bonus steckt im damageMult — Orbs/Nova/Orbital skalieren mit
     const damageMult =
       (1 + calibLv * 0.06) *
       (1 + st('damage') * UV.damagePerStack) *
       (hasMega ? 1 + UV.megaShotsDamageBonus : 1) *
-      Math.pow(UV.multishotDamageMult, multishot) *
+      multishotPenalty *
       singularity; // NEU: mythisch
     s.damage = w.damage * damageMult;
     s.projectileCount = w.projectileCount + multishot;
@@ -246,8 +250,10 @@ export class Player {
     s.blackHolePull = st('blackHoleDash') > 0 ? UV.blackHolePull : 0;
     s.overchargeBonus = st('overcharge') > 0 ? UV.overchargeDamageBonus : 0;
     s.projectileRadius = UV.projectileRadiusBase * (hasMega ? UV.megaShotsRadiusMult : 1);
-    // NEU (mythisch): Prisma-Salve-Schaden pro Kugel skaliert mit allen Boni (damageMult).
-    s.prismShotDamage = st('prismBeam') > 0 ? UV.prismShotDamage * damageMult : 0;
+    // NEU (mythisch): Prisma-Salve-Schaden pro Kugel skaliert mit allen Boni AUSSER
+    // dem Mehrfachschuss-Malus. damageMult / multishotPenalty klammert genau ihn aus
+    // (multishotPenalty > 0, also keine Division-durch-0-Gefahr).
+    s.prismShotDamage = st('prismBeam') > 0 ? UV.prismShotDamage * (damageMult / multishotPenalty) : 0;
   }
 
   /** Ueberladung: unter 30 % HP schlaegt alles haerter zu. */

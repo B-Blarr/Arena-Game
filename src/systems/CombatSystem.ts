@@ -139,7 +139,8 @@ export class CombatSystem {
       if (p.fireCooldown > 0) return;
       p.fireCooldown = UV.prismShotInterval;
       this.firePrismShot(p, aimX, aimZ);
-      this.events.emit('shotFired', { x: p.x, z: p.z, dirX: aimX, dirZ: aimZ, playerIndex: p.index });
+      // sustained: Renderer fuehrt das Muendungslicht als Dauergluehen (kein 20-Hz-Blinken)
+      this.events.emit('shotFired', { x: p.x, z: p.z, dirX: aimX, dirZ: aimZ, playerIndex: p.index, sustained: true });
       return;
     }
 

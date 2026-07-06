@@ -113,6 +113,9 @@ export class InstancedRenderer {
   private readonly prismProj: InstancedMesh;
   private readonly muzzle: PointLight;
   private muzzleTimer = 0;
+  /** NEU: Abkling-Basis des Muendungslichts. Prisma-Dauerbeschuss setzt sie laenger
+   *  als das 0.05s-Schussintervall -> das Licht faellt nie auf 0, ruhiges Gluehen. */
+  private muzzlePeak = 0.05;
   private readonly unsubs: Array<() => void> = [];
 
   constructor(
@@ -220,7 +223,10 @@ export class InstancedRenderer {
     scene.add(this.muzzle);
     this.unsubs.push(
       events.on('shotFired', (e) => {
-        this.muzzleTimer = 0.05;
+        // Prisma-Dauerbeschuss: laengeres Abkling-Fenster als das 0.05s-Intervall,
+        // damit das Licht nicht 20x/s auf 0 faellt (Fotosensibilitaet, s. JuiceDirector).
+        this.muzzlePeak = e.sustained ? 0.16 : 0.05;
+        this.muzzleTimer = this.muzzlePeak;
         this.muzzle.position.set(e.x + e.dirX * 0.9, 0.7, e.z + e.dirZ * 0.9);
         const fig = this.figures[e.playerIndex];
         if (fig) this.muzzle.color.set(fig.bodyColor);
@@ -785,7 +791,7 @@ export class InstancedRenderer {
     if (this.muzzleTimer > 0) {
       // Position setzt der shotFired-Handler (Koop: am jeweiligen Schuetzen)
       this.muzzleTimer -= rawDt;
-      this.muzzle.intensity = 3 * Math.max(0, this.muzzleTimer / 0.05);
+      this.muzzle.intensity = 3 * Math.max(0, this.muzzleTimer / this.muzzlePeak);
     } else {
       this.muzzle.intensity = 0;
     }
@@ -827,6 +833,7 @@ export class InstancedRenderer {
     this.beamMesh.visible = false;
     this.prismProj.count = 0; // NEU (mythisch "Prisma-Salve")
     this.muzzleTimer = 0;
+    this.muzzlePeak = 0.05;
     this.muzzle.intensity = 0;
   }
 

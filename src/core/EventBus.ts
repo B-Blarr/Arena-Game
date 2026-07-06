@@ -5,7 +5,9 @@
  */
 export interface GameEvents {
   // Kampf
-  shotFired: { x: number; z: number; dirX: number; dirZ: number; playerIndex: number };
+  /** sustained: Dauerbeschuss (Prisma-Salve) -> Renderer haelt das Muendungslicht
+   *  als ruhiges Gluehen statt es pro Schuss neu zu zuenden (kein Stroboskop). */
+  shotFired: { x: number; z: number; dirX: number; dirZ: number; playerIndex: number; sustained?: boolean };
   enemyHit: { x: number; z: number; damage: number; crit: boolean; enemyType: number };
   enemyKilled: { x: number; z: number; enemyType: number; points: number; scale: number; elite: boolean };
   explosion: { x: number; z: number; radius: number; color: number };
