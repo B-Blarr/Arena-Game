@@ -900,6 +900,15 @@ body.reduce-fx .upgrade-card.mythic::after {
 
 .leaderboard-table .lb-left { text-align: left; }
 
+/* NEU (Reise-Ausbau): Umschalter Klassik/Reise ueber der Bestenliste */
+.lb-mode-toggle {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 0.9rem;
+}
+
 .leaderboard-table tr.lb-active td {
   color: var(--accent);
   font-weight: 800;

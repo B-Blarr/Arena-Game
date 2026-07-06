@@ -75,6 +75,8 @@ export const COLORWAYS: readonly ColorwayDef[] = [
   { id: 'kobalt', body: 0x5266ff },
   { id: 'platin', body: 0xd6e4ff, engine: 0xffffff },
   { id: 'prismatisch', body: 0xffffff, animated: true },
+  // NEU (Reise-Ausbau): Belohnung der Reise-Album-Seite (kein Rot)
+  { id: 'amethyst', body: 0xc07aff },
 ];
 
 export function getColorway(id: string, unlocked: readonly string[]): ColorwayDef | undefined {
@@ -93,6 +95,8 @@ export const ALBUM_PAGES: readonly AlbumPageDef[] = [
   { id: 'ausdauer', icon: '🔥', reward: { kind: 'colorway', colorwayId: 'eisblau' } },
   { id: 'herausforderung', icon: '🎯', reward: { kind: 'colorway', colorwayId: 'smaragd' } },
   { id: 'geheim2', icon: '🕵️', reward: { kind: 'colorway', colorwayId: 'kobalt' } },
+  // NEU (Reise-Ausbau): Reise-Modus-Erfolge
+  { id: 'reise', icon: '🧭', reward: { kind: 'colorway', colorwayId: 'amethyst' } },
 ];
 
 /** Belohnung fuer 100 %: Gold-Colorway (Sonderfall neben den Seiten). */
@@ -202,6 +206,18 @@ export const STICKERS: readonly StickerDef[] = [
   { id: 'lochfuerst', icon: '🌀', rarity: 'legendary', page: 'geheim2', secret: true, trigger: { kind: 'flag', flag: 'blackHole5' } },
   { id: 'eiserneReserve', icon: '🩹', rarity: 'epic', page: 'geheim2', secret: true, trigger: { kind: 'flag', flag: 'noHeal10' } },
   { id: 'genuegsam', icon: '🍃', rarity: 'epic', page: 'geheim2', secret: true, trigger: { kind: 'flag', flag: 'noCores10' } },
+
+  // ---------------------------------------------- Seite 11: Reise (Reward: amethyst)
+  { id: 'ersteReise', icon: '🧭', rarity: 'common', page: 'reise', trigger: { kind: 'counter', counter: 'journeyRuns', goal: 1 } },
+  { id: 'schatzjaeger', icon: '💎', rarity: 'rare', page: 'reise', trigger: { kind: 'counter', counter: 'room:treasure', goal: 5 } },
+  { id: 'sturmreiter', icon: '⚡', rarity: 'rare', page: 'reise', trigger: { kind: 'counter', counter: 'room:storm', goal: 5 } },
+  { id: 'finsterWanderer', icon: '🌑', rarity: 'rare', page: 'reise', trigger: { kind: 'counter', counter: 'room:finsternis', goal: 3 } },
+  { id: 'eliteKammerHeld', icon: '💀', rarity: 'epic', page: 'reise', trigger: { kind: 'counter', counter: 'room:elite', goal: 5 } },
+  { id: 'reiseWelle15', icon: '🌠', rarity: 'epic', page: 'reise', trigger: { kind: 'flag', flag: 'journeyWave15' } },
+  { id: 'mutprobe', icon: '🎲', rarity: 'epic', page: 'reise', trigger: { kind: 'counter', counter: 'journeyRiskCleared', goal: 25 } },
+  { id: 'reiseProfi', icon: '🎒', rarity: 'rare', page: 'reise', trigger: { kind: 'counter', counter: 'journeyRuns', goal: 15 } },
+  { id: 'weltenbummler', icon: '🗺️', rarity: 'epic', page: 'reise', trigger: { kind: 'counterSet', counters: ['room:treasure', 'room:elite', 'room:storm', 'room:oasis', 'room:horde', 'room:finsternis', 'room:singular'] } },
+  { id: 'reiseWelle25', icon: '🏆', rarity: 'legendary', page: 'reise', trigger: { kind: 'flag', flag: 'journeyWave25' }, reward: { kind: 'cores', amount: 400 } },
 ];
 
 export function stickersOfPage(pageId: string): StickerDef[] {

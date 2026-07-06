@@ -69,6 +69,9 @@ export interface GameEvents {
   waveStarted: { wave: number; isBossWave: boolean };
   waveCleared: { wave: number; perfect: boolean; bonus: number };
   portalOpened: { x: number; z: number };
+  /** NEU (Reise-Ausbau): eine echte Reise-Raum-Welle geraeumt (nur im Reise-Modus,
+   *  nie Normal/Boss). Treibt die Reise-Erfolge im StickerSystem. */
+  journeyRoomCleared: { room: string; isRisk: boolean };
 
   // Ueberraschungen
   goldenWave: { wave: number };

@@ -201,6 +201,12 @@ export class StickerSystem {
         this.bhTime = this.world.elapsed;
         this.bhKills = 0;
       }),
+      // NEU (Reise-Ausbau): besuchte Raum-Typen + gemeisterte Risiko-Raeume zaehlen.
+      // Feuert NUR im Reise-Modus (RunState gated), also nie im Klassik/Daily.
+      events.on('journeyRoomCleared', (e) => {
+        this.bump(`room:${e.room}`);
+        if (e.isRisk) this.bump('journeyRiskCleared');
+      }),
     );
   }
 
@@ -208,7 +214,7 @@ export class StickerSystem {
    * Run-Ende (aus Game.finishRun, NACH stats.totalRuns++ und VOR save.save()):
    * wertet die Kontext-Sticker aus und liefert alle Unlocks dieses Runs.
    */
-  finishRun(ctx: { difficulty: string; isDaily: boolean; wave: number; heroId: string; weaponId: string; isCoop: boolean }): string[] {
+  finishRun(ctx: { difficulty: string; isDaily: boolean; wave: number; heroId: string; weaponId: string; isCoop: boolean; isJourney: boolean }): string[] {
     this.inFinishRun = true;
     // Held/Waffe zaehlen NUR fuers eigene Profil (bumpOwn) — der Partner
     // bekommt in Game.finishRun seine EIGENEN Werte gutgeschrieben
@@ -216,6 +222,12 @@ export class StickerSystem {
     this.bumpOwn(`weapon:${ctx.weaponId}`);
     if (ctx.isDaily) this.bumpOwn('dailyRuns');
     if (ctx.isCoop) this.bump('coopRuns');
+    // NEU (Reise-Ausbau): Reise-Erfolge (solo). journeyRuns + Wellen-Meilensteine.
+    if (ctx.isJourney) {
+      this.bumpOwn('journeyRuns');
+      if (ctx.wave >= 15) this.setFlag('journeyWave15');
+      if (ctx.wave >= 25) this.setFlag('journeyWave25');
+    }
     if (ctx.difficulty === 'hard' && ctx.wave >= 10) this.setFlag('hardWave10');
     if (ctx.difficulty === 'hard' && ctx.wave >= 20) this.setFlag('hardWave20');
     // Schwere Run-Ziele aus vorhandenen Run-Deltas (kein neues Tracking noetig)

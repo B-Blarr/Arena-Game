@@ -1,4 +1,4 @@
-import { ARENA_RADIUS, SURPRISE, isBossWave } from '../config/balance';
+import { SURPRISE, isBossWave } from '../config/balance';
 import type { EventBus } from '../core/EventBus';
 import type { World } from '../core/World';
 import type { PickupSystem } from './PickupSystem';
@@ -45,7 +45,7 @@ export class SurpriseDirector {
     const capsuleRoll = rng.next();
     const dropTime = rng.range(SURPRISE.capsule.dropTimeMin, SURPRISE.capsule.dropTimeMax);
     const angle = rng.range(0, Math.PI * 2);
-    const radius = rng.range(SURPRISE.capsule.minRadius, ARENA_RADIUS - SURPRISE.capsule.edgeMargin);
+    const radius = rng.range(SURPRISE.capsule.minRadius, world.arenaRadius - SURPRISE.capsule.edgeMargin);
 
     if (w >= SURPRISE.goldenMinWave && goldenRoll < SURPRISE.goldenChance) {
       world.goldenWave = true;

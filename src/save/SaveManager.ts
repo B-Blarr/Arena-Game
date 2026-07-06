@@ -45,6 +45,9 @@ export interface SaveData {
   /** Koop-Bestwerte (getrennt vom Solo — fairer Vergleich). */
   bestScoresCoop: Record<Difficulty, number>;
   bestWavesCoop: Record<Difficulty, number>;
+  /** NEU (Reise-Ausbau): eigene Reise-Bestenliste (solo; leichter durch Rast/Schatz). */
+  bestJourneyScores: Record<Difficulty, number>;
+  bestJourneyWaves: Record<Difficulty, number>;
   unlockedHeroes: string[];
   unlockedWeapons: string[];
   permaUpgrades: Record<string, number>;
@@ -88,6 +91,8 @@ function defaults(): SaveData {
     bestWaves: { easy: 0, normal: 0, hard: 0 },
     bestScoresCoop: { easy: 0, normal: 0, hard: 0 },
     bestWavesCoop: { easy: 0, normal: 0, hard: 0 },
+    bestJourneyScores: { easy: 0, normal: 0, hard: 0 },
+    bestJourneyWaves: { easy: 0, normal: 0, hard: 0 },
     unlockedHeroes: ['volt'],
     unlockedWeapons: [],
     permaUpgrades: {},
@@ -139,6 +144,11 @@ function sanitize(raw: unknown): SaveData {
     if (typeof cs === 'number' && isFinite(cs)) d.bestScoresCoop[key] = Math.max(0, cs);
     const cw = (r.bestWavesCoop as Record<string, unknown> | undefined)?.[key];
     if (typeof cw === 'number' && isFinite(cw)) d.bestWavesCoop[key] = Math.max(0, cw);
+    // NEU (Reise-Ausbau): Reise-Bestwerte (Alt-Saves ohne die Felder -> Default 0).
+    const js = (r.bestJourneyScores as Record<string, unknown> | undefined)?.[key];
+    if (typeof js === 'number' && isFinite(js)) d.bestJourneyScores[key] = Math.max(0, js);
+    const jw = (r.bestJourneyWaves as Record<string, unknown> | undefined)?.[key];
+    if (typeof jw === 'number' && isFinite(jw)) d.bestJourneyWaves[key] = Math.max(0, jw);
   }
   if (Array.isArray(r.unlockedHeroes)) {
     d.unlockedHeroes = r.unlockedHeroes.filter((h): h is string => typeof h === 'string');

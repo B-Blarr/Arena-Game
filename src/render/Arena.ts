@@ -25,6 +25,7 @@ import {
   BoxGeometry,
 } from 'three';
 import { ARENA_RADIUS } from '../config/balance';
+import type { RoomTheme } from '../config/rooms';
 import { Rng } from '../core/Rng';
 
 /**
@@ -71,6 +72,14 @@ export class Arena {
   private pylonMat!: MeshBasicMaterial;
   private pylonMesh!: InstancedMesh;
   private stars!: Points;
+  // NEU (Reise-Ausbau): Wand + Ringe fuer die per-Raum-Groesse skalierbar halten
+  // (einmal mit ARENA_RADIUS gebaut, danach nur ueber .scale angepasst).
+  private wallMesh!: Mesh;
+  private readonly ringMeshes: Mesh[] = [];
+  private currentRadius = ARENA_RADIUS;
+  private targetRadius = ARENA_RADIUS;
+  /** Aktive Raum-Optik (Render-only); null = reines Biome (Klassik/Normal). */
+  private roomTheme: RoomTheme | null = null;
   private readonly bgColor = new Color(0x050510);
   private readonly fog = new FogExp2(0x050510, FOG_DENSITY);
   private beatPulse = 0;
@@ -192,6 +201,7 @@ export class Arena {
     ) as MeshBasicMaterial;
     const wall = new Mesh(wallGeo, this.wallMat);
     wall.position.y = 1.2;
+    this.wallMesh = wall;
     scene.add(wall);
 
     // Leuchtende Neon-Ringe oben/unten
@@ -205,6 +215,7 @@ export class Arena {
     const top = new Mesh(ringGeo, this.ringMat);
     top.rotation.x = Math.PI / 2;
     top.position.y = 2.4;
+    this.ringMeshes.push(bottom, top);
     scene.add(bottom, top);
   }
 
@@ -293,6 +304,26 @@ export class Arena {
     this.refreshTargets();
   }
 
+  /** NEU (Reise-Ausbau): Ziel-Arena-Radius; Wand + Ringe lerpen im update() weich
+   *  dorthin (Klassik/Normal ruft immer mit ARENA_RADIUS -> keine Aenderung). */
+  setRadius(r: number): void {
+    this.targetRadius = r;
+  }
+
+  /** NEU (Reise-Ausbau): Raum-Optik setzen (null = reines Biome). */
+  setRoomTheme(theme: RoomTheme | null): void {
+    this.roomTheme = theme;
+    this.refreshTargets();
+  }
+
+  private applyRadiusScale(): void {
+    const f = this.currentRadius / ARENA_RADIUS;
+    // Wand: Zylinder-Radius liegt in lokal XZ, Hoehe bleibt (lokal Y).
+    this.wallMesh.scale.set(f, 1, f);
+    // Ringe: Torus-Radius liegt in lokal XY (vor der X-Rotation), Rohr bleibt.
+    for (const ring of this.ringMeshes) ring.scale.set(f, f, 1);
+  }
+
   private refreshTargets(): void {
     const b = BIOMES[this.currentBiome] as BiomeDef;
     this.tBg.set(b.bg);
@@ -309,6 +340,17 @@ export class Arena {
       this.tGridIntensity = Math.min(this.tGridIntensity, 0.35);
       this.tRing.set(0xffffff).multiplyScalar(2.0);
     }
+    // NEU (Reise-Ausbau): Raum-Optik ueberschreibt gesetzte Felder (Render-only).
+    // Boss-Wellen nutzen ROOM_NORMAL -> roomTheme === null -> kein Konflikt.
+    const rt = this.roomTheme;
+    if (rt) {
+      if (rt.bg !== undefined) this.tBg.set(rt.bg);
+      if (rt.grid !== undefined) this.tGrid.set(rt.grid);
+      if (rt.wall !== undefined) this.tWall.set(rt.wall).multiplyScalar(0.6);
+      if (rt.ring !== undefined) this.tRing.set(rt.ring).multiplyScalar(2.2);
+      if (rt.fogDensity !== undefined) this.tFogDensity = rt.fogDensity;
+      if (rt.gridIntensity !== undefined) this.tGridIntensity = rt.gridIntensity;
+    }
   }
 
   /** Zielwerte sofort einnehmen (nur beim App-Start / Run-Reset). */
@@ -321,6 +363,9 @@ export class Arena {
     this.pylonMat.color.copy(this.tPylon);
     this.fog.density = this.tFogDensity;
     this.gridIntensity = this.tGridIntensity;
+    // NEU (Reise-Ausbau): Arena-Groesse sofort einnehmen (App-Start / Run-Reset).
+    this.currentRadius = this.targetRadius;
+    this.applyRadiusScale();
   }
 
   /** Beat-Puls vom Musik-Sequencer; bossStomp ruft mit strength 1.5. */
@@ -341,6 +386,13 @@ export class Arena {
     this.pylonMat.color.lerp(this.tPylon, k);
     this.fog.density += (this.tFogDensity - this.fog.density) * k;
     this.gridIntensity += (this.tGridIntensity - this.gridIntensity) * k;
+
+    // NEU (Reise-Ausbau): Wand/Ringe weich auf die Raum-Groesse skalieren.
+    if (this.currentRadius !== this.targetRadius) {
+      this.currentRadius += (this.targetRadius - this.currentRadius) * k;
+      if (Math.abs(this.currentRadius - this.targetRadius) < 0.01) this.currentRadius = this.targetRadius;
+      this.applyRadiusScale();
+    }
 
     this.floorMat.emissiveIntensity = this.gridIntensity + this.beatPulse * 0.25;
 

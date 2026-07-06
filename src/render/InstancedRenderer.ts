@@ -12,7 +12,7 @@ import {
 import { ELITE, ENEMIES, type EnemyDef } from '../config/enemies';
 import { BOSS_ROTATION } from '../config/bosses';
 import { HEROES, type HeroDef } from '../config/heroes';
-import { ARENA_RADIUS, COOP, PICKUPS, POOLS } from '../config/balance';
+import { COOP, PICKUPS, POOLS } from '../config/balance';
 import { UPGRADE_VALUES as UV } from '../config/upgrades';
 import { PICKUP_CORE } from '../entities/Pickup';
 import type { World } from '../core/World';
@@ -455,7 +455,9 @@ export class InstancedRenderer {
       const x = lerp(e.prevX, e.x, alpha);
       const z = lerp(e.prevZ, e.z, alpha);
       const bob = Math.sin(world.elapsed * 5 + e.bobPhase) * (def.id === 'tank' ? 0.03 : 0.1);
-      let scale = def.scale * (1 + e.scalePop);
+      // NEU (Reise-Ausbau): e.sizeMult traegt den Raum-/Elite-Kammer-Groessenfaktor
+      // (1 = normal). Kollision laeuft ueber e.radius, das mitskaliert wurde.
+      let scale = def.scale * e.sizeMult * (1 + e.scalePop);
       if (e.spawnProtection > 0) scale *= Math.max(0.3, 1 - e.spawnProtection * 1.5);
       const isElite = e.eliteAffix > 0;
       if (isElite) {
@@ -698,7 +700,7 @@ export class InstancedRenderer {
       let cx = x - p.faceX * UV.mirrorCloneOffset;
       let cz = z - p.faceZ * UV.mirrorCloneOffset;
       const cd = Math.hypot(cx, cz);
-      const maxR = ARENA_RADIUS - 0.5;
+      const maxR = p.arenaRadius - 0.5;
       if (cd > maxR) {
         cx = (cx / cd) * maxR;
         cz = (cz / cd) * maxR;

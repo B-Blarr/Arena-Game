@@ -1,4 +1,4 @@
-import { COOP, HARD_UNLOCK_WAVE, META, isBossWave } from '../../config/balance';
+import { ARENA_RADIUS, COOP, HARD_UNLOCK_WAVE, LIMITS, META, isBossWave } from '../../config/balance';
 import { getHero } from '../../config/heroes';
 import { ROOM_NORMAL, type RoomDef } from '../../config/rooms';
 import { getColorway } from '../../config/stickers';
@@ -186,6 +186,19 @@ export class RunState implements GameState {
     // weil nextRoom dort nie gesetzt wird bzw. die Weg-Wahl uebersprungen ist.
     g.world.roomMods = this.nextRoom ?? ROOM_NORMAL;
     this.nextRoom = null;
+    // NEU (Reise-Ausbau): Arena-Groesse + Gegner-Limit aus dem Raum ableiten. IMMER
+    // aus der Basis-Konstante rechnen (nie vom evtl. schon skalierten Wert). ROOM_NORMAL
+    // -> arenaMult/maxEnemiesMult undefined -> Basiswerte -> bit-identisch zum Klassik.
+    const rm = g.world.roomMods;
+    const coop = g.world.players.length > 1;
+    g.world.arenaRadius = ARENA_RADIUS * (rm.arenaMult ?? 1);
+    g.world.maxEnemiesLimit = Math.round((coop ? COOP.maxEnemies : LIMITS.maxEnemies) * (rm.maxEnemiesMult ?? 1));
+    // Player hat kein world-Handle: Clamp-Radius + Singularitaets-Sog pro Spieler setzen.
+    for (let i = 0; i < g.world.players.length; i++) {
+      const p = g.world.players[i] as Player;
+      p.arenaRadius = g.world.arenaRadius;
+      p.pullStrength = rm.pullStrength ?? 0;
+    }
     // VOR waves.startWave: Spawns/Scaling muessen das Golden-Flag schon sehen
     g.surprise.rollForWave(w);
     g.waves.startWave(w);
@@ -312,6 +325,12 @@ export class RunState implements GameState {
     const perfect = !this.tookDamageThisWave;
     const bonus = g.score.waveBonus(w, perfect);
     g.events.emit('waveCleared', { wave: w, perfect, bonus });
+
+    // NEU (Reise-Ausbau): Erfolgs-Zaehler fuer besuchte Raum-Typen. Nur im Reise-Modus
+    // und nur fuer echte Raeume (Klassik/Boss/Normal feuern nichts -> kein Spam).
+    if (this.runMode === 'journey' && rm.id !== 'normal') {
+      g.events.emit('journeyRoomCleared', { room: rm.id, isRisk: rm.isRisk });
+    }
 
     // "Schwer" freischalten: Welle 10 auf Normal geschafft (Boss B besiegt).
     // Bewusst AUCH im Reise-Modus erlaubt (kein runMode-Gate): Welle 10 zu erreichen ist

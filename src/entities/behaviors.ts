@@ -11,7 +11,6 @@ import {
   SHOOTER_AI,
   THIEF_AI,
 } from '../config/enemies';
-import { ARENA_RADIUS } from '../config/balance';
 import { PICKUP_CORE } from './Pickup';
 import type { World } from '../core/World';
 import type { EventBus } from '../core/EventBus';
@@ -92,8 +91,8 @@ export function updateEnemies(world: World, dt: number, events: EventBus): void 
 
     if (!fusing) separate(e, world, dt);
 
-    // Kreis-Arena-Clamp
-    const maxR = ARENA_RADIUS - e.radius;
+    // Kreis-Arena-Clamp (NEU: Raum-Radius statt fester Konstante)
+    const maxR = world.arenaRadius - e.radius;
     const d = Math.hypot(e.x, e.z);
     if (d > maxR) {
       e.x = (e.x / d) * maxR;

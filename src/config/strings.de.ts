@@ -80,6 +80,8 @@ export const STR = {
     oasis: { name: 'Oase', risk: 'Wenige Gegner', reward: 'Heilung' },
     mystery: { name: '???', risk: 'Unbekannt', reward: 'Überraschung' },
     horde: { name: 'Schwarm', risk: 'Riesige Übermacht', reward: 'Combo-Fest + Kerne' },
+    finsternis: { name: 'Finsternis', risk: 'Kampf im Dunkeln', reward: 'Extra Kerne' },
+    singular: { name: 'Singularität', risk: 'Sog zur Mitte', reward: 'Reiche Beute + Seltenes' },
   } as Record<string, { name: string; risk: string; reward: string }>,
 
   // Pause
@@ -153,6 +155,8 @@ export const STR = {
   leaderboardEmptyHint: 'Spielt eine Runde, um hier zu erscheinen!',
   lbName: 'Spieler',
   lbBestWave: 'Beste Welle',
+  lbModeClassic: '⚔️ Klassik',
+  lbModeJourney: '🧭 Reise',
 
   // Erfolge (intern weiter "album"/"sticker" — nur sichtbarer Text umbenannt)
   album: 'Erfolge',
@@ -184,6 +188,7 @@ export const STR = {
     ausdauer: 'Ausdauer',
     herausforderung: 'Herausforderung',
     geheim2: 'Geheimnisse II',
+    reise: 'Reise',
   } as Record<string, string>,
 
   colorways: {
@@ -199,6 +204,7 @@ export const STR = {
     kobalt: 'Kobalt',
     platin: 'Platin',
     prismatisch: 'Prismatisch',
+    amethyst: 'Amethyst',
   } as Record<string, string>,
 
   stickers: {
@@ -295,6 +301,17 @@ export const STR = {
     lochfuerst: { name: 'Loch-Fürst', desc: '5 Gegner mit einem einzigen Schwarzen Loch verschlingen', hint: 'Füttere die Dunkelheit bis zum Rand …' },
     eiserneReserve: { name: 'Eiserne Reserve', desc: 'Erreiche Welle 10, ohne ein Herz zu sammeln', hint: 'Wer clever ausweicht, braucht keine Heilung …' },
     genuegsam: { name: 'Genügsam', desc: 'Erreiche Welle 10, ohne einen Kern aufzusammeln', hint: 'Lass allen Glanz einfach liegen …' },
+
+    ersteReise: { name: 'Erste Reise', desc: 'Spiele eine Runde im Reise-Modus' },
+    schatzjaeger: { name: 'Schatzjäger', desc: 'Räume 5 Schatzkammern im Reise-Modus' },
+    sturmreiter: { name: 'Sturmreiter', desc: 'Räume 5 Sturm-Räume im Reise-Modus' },
+    finsterWanderer: { name: 'Finster-Wanderer', desc: 'Räume 3 Finsternis-Räume im Reise-Modus' },
+    eliteKammerHeld: { name: 'Elite-Kammer-Held', desc: 'Räume 5 Elite-Kammern im Reise-Modus' },
+    reiseWelle15: { name: 'Weit gereist', desc: 'Erreiche Welle 15 im Reise-Modus' },
+    mutprobe: { name: 'Mutprobe', desc: 'Räume insgesamt 25 Risiko-Räume im Reise-Modus' },
+    reiseProfi: { name: 'Reise-Profi', desc: 'Spiele 15 Runden im Reise-Modus' },
+    weltenbummler: { name: 'Weltenbummler', desc: 'Besuche jeden Raum-Typ im Reise-Modus mindestens einmal' },
+    reiseWelle25: { name: 'Ferne Welten', desc: 'Erreiche Welle 25 im Reise-Modus — bringt 400 Kerne' },
   } as Record<string, { name: string; desc: string; hint?: string }>,
 
   // Shop

@@ -1,4 +1,4 @@
-import { AIM, ARENA_RADIUS, PLAYER, SURPRISE } from '../config/balance';
+import { AIM, PLAYER, SURPRISE } from '../config/balance';
 import {
   BOMBER_AI,
   ENEMY_BOMBER,
@@ -168,7 +168,7 @@ export class CombatSystem {
       let cx = p.x - aimX * UV.mirrorCloneOffset;
       let cz = p.z - aimZ * UV.mirrorCloneOffset;
       const cd = Math.hypot(cx, cz);
-      const maxR = ARENA_RADIUS - PLAYER.radius;
+      const maxR = p.arenaRadius - PLAYER.radius;
       if (cd > maxR) {
         cx = (cx / cd) * maxR;
         cz = (cz / cd) * maxR;

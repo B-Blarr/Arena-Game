@@ -1,4 +1,4 @@
-import { ARENA_RADIUS, PICKUPS, SURPRISE } from '../config/balance';
+import { PICKUPS, SURPRISE } from '../config/balance';
 import { ELITE, ENEMY_TANK } from '../config/enemies';
 import type { EventBus } from '../core/EventBus';
 import type { World } from '../core/World';
@@ -178,7 +178,7 @@ export class PickupSystem {
       p.x += p.vx * dt;
       p.z += p.vz * dt;
 
-      const maxR = ARENA_RADIUS - 0.4;
+      const maxR = this.world.arenaRadius - 0.4;
       const d = Math.hypot(p.x, p.z);
       if (d > maxR) {
         p.x = (p.x / d) * maxR;

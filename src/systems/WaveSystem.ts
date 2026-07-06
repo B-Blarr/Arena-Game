@@ -1,5 +1,4 @@
 import {
-  ARENA_RADIUS,
   COOP,
   SPAWN,
   enemyDamageFactor,
@@ -8,7 +7,7 @@ import {
   waveBudget,
 } from '../config/balance';
 import type { Player } from '../entities/Player';
-import { AFFIX_RAGE, AFFIX_SHIELD, ELITE, ENEMIES, ENEMY_CHASER, type EnemyDef } from '../config/enemies';
+import { AFFIX_RAGE, AFFIX_SHIELD, ELITE, ENEMIES, ENEMY_CHASER, ENEMY_SWARM, type EnemyDef } from '../config/enemies';
 import { bossForWave, bossHp } from '../config/bosses';
 import type { EventBus } from '../core/EventBus';
 import type { World } from '../core/World';
@@ -128,6 +127,16 @@ export class WaveSystem {
       while ((spent[ENEMY_CHASER] as number) < target && remaining >= 4) buy(ENEMY_CHASER);
     }
 
+    // NEU (Reise-Modus, Schwarm-Kammer): erzwungen viele winzige Schwarm-Gegner.
+    // buy(SWARM) zieht KEINE Elite-Draws (Schwarm nicht in ELITE.eligible), und bei
+    // ROOM_NORMAL ist swarmFill undefined -> Block uebersprungen -> 0 Zusatz-Draws.
+    const swarmFill = world.roomMods.swarmFill ?? 0;
+    if (swarmFill > 0) {
+      const swarmCost = (ENEMIES[ENEMY_SWARM] as EnemyDef).budgetCost;
+      const swarmTarget = total * swarmFill;
+      while ((spent[ENEMY_SWARM] as number) < swarmTarget && remaining >= swarmCost) buy(ENEMY_SWARM);
+    }
+
     // Restbudget zufaellig verteilen (Anteils-Deckel je Typ beachten)
     for (let guard = 0; guard < 200; guard++) {
       const candidates: number[] = [];
@@ -165,7 +174,10 @@ export class WaveSystem {
         if (e) {
           e.spawnProtection = 0.3;
           if (t.affix > 0) {
-            applyElite(e, t.affix);
+            // NEU (Reise-Modus, Elite-Kammer): vereinzelt riesige, zaehe Elites.
+            // Defaults 1 (ROOM_NORMAL) -> unveraendert; applyElite ist RNG-frei.
+            const rm = this.world.roomMods;
+            applyElite(e, t.affix, rm.eliteScaleMult ?? 1, rm.eliteHpMult ?? 1);
             this.events.emit('eliteSpawned', { x: e.x, z: e.z, enemyType: e.type, affix: t.affix });
           }
         }
@@ -224,7 +236,8 @@ export class WaveSystem {
   private pickPortal(): { x: number; z: number } {
     const world = this.world;
     const rng = world.rngWaves;
-    const r = ARENA_RADIUS - 2;
+    // NEU (Reise-Ausbau): Spawn-Ring skaliert mit der Raum-Arena (Klassik = 22).
+    const r = world.arenaRadius - 2;
     const eligible: number[] = [];
     let farthest = 0;
     let farthestDist = -1;

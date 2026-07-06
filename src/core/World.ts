@@ -45,7 +45,9 @@ export class World {
   readonly playerProjectiles = new Pool<Projectile>(makeProjectile, POOLS.playerProjectiles);
   readonly enemyProjectiles = new Pool<Projectile>(makeProjectile, POOLS.enemyProjectiles);
   readonly pickups = new Pool<Pickup>(makePickup, POOLS.pickups);
-  readonly spatialHash = new SpatialHash(ARENA_RADIUS + 2, 4);
+  // NEU (Reise-Ausbau): fuer den groessten moeglichen Raum-Radius dimensioniert
+  // (arenaMult ist auf <= 1.3 begrenzt), damit Gegner nie ausserhalb des Hash landen.
+  readonly spatialHash = new SpatialHash(ARENA_RADIUS * 1.3 + 2, 4);
 
   /** Aktive Spieler (Laenge 1 oder 2). Instanzen sind vorallokiert. */
   readonly players: Player[] = [];
@@ -75,6 +77,9 @@ export class World {
   /** NEU (Reise-Modus): Raum-Modifikator der laufenden Welle. Klassik/Boss:
    *  ROOM_NORMAL (bit-exakte Identitaet). NIE world.mods mutieren, nur hier lesen. */
   roomMods: RoomDef = ROOM_NORMAL;
+  /** NEU (Reise-Ausbau): Arena-Radius der laufenden Welle. Klassik/Boss/Normal:
+   *  ARENA_RADIUS (22). RunState.startWave setzt roomMods.arenaMult ein. */
+  arenaRadius = ARENA_RADIUS;
   /** In diesem Lauf gesammelte Kerne (geteilte Team-Waehrung). */
   runCores = 0;
   /** Spielzeit im Lauf (fuer Bob-Animationen etc.). */
@@ -146,6 +151,9 @@ export class World {
     // NEU (Reise-Modus): roomMods BEDINGUNGSLOS neutralisieren — sonst leckt ein
     // vorheriger Reise-Lauf in einen danach gestarteten (klassischen) Daily.
     this.roomMods = ROOM_NORMAL;
+    // NEU (Reise-Ausbau): Arena-Radius neutralisieren, sonst leckt ein Reise-Lauf
+    // (kleinere/groessere Arena) in einen danach gestarteten Daily.
+    this.arenaRadius = ARENA_RADIUS;
     this.enemyTimeScale = 1; // NEU: Zeitbruch startet jeden Lauf inaktiv
     this.runCores = 0;
     this.elapsed = 0;
@@ -230,6 +238,9 @@ export class World {
       hp: enemyHpFactor(w) * this.mods.enemyHp * rm.hpMult,
       speed: enemySpeedFactor(w) * this.mods.enemySpeed * goldenSpeed * rm.speedMult,
       damage: enemyDamageFactor(w) * this.mods.enemyDamage * rm.damageMult,
+      // NEU (Reise-Ausbau): Raum-Groessenfaktor fuer ALLE Gegner (Schwarm winzig,
+      // Oase leicht kleiner). ROOM_NORMAL laesst enemyScaleMult weg -> 1 -> No-Op.
+      size: rm.enemyScaleMult ?? 1,
     };
   }
 

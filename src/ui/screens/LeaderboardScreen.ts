@@ -8,10 +8,13 @@ export interface LeaderboardCallbacks {
 /**
  * Lokale Bestenliste: aggregiert live die Bestwerte aller Profile
  * (kein separater Speicher noetig), sortiert nach hoechstem Bestwert.
+ * NEU (Reise-Ausbau): Umschalter Klassik/Reise — Reise hat eine eigene Wertung
+ * (leichter durch Rast/Schatz) und ist solo (keine Koop-Spalte).
  */
 export class LeaderboardScreen {
   private readonly root: HTMLElement;
   private tableWrap!: HTMLElement;
+  private mode: 'classic' | 'journey' = 'classic';
 
   constructor(
     private readonly save: SaveManager,
@@ -24,26 +27,45 @@ export class LeaderboardScreen {
   private build(): void {
     this.root.innerHTML = `
       <h2 class="title-glow leaderboard-title">🏆 ${STR.leaderboardTitle}</h2>
+      <div class="lb-mode-toggle">
+        <button class="album-tab lb-mode-btn" data-mode="classic">${STR.lbModeClassic}</button>
+        <button class="album-tab lb-mode-btn" data-mode="journey">${STR.lbModeJourney}</button>
+      </div>
       <div class="leaderboard-wrap panel"></div>
       <button class="btn leaderboard-back" data-nav-default data-nav-back>${STR.back}</button>
     `;
     this.tableWrap = this.root.querySelector('.leaderboard-wrap') as HTMLElement;
+    this.root.querySelectorAll<HTMLButtonElement>('.lb-mode-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        this.mode = (btn.dataset.mode as 'classic' | 'journey' | undefined) ?? 'classic';
+        this.render();
+      });
+    });
     (this.root.querySelector('.leaderboard-back') as HTMLButtonElement)
       .addEventListener('click', () => this.cb.onBack());
   }
 
   render(): void {
+    const journey = this.mode === 'journey';
+    // Aktiven Umschalter markieren
+    this.root.querySelectorAll<HTMLButtonElement>('.lb-mode-btn').forEach((btn) => {
+      btn.classList.toggle('active', (btn.dataset.mode ?? 'classic') === this.mode);
+    });
+
     const rows = this.save.profiles.map((meta) => {
       const data = this.save.profileData(meta.id);
+      const scores = journey ? data.bestJourneyScores : data.bestScores;
+      const waves = journey ? data.bestJourneyWaves : data.bestWaves;
       return {
         id: meta.id,
         name: meta.name,
-        easy: data.bestScores.easy,
-        normal: data.bestScores.normal,
-        hard: data.bestScores.hard,
-        coop: Math.max(data.bestScoresCoop.easy, data.bestScoresCoop.normal, data.bestScoresCoop.hard),
-        bestWave: Math.max(data.bestWaves.easy, data.bestWaves.normal, data.bestWaves.hard),
-        best: Math.max(data.bestScores.easy, data.bestScores.normal, data.bestScores.hard),
+        easy: scores.easy,
+        normal: scores.normal,
+        hard: scores.hard,
+        // Reise ist solo -> keine Koop-Spalte
+        coop: journey ? 0 : Math.max(data.bestScoresCoop.easy, data.bestScoresCoop.normal, data.bestScoresCoop.hard),
+        bestWave: Math.max(waves.easy, waves.normal, waves.hard),
+        best: Math.max(scores.easy, scores.normal, scores.hard),
       };
     });
     rows.sort((a, b) => b.best - a.best);
@@ -58,7 +80,7 @@ export class LeaderboardScreen {
             <th>${STR.difficulties.easy}</th>
             <th>${STR.difficulties.normal}</th>
             <th>${STR.difficulties.hard}</th>
-            <th>${STR.lbCoop}</th>
+            ${journey ? '' : `<th>${STR.lbCoop}</th>`}
             <th>${STR.lbBestWave}</th>
           </tr>
         </thead>
@@ -74,7 +96,7 @@ export class LeaderboardScreen {
           <td>${r.easy || '–'}</td>
           <td>${r.normal || '–'}</td>
           <td>${r.hard || '–'}</td>
-          <td>${r.coop || '–'}</td>
+          ${journey ? '' : `<td>${r.coop || '–'}</td>`}
           <td>${r.bestWave || '–'}</td>
         </tr>
       `;

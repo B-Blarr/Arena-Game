@@ -318,6 +318,11 @@ export class Game {
       // Arena-Biome: alle 5 Wellen neue Farbstimmung, Boss-Wellen dunkler
       this.events.on('waveStarted', (e) => {
         this.arena.setBiome(Math.floor((e.wave - 1) / 5), e.isBossWave);
+        // NEU (Reise-Ausbau): Arena-Groesse + Raum-Optik der laufenden Welle
+        // (roomMods/arenaRadius sind von RunState.startWave bereits gesetzt).
+        // Klassik/Boss/Normal -> Radius 22 + theme null -> unveraenderte Optik.
+        this.arena.setRadius(this.world.arenaRadius);
+        this.arena.setRoomTheme(this.world.roomMods.theme ?? null);
       }),
       this.events.on('bossDied', () => this.arena.setBossMode(false)),
       // Boss-Stampfer laesst das Boden-Grid aufleuchten
@@ -392,16 +397,20 @@ export class Game {
     // NEU (Reise-Modus): Reise-Laeufe sind leichter (Rast/Schatz) -> KEIN Update der
     // klassischen Bestenliste, sonst verfaelscht es die Wertung. Kerne/Sticker zaehlen weiter.
     let isRecord = false;
-    if (this.runMode !== 'journey') {
-      if (isCoop) {
-        isRecord = finalScore > save.bestScoresCoop[diff];
-        if (isRecord) save.bestScoresCoop[diff] = finalScore;
-        if (wave > save.bestWavesCoop[diff]) save.bestWavesCoop[diff] = wave;
-      } else {
-        isRecord = finalScore > save.bestScores[diff];
-        if (isRecord) save.bestScores[diff] = finalScore;
-        if (wave > save.bestWaves[diff]) save.bestWaves[diff] = wave;
-      }
+    if (this.runMode === 'journey') {
+      // NEU (Reise-Ausbau): eigene Reise-Bestenliste (solo). isRecord treibt das
+      // "Neuer Rekord!" im GameOver auch im Reise-Modus.
+      isRecord = finalScore > save.bestJourneyScores[diff];
+      if (isRecord) save.bestJourneyScores[diff] = finalScore;
+      if (wave > save.bestJourneyWaves[diff]) save.bestJourneyWaves[diff] = wave;
+    } else if (isCoop) {
+      isRecord = finalScore > save.bestScoresCoop[diff];
+      if (isRecord) save.bestScoresCoop[diff] = finalScore;
+      if (wave > save.bestWavesCoop[diff]) save.bestWavesCoop[diff] = wave;
+    } else {
+      isRecord = finalScore > save.bestScores[diff];
+      if (isRecord) save.bestScores[diff] = finalScore;
+      if (wave > save.bestWaves[diff]) save.bestWaves[diff] = wave;
     }
 
     // dailyBest bleibt solo-only (Koop bietet kein Daily an)
@@ -424,6 +433,7 @@ export class Game {
       heroId: hero.id,
       weaponId: getWeapon(save.settings.weaponId, hero).id,
       isCoop,
+      isJourney: this.runMode === 'journey', // NEU (Reise-Ausbau): Reise-Erfolge
     });
     this.save.save();
 
@@ -455,7 +465,9 @@ export class Game {
       score: finalScore,
       wave,
       isRecord,
-      best: isCoop ? save.bestScoresCoop[diff] : save.bestScores[diff],
+      best: this.runMode === 'journey'
+        ? save.bestJourneyScores[diff]
+        : (isCoop ? save.bestScoresCoop[diff] : save.bestScores[diff]),
       coresEarned,
       totalCores: save.cores,
       teaser: this.buildTeaser(),

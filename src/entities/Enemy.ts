@@ -21,6 +21,9 @@ export interface Enemy {
   damage: number;
   points: number;
   radius: number;
+  /** NEU (Reise-Ausbau): Optik-Groessenfaktor (Raum + Elite-Kammer). 1 = normal.
+   *  Kollision laeuft ueber radius, die Optik ueber diesen Faktor (Renderer). */
+  sizeMult: number;
   mass: number;
   coreChance: number;
   flashTimer: number;
@@ -56,7 +59,7 @@ export function makeEnemy(): Enemy {
   return {
     uid: 0, type: 0,
     x: 0, z: 0, prevX: 0, prevZ: 0, kvx: 0, kvz: 0,
-    hp: 1, maxHp: 1, speed: 1, damage: 0, points: 0, radius: 0.5, mass: 1, coreChance: 0,
+    hp: 1, maxHp: 1, speed: 1, damage: 0, points: 0, radius: 0.5, sizeMult: 1, mass: 1, coreChance: 0,
     flashTimer: 0, scalePop: 0, slowTimer: 0, slowFactor: 1,
     fireTimer: 0, telegraphTimer: 0, spawnProtection: 0,
     orbCooldown: 0, dashHitToken: -1, novaDepth: 0,
@@ -69,6 +72,8 @@ export interface EnemyScaling {
   hp: number;
   speed: number;
   damage: number;
+  /** NEU (Reise-Ausbau): Groessenfaktor fuer Kollision + Optik (1 = normal). */
+  size: number;
 }
 
 export function initEnemy(
@@ -93,7 +98,9 @@ export function initEnemy(
   e.speed = def.speed * scaling.speed;
   e.damage = Math.round(def.damage * scaling.damage);
   e.points = def.points;
-  e.radius = def.radius;
+  // NEU (Reise-Ausbau): Raum-Groessenfaktor auf Kollision UND Optik. size=1 -> No-Op.
+  e.radius = def.radius * scaling.size;
+  e.sizeMult = scaling.size;
   e.mass = def.mass;
   e.coreChance = def.coreChance;
   e.flashTimer = 0;
@@ -120,13 +127,18 @@ export function initEnemy(
   e.bobPhase = Math.random() * Math.PI * 2;
 }
 
-/** Macht einen frisch initialisierten Gegner zur Elite-Variante. */
-export function applyElite(e: Enemy, affix: number): void {
-  e.maxHp = Math.round(e.maxHp * ELITE.hpMult);
+/**
+ * Macht einen frisch initialisierten Gegner zur Elite-Variante.
+ * NEU (Reise-Ausbau): scaleMult/hpMult kommen aus der Elite-Kammer (roomMods),
+ * um vereinzelt RIESIGE, zaehe Elites zu erzeugen. Defaults 1 -> unveraendert.
+ */
+export function applyElite(e: Enemy, affix: number, scaleMult = 1, hpMult = 1): void {
+  e.maxHp = Math.round(e.maxHp * ELITE.hpMult * hpMult);
   e.hp = e.maxHp;
   e.damage = Math.round(e.damage * ELITE.damageMult);
   e.points = Math.round(e.points * ELITE.pointsMult);
-  e.radius *= ELITE.radiusMult;
+  e.radius *= ELITE.radiusMult * scaleMult;
+  e.sizeMult *= scaleMult;
   e.eliteAffix = affix;
   e.shieldHp = affix === AFFIX_SHIELD ? 1 : 0;
 }

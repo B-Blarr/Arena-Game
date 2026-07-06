@@ -68,6 +68,11 @@ export class Player {
   /** Blickrichtung (letzte Ziel-/Bewegungsrichtung). */
   faceX = 0;
   faceZ = 1;
+  /** NEU (Reise-Ausbau): Arena-Radius der laufenden Welle (Player hat kein world-
+   *  Handle; RunState.startWave setzt den Wert). Klassik/Normal: ARENA_RADIUS. */
+  arenaRadius = ARENA_RADIUS;
+  /** NEU (Reise-Ausbau): Singularitaets-Sog zur Mitte (Units/s, 0 = aus). */
+  pullStrength = 0;
 
   // Dash
   dashTimer = 0;
@@ -141,6 +146,9 @@ export class Player {
     this.rapidFireTimer = 0;
     this.healCarry = 0;
     this.blackHoleTimer = 0;
+    // NEU (Reise-Ausbau): Arena/Sog neutral starten (startWave setzt sie pro Welle).
+    this.arenaRadius = ARENA_RADIUS;
+    this.pullStrength = 0;
     this.reviveAvailable = (perma.secondChance ?? 0) > 0;
     this.phoenixCharge = false; // NEU: Phoenixkern erst per Upgrade-Wahl laden
     this.phoenixBlastPending = false;
@@ -348,10 +356,21 @@ export class Player {
         this.faceX = moveX;
         this.faceZ = moveZ;
       }
+      // NEU (Reise-Ausbau, Singularitaet): sanfter Sog zur Mitte. Nur ausserhalb
+      // des Dash (der bleibt knackig). Schritt auf die Distanz gedeckelt, damit
+      // die Mitte nie ueberschossen wird (kein Jitter). pullStrength=0 -> No-Op.
+      if (this.pullStrength > 0) {
+        const pd = Math.hypot(this.x, this.z);
+        if (pd > 0.001) {
+          const step = Math.min(this.pullStrength * dt, pd);
+          this.x -= (this.x / pd) * step;
+          this.z -= (this.z / pd) * step;
+        }
+      }
     }
 
-    // Kreis-Arena-Clamp
-    const maxR = ARENA_RADIUS - PLAYER.radius;
+    // Kreis-Arena-Clamp (NEU: Raum-Radius statt fester Konstante)
+    const maxR = this.arenaRadius - PLAYER.radius;
     const d = Math.hypot(this.x, this.z);
     if (d > maxR) {
       this.x = (this.x / d) * maxR;
@@ -367,7 +386,7 @@ export class Player {
       let hx = this.x + this.dashDirX * UV.blackHoleThrowDist;
       let hz = this.z + this.dashDirZ * UV.blackHoleThrowDist;
       const hd = Math.hypot(hx, hz);
-      const hMax = ARENA_RADIUS - 1.5;
+      const hMax = this.arenaRadius - 1.5;
       if (hd > hMax) {
         hx = (hx / hd) * hMax;
         hz = (hz / hd) * hMax;

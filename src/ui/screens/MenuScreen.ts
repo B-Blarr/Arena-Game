@@ -127,7 +127,9 @@ export class MenuScreen {
   refresh(): void {
     const save = this.save.data;
     this.coresEl.textContent = String(save.cores);
-    this.bestEl.textContent = String(save.bestScores[save.settings.difficulty]);
+    // NEU (Reise-Ausbau): bei aktivem Reise-Toggle den Reise-Bestwert zeigen.
+    const bestScores = (this.journeyMode && !this.dailyMode) ? save.bestJourneyScores : save.bestScores;
+    this.bestEl.textContent = String(bestScores[save.settings.difficulty]);
     this.warnEl.textContent = this.save.storageAvailable ? '' : STR.saveWarning;
     (this.root.querySelector('.menu-profile-name') as HTMLElement).textContent = this.save.activeName;
     // Gold-Punkt am Erfolge-Button: neue Erfolge ODER eine abholbare Belohnung

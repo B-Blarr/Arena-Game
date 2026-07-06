@@ -1,4 +1,4 @@
-import { ARENA_RADIUS, PLAYER } from '../config/balance';
+import { PLAYER } from '../config/balance';
 import { ENEMY_BOMBER } from '../config/enemies';
 import { UPGRADE_VALUES as UV } from '../config/upgrades';
 import type { EventBus } from '../core/EventBus';
@@ -101,7 +101,7 @@ export class CollisionSystem {
   }
 
   private hitWall(proj: Projectile): boolean {
-    if (Math.hypot(proj.x, proj.z) >= ARENA_RADIUS - 0.2) {
+    if (Math.hypot(proj.x, proj.z) >= this.world.arenaRadius - 0.2) {
       this.events.emit('projectileWallHit', { x: proj.x, z: proj.z });
       return true;
     }
@@ -261,7 +261,7 @@ export class CollisionSystem {
       proj.z += proj.vz * dt * ts;
       proj.traveled += Math.hypot(proj.vx, proj.vz) * dt * ts;
 
-      if (proj.traveled >= proj.range || Math.hypot(proj.x, proj.z) >= ARENA_RADIUS - 0.15) {
+      if (proj.traveled >= proj.range || Math.hypot(proj.x, proj.z) >= this.world.arenaRadius - 0.15) {
         pool.despawn(i);
         continue;
       }
