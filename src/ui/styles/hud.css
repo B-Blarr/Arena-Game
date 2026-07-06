@@ -426,13 +426,13 @@ body.reduce-fx .hud-combo.c3 .hud-combo-ring {
 
 /* ---------- Erfolgs-Karte (Erfolg-Unlock, zentral-oben, gequeued) ----------
    Eigenes Element (nicht das Banner) — Wellen-/Boss-Banner wuerden es sonst
-   wegblitzen. Zentral-oben (40 %) statt Bildschirmmitte: sitzt unter dem
-   Wellen-Banner (30 %) und ueber der Spielfigur -> verdeckt niemanden.
-   pointer-events:none -> kein Gameplay-Stop. */
+   wegblitzen. Zentriert im oberen Viertel (24 %), also deutlich OBERHALB der
+   Spielfigur (~50 %) -> verdeckt den Spieler nie. pointer-events:none -> kein
+   Gameplay-Stop. */
 .sticker-toast {
   --rarity: var(--rarity-common);
   position: absolute;
-  top: 40%;
+  top: 24%;
   left: 50%;
   display: flex;
   flex-direction: column;

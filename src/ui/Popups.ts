@@ -160,7 +160,7 @@ export class Popups {
   }
 
   /**
-   * Naechste Erfolgs-Karte aus der Queue zeigen (2.9 s + kurze Pause).
+   * Naechste Erfolgs-Karte aus der Queue zeigen (4.5 s + kurze Pause).
    * GEAENDERT: zentral-oben als heroische Karte (Label / grosses Icon / Name)
    * statt kleiner Toast oben rechts — bleibt dank pointer-events:none und
    * Auto-Dismiss gameplay-durchlaessig. Solange ein Vollbild-Screen offen ist
@@ -194,7 +194,7 @@ export class Popups {
     this.stickerTimeout = window.setTimeout(() => {
       this.stickerEl.classList.remove('show');
       this.stickerTimeout = window.setTimeout(() => this.nextStickerToast(), 400);
-    }, 2900);
+    }, 4500);
   }
 
   banner(text: string, extraClass: string): void {
