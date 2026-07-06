@@ -6,15 +6,16 @@
 
 export type Rarity = 'common' | 'rare' | 'epic' | 'legendary';
 
-export const RARITY_WEIGHTS: Record<Rarity, number> = { common: 60, rare: 30, epic: 10, legendary: 1 };
+export const RARITY_WEIGHTS: Record<Rarity, number> = { common: 60, rare: 30, epic: 10, legendary: 0.3 };
 
-/** Legendaer-Regeln: extrem selten, unsichtbarer Pity gegen Pechstraehnen. */
+/** Legendaer-Regeln: EXTREM selten, nur ein sanfter Rest-Pity gegen Extrem-Pech. */
 export const LEGENDARY = {
-  /** Effektives Gewicht = min(base + pity, weightCap); pity +1 pro Angebot ohne Fund. */
-  pityPerOffer: 1,
-  weightCap: 8,
-  /** Erst ab der Wahl NACH dieser Welle im Pool (erste Wahl bleibt simpel). */
-  minWave: 3,
+  /** Effektives Gewicht = min(base + pity, weightCap); pity nur pro Angebot, in dem
+   *  Legendaere ueberhaupt moeglich waren (siehe UpgradeSystem.draw). */
+  pityPerOffer: 0.15,
+  weightCap: 1.0,
+  /** Erst ab der Wahl NACH dieser Welle im Pool (frueher Lauf bleibt legendaer-frei). */
+  minWave: 6,
 };
 
 export interface UpgradeDef {

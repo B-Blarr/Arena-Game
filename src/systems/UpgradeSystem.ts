@@ -74,6 +74,8 @@ export class UpgradeSystem {
       return true;
     });
     const picks: UpgradeDef[] = [];
+    // Waren Legendaere in DIESEM Angebot ueberhaupt moeglich? (Pity nur dann zaehlen)
+    const poolHadLegendary = pool.some((u) => u.rarity === 'legendary');
 
     // Nach einem legendaeren Pick: restliche Legendaere raus
     // (max. 1 pro Angebot — niemand soll eine Einmal-Karte wegwerfen muessen)
@@ -84,7 +86,8 @@ export class UpgradeSystem {
     };
 
     if (guaranteeRare) {
-      const rarePool = pool.filter((u) => u.rarity !== 'common');
+      // Garantierter Boss-Slot: mindestens Selten, aber NIE legendaer (kein Legendaer-Bias)
+      const rarePool = pool.filter((u) => u.rarity !== 'common' && u.rarity !== 'legendary');
       if (rarePool.length > 0) {
         const pick = this.weightedPick(rarePool, rng);
         picks.push(pick);
@@ -114,7 +117,9 @@ export class UpgradeSystem {
     if (legendary) {
       this.legendaryPity[playerIdx] = 0;
       this.events.emit('legendaryRevealed', { id: legendary.id });
-    } else {
+    } else if (poolHadLegendary) {
+      // Pity nur erhoehen, wenn ein Legendaeres moeglich WAR (nicht in Welle 1-5
+      // oder wenn alle Legendaeren laengst vergeben sind — sonst laedt er sich unnoetig auf)
       this.legendaryPity[playerIdx] += LEGENDARY.pityPerOffer;
     }
     return picks;
