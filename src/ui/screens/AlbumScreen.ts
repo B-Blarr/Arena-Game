@@ -8,7 +8,7 @@ import {
   type StickerDef,
 } from '../../config/stickers';
 import type { Sfx } from '../../audio/Sfx';
-import type { SaveManager } from '../../save/SaveManager';
+import type { SaveData, SaveManager } from '../../save/SaveManager';
 
 export interface AlbumCallbacks {
   onBack: () => void;
@@ -77,12 +77,14 @@ export class AlbumScreen {
       const defs = stickersOfPage(page.id);
       const unlocked = defs.filter((s) => data.stickers[s.id]).length;
       const hasNew = defs.some((s) => this.isNew(s.id));
+      const hasClaim = defs.some((s) => s.reward && data.stickers[s.id] && !data.stickerRewards.includes(s.id))
+        || (!data.stickerPageRewards.includes(page.id) && defs.length > 0 && defs.every((s) => data.stickers[s.id]));
       const btn = document.createElement('button');
       btn.className = `album-tab${page.id === this.activePage ? ' active' : ''}`;
       btn.dataset.key = `album-tab-${page.id}`;
       btn.innerHTML = `${page.icon} ${STR.albumPages[page.id] ?? page.id}
         <span class="album-tab-count">${STR.albumProgress(unlocked, defs.length)}</span>
-        ${hasNew ? '<span class="album-dot"></span>' : ''}`;
+        ${hasNew || hasClaim ? '<span class="album-dot"></span>' : ''}`;
       btn.addEventListener('click', () => {
         this.activePage = page.id;
         this.detailId = null;
@@ -119,11 +121,13 @@ export class AlbumScreen {
           <span class="album-sticker-name">${STR.albumSecretName}</span>
         `;
       } else {
+        const claimable = unlockedAt && def.reward && !data.stickerRewards.includes(def.id);
         card.innerHTML = `
           <span class="album-sticker-icon">${def.icon}</span>
           <span class="album-sticker-name">${info?.name ?? def.id}</span>
           ${!unlockedAt && progress ? `<span class="album-sticker-progress">${progress}</span>` : ''}
           ${isNew ? `<span class="album-new-badge">${STR.albumNew}</span>` : ''}
+          ${claimable ? '<span class="album-reward-badge">🎁</span>' : ''}
         `;
       }
       card.addEventListener('click', () => {
@@ -164,9 +168,7 @@ export class AlbumScreen {
     const label = page.reward.kind === 'cores'
       ? STR.albumRewardCores(page.reward.amount)
       : STR.albumRewardColorway(STR.colorways[page.reward.colorwayId] ?? page.reward.colorwayId);
-    const chip = page.reward.kind === 'colorway'
-      ? `<span class="color-chip" style="background:#${(COLORWAYS.find((c) => c.id === (page.reward as { colorwayId: string }).colorwayId)?.body ?? 0xffffff).toString(16).padStart(6, '0')}"></span>`
-      : '';
+    const chip = page.reward.kind === 'colorway' ? this.colorChip(page.reward.colorwayId) : '';
 
     if (claimed) {
       this.rewardEl.innerHTML = `<span class="album-reward-done">✔ ${label} ${chip}</span>`;
@@ -187,14 +189,14 @@ export class AlbumScreen {
     const data = this.save.data;
     const claimed = data.stickerPageRewards.includes(GOLD_REWARD_ID);
     if (claimed) {
-      this.goldEl.innerHTML = `<span class="album-reward-done">✔ ${STR.albumGoldReward}</span>`;
+      this.goldEl.innerHTML = `<span class="album-reward-done">✔ ${STR.albumGoldReward(total)}</span>`;
     } else if (got >= total) {
-      this.goldEl.innerHTML = `<button class="btn btn-gold pulse-soft album-claim-gold">🏆 ${STR.albumClaim} — ${STR.albumGoldReward}</button>`;
+      this.goldEl.innerHTML = `<button class="btn btn-gold pulse-soft album-claim-gold">🏆 ${STR.albumClaim} — ${STR.albumGoldReward(total)}</button>`;
       (this.goldEl.querySelector('.album-claim-gold') as HTMLButtonElement).addEventListener('click', () => {
         this.claim(GOLD_REWARD_ID);
       });
     } else {
-      this.goldEl.innerHTML = `<span class="text-dim album-gold-hint">${STR.albumGoldReward}</span>`;
+      this.goldEl.innerHTML = `<span class="text-dim album-gold-hint">${STR.albumGoldReward(total)}</span>`;
     }
   }
 
@@ -242,7 +244,44 @@ export class AlbumScreen {
       <span class="album-detail-name" style="color: var(--rarity-${def.rarity})">${info?.name ?? def.id}</span>
       <span class="album-detail-desc">${info?.desc ?? ''}</span>
       ${since}
+      ${unlockedAt ? this.stickerRewardHtml(def) : ''}
     `;
+    const claimBtn = this.detailEl.querySelector('.album-sticker-claim') as HTMLButtonElement | null;
+    if (claimBtn) claimBtn.addEventListener('click', () => this.claimStickerReward(def));
+  }
+
+  /** Regenbogen-Chip fuer animierte Farben, sonst Solid-Farbe. */
+  private colorChip(colorwayId: string): string {
+    const cw = COLORWAYS.find((c) => c.id === colorwayId);
+    if (cw?.animated) return '<span class="color-chip prismatic"></span>';
+    const hex = (cw?.body ?? 0xffffff).toString(16).padStart(6, '0');
+    return `<span class="color-chip" style="background:#${hex}"></span>`;
+  }
+
+  /** Pro-Erfolg-Belohnung im Detail: Abholen-Button bzw. „✔" wenn schon geholt. */
+  private stickerRewardHtml(def: StickerDef): string {
+    if (!def.reward) return '';
+    const label = def.reward.kind === 'cores'
+      ? STR.albumRewardCores(def.reward.amount)
+      : STR.albumRewardColorway(STR.colorways[def.reward.colorwayId] ?? def.reward.colorwayId);
+    const chip = def.reward.kind === 'colorway' ? this.colorChip(def.reward.colorwayId) : '';
+    if (this.save.data.stickerRewards.includes(def.id)) {
+      return `<span class="album-reward-done">✔ ${label} ${chip}</span>`;
+    }
+    return `<span class="album-sticker-reward">🎁 ${label} ${chip}</span>
+      <button class="btn btn-gold pulse-soft album-sticker-claim">${STR.albumClaim}</button>`;
+  }
+
+  private claimStickerReward(def: StickerDef): void {
+    const data = this.save.data;
+    if (!def.reward || data.stickerRewards.includes(def.id)) return;
+    if (def.reward.kind === 'cores') data.cores += def.reward.amount;
+    else data.unlockedColorways.push(def.reward.colorwayId);
+    data.stickerRewards.push(def.id);
+    this.save.save();
+    this.sfx.stickerFanfare();
+    this.cb.onClaimed();
+    this.render();
   }
 
   /** Beim Verlassen: NEU-Badges gelten genau fuer einen Besuch. */
@@ -262,5 +301,21 @@ export class AlbumScreen {
   static hasNews(save: SaveManager): boolean {
     const seen = save.data.lastAlbumSeen;
     return Object.values(save.data.stickers).some((at) => seen === '' || at > seen);
+  }
+
+  /** Fuer den Menue-Button: gibt es eine abholbare Belohnung (Erfolg/Seite/Gold)? */
+  static hasClaimable(data: SaveData): boolean {
+    for (const s of STICKERS) {
+      if (s.reward && data.stickers[s.id] && !data.stickerRewards.includes(s.id)) return true;
+    }
+    for (const p of ALBUM_PAGES) {
+      if (!data.stickerPageRewards.includes(p.id) && stickersOfPage(p.id).every((s) => data.stickers[s.id])) {
+        return true;
+      }
+    }
+    if (!data.stickerPageRewards.includes(GOLD_REWARD_ID) && STICKERS.every((s) => data.stickers[s.id])) {
+      return true;
+    }
+    return false;
   }
 }

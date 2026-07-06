@@ -1,5 +1,5 @@
 import type { Difficulty } from '../config/balance';
-import { ALBUM_PAGES, GOLD_REWARD_ID } from '../config/stickers';
+import { ALBUM_PAGES, GOLD_REWARD_ID, STICKERS } from '../config/stickers';
 
 /**
  * localStorage-Persistenz mit Versionsfeld, Shape-Guard und
@@ -60,6 +60,8 @@ export interface SaveData {
   stickerCounters: Record<string, number>;
   /** Abgeholte Seiten-Belohnungen (Page-IDs + 'gold'). */
   stickerPageRewards: string[];
+  /** Abgeholte Pro-Erfolg-Belohnungen (Erfolgs-IDs). */
+  stickerRewards: string[];
   /** Freigeschaltete Farbvarianten. */
   unlockedColorways: string[];
   /** Letzter Album-Besuch (ISO) — steuert die NEU-Badges. */
@@ -111,6 +113,7 @@ function defaults(): SaveData {
     stickers: {},
     stickerCounters: {},
     stickerPageRewards: [],
+    stickerRewards: [],
     unlockedColorways: [],
     lastAlbumSeen: '',
   };
@@ -195,6 +198,9 @@ function sanitize(raw: unknown): SaveData {
   if (Array.isArray(r.stickerPageRewards)) {
     d.stickerPageRewards = r.stickerPageRewards.filter((p): p is string => typeof p === 'string');
   }
+  if (Array.isArray(r.stickerRewards)) {
+    d.stickerRewards = r.stickerRewards.filter((p): p is string => typeof p === 'string');
+  }
   if (Array.isArray(r.unlockedColorways)) {
     d.unlockedColorways = r.unlockedColorways.filter((c): c is string => typeof c === 'string');
   }
@@ -210,6 +216,13 @@ function sanitize(raw: unknown): SaveData {
     const page = ALBUM_PAGES.find((p) => p.id === claimed);
     if (page?.reward.kind === 'colorway' && !d.unlockedColorways.includes(page.reward.colorwayId)) {
       d.unlockedColorways.push(page.reward.colorwayId);
+    }
+  }
+  // Gleiche Kreuz-Konsistenz fuer abgeholte Pro-Erfolg-Belohnungen
+  for (const claimed of d.stickerRewards) {
+    const def = STICKERS.find((s) => s.id === claimed);
+    if (def?.reward?.kind === 'colorway' && !d.unlockedColorways.includes(def.reward.colorwayId)) {
+      d.unlockedColorways.push(def.reward.colorwayId);
     }
   }
 

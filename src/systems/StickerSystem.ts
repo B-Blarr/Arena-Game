@@ -42,6 +42,10 @@ export class StickerSystem {
   private bhZ = 0;
   private bhTime = -1;
   private bhKills = 0;
+  /** Ganzer Run ohne Treffer (fuer „Unantastbar"). */
+  private runTookHit = false;
+  /** In diesem Run erhaltene Kapsel-Arten (fuer „Paket-Meister"). */
+  private readonly capsuleKindsThisRun = new Set<string>();
   /** Waehrend finishRun keine Toasts (die Zusammenfassung zeigt sie). */
   private inFinishRun = false;
 
@@ -71,13 +75,20 @@ export class StickerSystem {
         if (e.enemyType >= 0) this.bump(`killsType:${e.enemyType}`);
         if (e.elite) this.bump('killsElite');
         // Geheim: Dieb erwischt, bevor er in dieser Welle geklaut hat
-        if (e.enemyType === 7 && !this.coreStolenThisWave) this.setFlag('thiefPreSteal');
-        // Geheim: 3 Kills im Kollaps-Fenster EINES Schwarzen Lochs
+        if (e.enemyType === 7 && !this.coreStolenThisWave) {
+          this.setFlag('thiefPreSteal');
+          this.bump('thiefCaught');
+        }
+        // Geheim: 3 (bzw. 5) Kills im Kollaps-Fenster EINES Schwarzen Lochs
         if (this.bhTime >= 0 && this.world.elapsed - this.bhTime <= 0.25) {
           const dx = e.x - this.bhX;
           const dz = e.z - this.bhZ;
           const r = UV.blackHoleCrushRadius + 1.5;
-          if (dx * dx + dz * dz <= r * r && ++this.bhKills >= 3) this.setFlag('blackHole3');
+          if (dx * dx + dz * dz <= r * r) {
+            this.bhKills++;
+            if (this.bhKills >= 3) this.setFlag('blackHole3');
+            if (this.bhKills >= 5) this.setFlag('blackHole5');
+          }
         }
       }),
       events.on('enemyHit', (e) => {
@@ -93,13 +104,18 @@ export class StickerSystem {
         if (this.bossActive) this.bossDashed = true;
       }),
       events.on('playerHit', () => {
+        this.runTookHit = true;
         if (this.bossActive) this.bossTookHit = true;
       }),
       events.on('playerDowned', () => {
         if (this.bossActive) this.bossAnyDown = true;
       }),
       events.on('playerCoopRevived', (e) => {
-        if (e.byPartner) this.bump('coopRevives');
+        if (e.byPartner) {
+          this.bump('coopRevives');
+          // Geheim: Partner 3-mal in EINEM Run wiederbelebt
+          if ((this.runDeltas.coopRevives ?? 0) >= 3) this.setFlag('coopRevive3');
+        }
       }),
       events.on('playerRevived', () => this.bump('revives')),
       events.on('upgradeChosen', (e) => {
@@ -124,13 +140,15 @@ export class StickerSystem {
         if (e.perfect) {
           this.bump('perfectWaves');
           if (++this.perfectWavesThisRun >= 3) this.setFlag('perfect3');
+          if (this.perfectWavesThisRun >= 5) this.setFlag('perfect5');
           if (this.goldenWaveNr === e.wave) this.setFlag('goldenPerfect');
         }
-        // Geheim: Welle mit hoechstens 5 HP ueberlebt (Koop: knappster Spieler)
+        // Geheim: Welle mit hoechstens 5 (bzw. 3) HP ueberlebt (Koop: knappster Spieler)
         for (let i = 0; i < this.world.players.length; i++) {
           const p = this.world.players[i];
           if (p?.targetable && p.hp <= 5) {
             this.setFlag('closeCall');
+            if (p.hp <= 3) this.setFlag('closeCall3');
             break;
           }
         }
@@ -147,16 +165,25 @@ export class StickerSystem {
         this.bump(`boss:${e.id}`);
         // Nur ein ECHTER Kampf (bossSpawned gesehen) zaehlt fuer die Flags
         if (this.bossActive) {
-          if (!this.bossTookHit) this.setFlag('bossNoHit');
+          if (!this.bossTookHit) {
+            this.setFlag('bossNoHit');
+            this.bump(`flawless:${e.id}`); // je Boss makellos (fuer „Bezwinger")
+          }
           if (!this.bossDashed) this.setFlag('bossNoDash');
+          if (!this.bossTookHit && !this.bossDashed) this.setFlag('bossFlawless');
+          if (!this.bossDashed && this.world.wave >= 30) this.setFlag('bossNoDash30');
           if (this.world.isCoop && !this.bossAnyDown) this.setFlag('coopBossNoDown');
         }
         if (this.world.wave >= 30) this.setFlag('bossTierPlus');
+        if (this.world.wave >= 40) this.setFlag('bossTier40');
         this.bossActive = false;
       }),
       events.on('capsuleReward', (e) => {
         this.bump('capsules');
         this.bump(`capsule:${e.kind}`);
+        // Geheim: alle 4 Kapsel-Arten in EINEM Run
+        this.capsuleKindsThisRun.add(e.kind);
+        if (this.capsuleKindsThisRun.size >= 4) this.setFlag('allCapsules1Run');
       }),
       events.on('scoreChanged', (e) => {
         for (const def of this.scoreWatch) {
@@ -190,6 +217,12 @@ export class StickerSystem {
     if (ctx.isDaily) this.bumpOwn('dailyRuns');
     if (ctx.isCoop) this.bump('coopRuns');
     if (ctx.difficulty === 'hard' && ctx.wave >= 10) this.setFlag('hardWave10');
+    if (ctx.difficulty === 'hard' && ctx.wave >= 20) this.setFlag('hardWave20');
+    // Schwere Run-Ziele aus vorhandenen Run-Deltas (kein neues Tracking noetig)
+    if ((this.runDeltas.dashes ?? 0) === 0 && ctx.wave >= 15) this.setFlag('noDashRun15');
+    if (!this.runTookHit && ctx.wave >= 10) this.setFlag('noHitRun10');
+    if ((this.runDeltas.hearts ?? 0) === 0 && ctx.wave >= 10) this.setFlag('noHeal10');
+    if ((this.runDeltas.cores ?? 0) === 0 && ctx.wave >= 10) this.setFlag('noCores10');
     this.checkCounter('runs');
     this.checkCounter('kills');
     this.inFinishRun = false;
@@ -306,6 +339,8 @@ export class StickerSystem {
     this.goldenWaveNr = -1;
     this.bhTime = -1;
     this.bhKills = 0;
+    this.runTookHit = false;
+    this.capsuleKindsThisRun.clear();
   }
 
   dispose(): void {

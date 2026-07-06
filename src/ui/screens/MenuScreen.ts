@@ -1,6 +1,7 @@
 import { STR } from '../../config/strings.de';
 import { HEROES } from '../../config/heroes';
 import { COLORWAYS } from '../../config/stickers';
+import { AlbumScreen } from './AlbumScreen';
 import type { Difficulty } from '../../config/balance';
 import type { SaveManager } from '../../save/SaveManager';
 
@@ -125,10 +126,11 @@ export class MenuScreen {
     this.bestEl.textContent = String(save.bestScores[save.settings.difficulty]);
     this.warnEl.textContent = this.save.storageAvailable ? '' : STR.saveWarning;
     (this.root.querySelector('.menu-profile-name') as HTMLElement).textContent = this.save.activeName;
-    // Gold-Punkt am Album-Button, wenn es neue Sticker seit dem letzten Besuch gibt
+    // Gold-Punkt am Erfolge-Button: neue Erfolge ODER eine abholbare Belohnung
     const seen = save.lastAlbumSeen;
     const hasNews = Object.values(save.stickers).some((at) => seen === '' || at > seen);
-    (this.root.querySelector('.menu-album-new') as HTMLElement).classList.toggle('show', hasNews);
+    const nudge = hasNews || AlbumScreen.hasClaimable(save);
+    (this.root.querySelector('.menu-album-new') as HTMLElement).classList.toggle('show', nudge);
 
     // Helden-Karten
     this.heroRow.innerHTML = '';
@@ -167,17 +169,17 @@ export class MenuScreen {
       label.textContent = `${STR.colorLabel}:`;
       cwRow.appendChild(label);
       const heroColor = HEROES.find((h) => h.id === save.settings.heroId)?.color ?? 0x00e5ff;
-      const options: Array<{ id: string; color: number; name: string }> = [
+      const options: Array<{ id: string; color: number; name: string; animated?: boolean }> = [
         { id: 'default', color: heroColor, name: STR.colorDefault },
       ];
       for (const cw of COLORWAYS) {
         if (save.unlockedColorways.includes(cw.id)) {
-          options.push({ id: cw.id, color: cw.body, name: STR.colorways[cw.id] ?? cw.id });
+          options.push({ id: cw.id, color: cw.body, name: STR.colorways[cw.id] ?? cw.id, animated: cw.animated });
         }
       }
       for (const opt of options) {
         const chip = document.createElement('button');
-        chip.className = `color-chip-btn${save.settings.colorwayId === opt.id ? ' active' : ''}`;
+        chip.className = `color-chip-btn${save.settings.colorwayId === opt.id ? ' active' : ''}${opt.animated ? ' prismatic' : ''}`;
         chip.dataset.key = `colorway-${opt.id}`;
         chip.title = opt.name;
         chip.style.setProperty('--chip', `#${opt.color.toString(16).padStart(6, '0')}`);

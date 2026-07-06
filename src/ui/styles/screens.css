@@ -1043,6 +1043,30 @@ body.reduce-fx .album-sticker.reveal {
   vertical-align: middle;
 }
 
+/* Regenbogen-Chip fuer die animierte "prismatisch"-Farbe (Icon, kein Gefahren-Rot) */
+.color-chip.prismatic,
+.color-chip-btn.prismatic {
+  background: conic-gradient(
+    from 0deg,
+    #ff4d6d, #ffd24d, #6dff8a, #4de6ff, #7a5cff, #ff5ce1, #ff4d6d
+  );
+}
+
+/* Abholbare Pro-Erfolg-Belohnung: Geschenk-Badge auf der Karte + Detail-Zeile */
+.album-reward-badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  font-size: 1.1rem;
+  filter: drop-shadow(0 0 4px var(--gold));
+}
+
+.album-sticker-reward {
+  font-size: 1.05rem;
+  color: var(--gold);
+  font-weight: 700;
+}
+
 /* GameOver: "Neue Sticker"-Chips */
 .sticker-chip {
   --rarity: var(--rarity-common);

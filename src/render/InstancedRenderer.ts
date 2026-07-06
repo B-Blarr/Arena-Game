@@ -64,6 +64,8 @@ interface PlayerFigure {
   reviveProgMat: MeshBasicMaterial;
   /** Aktuelle Basisfarbe (Held/Farbvariante) fuer Dimmen + Muzzle. */
   bodyColor: number;
+  /** Animierte Farbvariante (Regenbogen): pro Frame neu einfaerben. */
+  animatedColorway: boolean;
 }
 
 /**
@@ -77,6 +79,9 @@ export class InstancedRenderer {
   fxIntensity = 1;
   /** Menue-Modus: Figur ist Helden-Vorschau (immer sichtbar, ohne Klon/Orbs). */
   heroPreview = false;
+  /** Zeitakku fuer animierte Farbvarianten (Regenbogen „prismatisch"). */
+  private fxTime = 0;
+  private readonly animColor = new Color();
 
   private readonly enemyMeshes: InstancedMesh[] = [];
   private readonly playerProj: InstancedMesh;
@@ -309,6 +314,7 @@ export class InstancedRenderer {
       ghostMeshes, ghostMats, ghostLife, ghostCursor: 0, ghostSpawnTimer: 0,
       orbMeshes, reviveZone, reviveProg, reviveProgMat,
       bodyColor: 0x00e5ff,
+      animatedColorway: false,
     };
   }
 
@@ -338,6 +344,7 @@ export class InstancedRenderer {
     const body = colorway?.body ?? hero.color;
     const engine = colorway?.engine ?? shape.engineColor;
     fig.bodyColor = body;
+    fig.animatedColorway = !!colorway?.animated;
     fig.bodyMat.color.set(body).multiplyScalar(1.9);
     fig.cloneBodyMat.color.set(body).multiplyScalar(1.6);
     for (const mat of fig.ghostMats) mat.color.set(body).multiplyScalar(1.6);
@@ -379,8 +386,28 @@ export class InstancedRenderer {
     apply(fig.cloneParts, true);
   }
 
+  /**
+   * Regenbogen-Farbvariante („prismatisch"): faerbt betroffene Figuren pro
+   * Frame neu — Rumpf (via bodyColor -> renderPlayer), Klon, Dash-Geister und
+   * Projektil-Trail. Laeuft in Menue-Vorschau UND im Spiel.
+   */
+  private updateAnimatedColorways(rawDt: number): void {
+    this.fxTime += rawDt;
+    for (let i = 0; i < this.figures.length; i++) {
+      const fig = this.figures[i];
+      if (!fig?.animatedColorway) continue;
+      const hue = (this.fxTime * 0.12) % 1;
+      this.animColor.setHSL(hue, 0.9, 0.58);
+      fig.bodyColor = this.animColor.getHex(); // renderPlayer setzt bodyMat/Muzzle daraus
+      fig.cloneBodyMat.color.copy(this.animColor).multiplyScalar(1.6);
+      for (const m of fig.ghostMats) m.color.copy(this.animColor).multiplyScalar(1.6);
+      (this.streakColors[i] as Color).copy(this.animColor).multiplyScalar(1.8);
+    }
+  }
+
   /** simRunning=false (Pause/Upgrade/Menue): keine neuen Dash-Ghosts spawnen. */
   render(world: World, alpha: number, rawDt: number, simRunning = true): void {
+    this.updateAnimatedColorways(rawDt);
     this.renderEnemies(world, alpha);
     this.renderProjectiles(world, alpha);
     this.renderPickups(world, alpha);

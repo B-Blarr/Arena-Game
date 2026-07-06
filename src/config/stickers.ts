@@ -1,5 +1,6 @@
 /**
- * Sticker-Album: 54 Sticker auf 7 Seiten als Langzeitmotivation.
+ * Sticker-Album ("Erfolge"): Sammel-Erfolge auf mehreren Seiten als
+ * Langzeitmotivation (die 100%-Logik nutzt STICKERS.length, skaliert also mit).
  * NUR Daten — die Auswerte-Maschine ist src/systems/StickerSystem.ts.
  * Sticker-IDs nach Release stabil halten (sanitize verwirft Unbekanntes).
  *
@@ -26,6 +27,11 @@ export type StickerTrigger =
   /** Vom StickerSystem gesetztes Run-Flag (Speziallogik). */
   | { kind: 'flag'; flag: string };
 
+/** Belohnung, die ein EINZELNER Erfolg bringt (im Album-Detail abgeholt). */
+export type StickerReward =
+  | { kind: 'cores'; amount: number }
+  | { kind: 'colorway'; colorwayId: string };
+
 export interface StickerDef {
   id: string;
   icon: string;
@@ -34,6 +40,8 @@ export interface StickerDef {
   /** Geheim: im Album nur "???" + Raetsel-Hint. */
   secret?: boolean;
   trigger: StickerTrigger;
+  /** Optional: schwere Vorzeige-Erfolge bringen eine eigene Belohnung. */
+  reward?: StickerReward;
 }
 
 export interface ColorwayDef {
@@ -42,6 +50,8 @@ export interface ColorwayDef {
   body: number;
   /** Triebwerks-Farbe (sonst Helden-Standard). */
   engine?: number;
+  /** Animiert (Regenbogen): der Renderer faerbt den Rumpf pro Frame neu. */
+  animated?: boolean;
 }
 
 export interface AlbumPageDef {
@@ -59,6 +69,12 @@ export const COLORWAYS: readonly ColorwayDef[] = [
   { id: 'sonnenglut', body: 0xffb84d },
   { id: 'tiefsee', body: 0x3d8bff },
   { id: 'gold', body: 0xffc83d, engine: 0xfff2b0 },
+  // Neue Farben (Belohnungen der Erfolgs-Erweiterung) — weiter kein Rot
+  { id: 'eisblau', body: 0x00e5ff },
+  { id: 'smaragd', body: 0x1fd65f },
+  { id: 'kobalt', body: 0x5266ff },
+  { id: 'platin', body: 0xd6e4ff, engine: 0xffffff },
+  { id: 'prismatisch', body: 0xffffff, animated: true },
 ];
 
 export function getColorway(id: string, unlocked: readonly string[]): ColorwayDef | undefined {
@@ -74,6 +90,9 @@ export const ALBUM_PAGES: readonly AlbumPageDef[] = [
   { id: 'meister', icon: '🏆', reward: { kind: 'colorway', colorwayId: 'ultraviolett' } },
   { id: 'team', icon: '🤝', reward: { kind: 'colorway', colorwayId: 'sonnenglut' } },
   { id: 'geheim', icon: '❓', reward: { kind: 'colorway', colorwayId: 'tiefsee' } },
+  { id: 'ausdauer', icon: '🔥', reward: { kind: 'colorway', colorwayId: 'eisblau' } },
+  { id: 'herausforderung', icon: '🎯', reward: { kind: 'colorway', colorwayId: 'smaragd' } },
+  { id: 'geheim2', icon: '🕵️', reward: { kind: 'colorway', colorwayId: 'kobalt' } },
 ];
 
 /** Belohnung fuer 100 %: Gold-Colorway (Sonderfall neben den Seiten). */
@@ -147,6 +166,42 @@ export const STICKERS: readonly StickerDef[] = [
   { id: 'umHaaresbreite', icon: '😅', rarity: 'rare', page: 'geheim', secret: true, trigger: { kind: 'flag', flag: 'closeCall' } },
   { id: 'wiederDa', icon: '💫', rarity: 'rare', page: 'geheim', secret: true, trigger: { kind: 'counter', counter: 'revives', goal: 1 } },
   { id: 'goldenePerfektion', icon: '🏅', rarity: 'epic', page: 'geheim', secret: true, trigger: { kind: 'flag', flag: 'goldenPerfect' } },
+
+  // ---------------------------------------------- Seite 8: Ausdauer (Reward: eisblau)
+  { id: 'welle25', icon: '📈', rarity: 'rare', page: 'ausdauer', trigger: { kind: 'wave', value: 25 } },
+  { id: 'welle30', icon: '🗻', rarity: 'epic', page: 'ausdauer', trigger: { kind: 'wave', value: 30 } },
+  { id: 'welle35', icon: '🏔️', rarity: 'epic', page: 'ausdauer', trigger: { kind: 'wave', value: 35 } },
+  { id: 'welle40', icon: '🚩', rarity: 'legendary', page: 'ausdauer', trigger: { kind: 'wave', value: 40 }, reward: { kind: 'cores', amount: 300 } },
+  { id: 'welle50', icon: '🌠', rarity: 'legendary', page: 'ausdauer', trigger: { kind: 'wave', value: 50 }, reward: { kind: 'colorway', colorwayId: 'platin' } },
+  { id: 'kernMagnat', icon: '🏦', rarity: 'epic', page: 'ausdauer', trigger: { kind: 'counter', counter: 'cores', goal: 25000 } },
+  { id: 'dauerlaeufer', icon: '🏃', rarity: 'epic', page: 'ausdauer', trigger: { kind: 'counter', counter: 'wavesCleared', goal: 300 } },
+  { id: 'marathon', icon: '🎖️', rarity: 'legendary', page: 'ausdauer', trigger: { kind: 'counter', counter: 'wavesCleared', goal: 1000 }, reward: { kind: 'cores', amount: 300 } },
+  { id: 'veteran', icon: '🎗️', rarity: 'rare', page: 'ausdauer', trigger: { kind: 'counter', counter: 'runs', goal: 50 } },
+  { id: 'altgedienter', icon: '🏛️', rarity: 'epic', page: 'ausdauer', trigger: { kind: 'counter', counter: 'runs', goal: 200 } },
+  { id: 'schlaechter4', icon: '⚰️', rarity: 'legendary', page: 'ausdauer', trigger: { kind: 'counter', counter: 'kills', goal: 50000 }, reward: { kind: 'cores', amount: 500 } },
+
+  // ---------------------------------------------- Seite 9: Herausforderung (Reward: smaragd)
+  { id: 'makelloserKrieger', icon: '⚜️', rarity: 'epic', page: 'herausforderung', trigger: { kind: 'flag', flag: 'bossFlawless' } },
+  { id: 'eisenwille', icon: '🧗', rarity: 'epic', page: 'herausforderung', trigger: { kind: 'flag', flag: 'noDashRun15' } },
+  { id: 'unantastbar', icon: '🔰', rarity: 'legendary', page: 'herausforderung', trigger: { kind: 'flag', flag: 'noHitRun10' }, reward: { kind: 'cores', amount: 500 } },
+  { id: 'hochBoss', icon: '⛰️', rarity: 'epic', page: 'herausforderung', trigger: { kind: 'flag', flag: 'bossTier40' } },
+  { id: 'fuenfPerfekt', icon: '🖐️', rarity: 'epic', page: 'herausforderung', trigger: { kind: 'flag', flag: 'perfect5' } },
+  { id: 'comboKoenig', icon: '🎇', rarity: 'epic', page: 'herausforderung', trigger: { kind: 'combo', value: 4 } },
+  { id: 'comboGott', icon: '⚡', rarity: 'epic', page: 'herausforderung', trigger: { kind: 'combo', value: 5 } },
+  { id: 'punkteGott', icon: '🎆', rarity: 'epic', page: 'herausforderung', trigger: { kind: 'score', value: 100000 } },
+  { id: 'hartGesotten', icon: '🥋', rarity: 'epic', page: 'herausforderung', trigger: { kind: 'flag', flag: 'hardWave20' } },
+  { id: 'titan', icon: '🦣', rarity: 'epic', page: 'herausforderung', trigger: { kind: 'counter', counter: 'killsType:3', goal: 100 } },
+  { id: 'bezwinger', icon: '🌈', rarity: 'legendary', page: 'herausforderung', trigger: { kind: 'counterSet', counters: ['flawless:prisma', 'flawless:goliath', 'flawless:minos', 'flawless:hydra', 'flawless:vortex'] }, reward: { kind: 'colorway', colorwayId: 'prismatisch' } },
+
+  // ---------------------------------------------- Seite 10: Geheimnisse II (Reward: kobalt)
+  { id: 'paketMeister', icon: '🎀', rarity: 'epic', page: 'geheim2', secret: true, trigger: { kind: 'flag', flag: 'allCapsules1Run' } },
+  { id: 'langfingerJagd', icon: '🕵️', rarity: 'epic', page: 'geheim2', secret: true, trigger: { kind: 'counter', counter: 'thiefCaught', goal: 10 } },
+  { id: 'schattentaenzer', icon: '🥷', rarity: 'epic', page: 'geheim2', secret: true, trigger: { kind: 'flag', flag: 'bossNoDash30' } },
+  { id: 'phoenix', icon: '♻️', rarity: 'rare', page: 'geheim2', secret: true, trigger: { kind: 'flag', flag: 'coopRevive3' } },
+  { id: 'nadeloehr', icon: '🪡', rarity: 'rare', page: 'geheim2', secret: true, trigger: { kind: 'flag', flag: 'closeCall3' } },
+  { id: 'lochfuerst', icon: '🌀', rarity: 'legendary', page: 'geheim2', secret: true, trigger: { kind: 'flag', flag: 'blackHole5' } },
+  { id: 'eiserneReserve', icon: '🩹', rarity: 'epic', page: 'geheim2', secret: true, trigger: { kind: 'flag', flag: 'noHeal10' } },
+  { id: 'genuegsam', icon: '🍃', rarity: 'epic', page: 'geheim2', secret: true, trigger: { kind: 'flag', flag: 'noCores10' } },
 ];
 
 export function stickersOfPage(pageId: string): StickerDef[] {
