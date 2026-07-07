@@ -351,6 +351,12 @@ export class InstancedRenderer {
       case 'wing': return a.geoHeroWing;
       case 'shoulder': return a.geoHeroShoulder;
       case 'engine': return a.geoHeroEngine;
+      // NEU (Premium-Helden):
+      case 'bastion': return a.geoHeroBastion;
+      case 'stealthHull': return a.geoHeroStealthHull;
+      case 'crystalHull': return a.geoHeroCrystal;
+      case 'orbCore': return a.geoHeroOrb;
+      case 'halo': return a.geoHeroHalo;
     }
   }
 
@@ -398,6 +404,9 @@ export class InstancedRenderer {
         slot.geometry = this.heroGeo(part.geo);
         slot.position.set(part.x, part.y, part.z);
         slot.rotation.set(part.rotX ?? 0, part.rotY ?? 0, part.rotZ ?? 0);
+        // NEU (Premium-Helden): Eigenrotation merken (renderFigure animiert sie pro Frame).
+        slot.userData.spin = part.spin ?? 0;
+        slot.userData.baseRotY = part.rotY ?? 0;
         if (part.sx !== undefined) slot.scale.set(part.sx, part.sy ?? 1, part.sz ?? 1);
         else slot.scale.setScalar(part.scale ?? 1);
         slot.material = part.mat === 'engine'
@@ -657,6 +666,14 @@ export class InstancedRenderer {
     fig.ring.scale.setScalar(fig.ringBase * (1 + 0.04 * Math.sin(world.elapsed * 3)));
     // Triebwerks-Flackern: beim Dash volle Flamme
     fig.engineMat.opacity = p.isDashing ? 1.0 : 0.6 + 0.2 * Math.sin(world.elapsed * 22);
+
+    // NEU (Premium-Helden): rotierende Parts (ORBIT-Halos, KRISTALL-Splitter).
+    // Nur Slots mit spin != 0 werden angefasst; alle anderen bleiben statisch.
+    for (let i = 0; i < fig.parts.length; i++) {
+      const slot = fig.parts[i] as Mesh;
+      const spin = slot.userData.spin as number | undefined;
+      if (spin) slot.rotation.y = (slot.userData.baseRotY as number) + world.elapsed * spin;
+    }
 
     // Koop-Down: Figur kippt, sinkt und dimmt; Triebwerk aus;
     // Zonen-Ring zeigt Kindern "hier hinstellen", Gold-Ring den Fortschritt.

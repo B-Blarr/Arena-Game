@@ -376,6 +376,11 @@ export const STR = {
     volt: { name: 'VOLT', trait: 'Der Allrounder – ausgewogen und zuverlässig' },
     blitz: { name: 'BLITZ', trait: 'Schnell und wendig, aber zerbrechlich' },
     brocken: { name: 'BROCKEN', trait: 'Zäher Koloss mit Streuschuss' },
+    // NEU (Premium-Helden)
+    koloss: { name: 'KOLOSS', trait: 'Wandelnde Festung – fast unverwüstlich, aber langsam' },
+    kristall: { name: 'KRISTALL', trait: 'Schwebender Edelstein – elegant und ausgewogen' },
+    phantom: { name: 'PHANTOM', trait: 'Hauchzarte Klinge – ein Treffer schmerzt, dein Schuss auch' },
+    orbit: { name: 'ORBIT', trait: 'Kern im rotierenden Halo – das Meisterstück' },
   } as Record<string, { name: string; trait: string }>,
 
   // Waffen
@@ -385,6 +390,11 @@ export const STR = {
     spread: { name: 'Streuschuss', desc: '3 Kugeln im Fächer' },
     laser: { name: 'Laser-Lanze', desc: 'Durchbohrt ALLES in einer Linie' },
     star: { name: 'Sternenwerfer', desc: 'Bumerang-Stern, trifft doppelt' },
+    // NEU (Premium-Helden-Startwaffen)
+    moerser: { name: 'Wuchtmörser', desc: 'Langsam, schwer, mit Rückstoß' },
+    railgun: { name: 'Railgun', desc: 'Ein brutaler Schuss, der alles durchbohrt' },
+    prisma: { name: 'Prismaklinge', desc: 'Schneidender Kristallbolzen' },
+    orbiter: { name: 'Orbiter', desc: 'Präziser, sauberer Schuss' },
   } as Record<string, { name: string; desc: string }>,
 
   // Bosse

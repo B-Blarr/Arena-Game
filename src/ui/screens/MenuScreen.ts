@@ -33,8 +33,32 @@ const HERO_GLYPHS: Record<string, string> = {
     <rect x="2" y="26" width="9" height="14" rx="2"/>
     <rect x="37" y="26" width="9" height="14" rx="2"/>
   </svg>`,
+  // NEU (Premium-Helden): Top-View-Silhouetten passend zur 3D-Form
+  koloss: `<svg width="40" height="40" viewBox="0 0 48 48" fill="currentColor" aria-hidden="true">
+    <polygon points="24,6 38,15 38,33 24,42 10,33 10,15"/>
+    <rect x="1" y="19" width="9" height="16" rx="2"/>
+    <rect x="38" y="19" width="9" height="16" rx="2"/>
+  </svg>`,
+  kristall: `<svg width="40" height="40" viewBox="0 0 48 48" fill="currentColor" aria-hidden="true">
+    <polygon points="24,3 35,24 24,45 13,24"/>
+    <polygon points="7,19 13,26 8,31"/>
+    <polygon points="41,19 35,26 40,31"/>
+  </svg>`,
+  phantom: `<svg width="40" height="40" viewBox="0 0 48 48" fill="currentColor" aria-hidden="true">
+    <polygon points="24,3 28,24 24,40 20,24"/>
+    <polygon points="20,26 3,45 21,34"/>
+    <polygon points="28,26 45,45 27,34"/>
+  </svg>`,
+  orbit: `<svg width="40" height="40" viewBox="0 0 48 48" fill="currentColor" aria-hidden="true">
+    <circle cx="24" cy="24" r="7"/>
+    <ellipse cx="24" cy="24" rx="20" ry="9" fill="none" stroke="currentColor" stroke-width="3"/>
+  </svg>`,
 };
-const HERO_COLORS: Record<string, string> = { volt: '#00e5ff', blitz: '#ffe97a', brocken: '#ff8a5c' };
+const HERO_COLORS: Record<string, string> = {
+  volt: '#00e5ff', blitz: '#ffe97a', brocken: '#ff8a5c',
+  // NEU (Premium-Helden)
+  koloss: '#ffb060', kristall: '#bff6ff', phantom: '#b57aff', orbit: '#bff8ff',
+};
 
 /** Startmenue: Spielen, Heldenwahl, Schwierigkeit, Auto-Aim, Daily, Shop. */
 export class MenuScreen {

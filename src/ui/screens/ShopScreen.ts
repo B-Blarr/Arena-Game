@@ -8,8 +8,16 @@ export interface ShopCallbacks {
   onChanged: () => void;
 }
 
-const HERO_GLYPHS: Record<string, string> = { volt: '▲', blitz: '⚡', brocken: '⬢' };
-const HERO_COLORS: Record<string, string> = { volt: '#00e5ff', blitz: '#ffe97a', brocken: '#ff8a5c' };
+const HERO_GLYPHS: Record<string, string> = {
+  volt: '▲', blitz: '⚡', brocken: '⬢',
+  // NEU (Premium-Helden)
+  koloss: '🗿', kristall: '💎', phantom: '👁', orbit: '🪐',
+};
+const HERO_COLORS: Record<string, string> = {
+  volt: '#00e5ff', blitz: '#ffe97a', brocken: '#ff8a5c',
+  // NEU (Premium-Helden)
+  koloss: '#ffb060', kristall: '#bff6ff', phantom: '#b57aff', orbit: '#bff8ff',
+};
 const WEAPON_GLYPHS: Record<string, string> = { laser: '✦', star: '✶' };
 
 /** Werkstatt: Helden, Startwaffen und dauerhafte Boni gegen Kerne. */

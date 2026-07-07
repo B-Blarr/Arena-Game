@@ -61,10 +61,41 @@ export const UNLOCKABLE_WEAPONS: ReadonlyArray<{ weapon: WeaponDef; price: numbe
   { weapon: WEAPON_STARTHROWER, price: 900 },
 ];
 
+// NEU (Premium-Helden): feste Startwaffen der 4 neuen Helden. Alle im bestehenden
+// Einzelziel-DPS-Band (~24-27, vgl. blaster 25 / laser 26.4) -> balancierte Sidegrades,
+// nur das Spielgefuehl unterscheidet sich (Wucht / Sniper / Schneide / Praezision).
+/** KOLOSS: langsamer schwerer Wuchtschlag mit Rueckstoss (1.1 x 24 = 26.4 DPS). */
+export const WEAPON_MOERSER: WeaponDef = {
+  id: 'moerser', fireRate: 1.1, damage: 24, projectileSpeed: 14, range: 11,
+  projectileCount: 1, spreadAngle: 0, pierce: 1, knockback: 6, boomerang: false,
+};
+/** PHANTOM: Sniper-Burst, langsam + brutaler Einzelschuss, bestraft Verfehlen (0.8 x 34 = 27.2 DPS). */
+export const WEAPON_RAILGUN: WeaponDef = {
+  id: 'railgun', fireRate: 0.8, damage: 34, projectileSpeed: 40, range: 20,
+  projectileCount: 1, spreadAngle: 0, pierce: 3, knockback: 0, boomerang: false,
+};
+/** KRISTALL: schneidender, durchdringender Kristallbolzen (2.4 x 10 = 24 DPS). */
+export const WEAPON_PRISMA: WeaponDef = {
+  id: 'prisma', fireRate: 2.4, damage: 10, projectileSpeed: 20, range: 13,
+  projectileCount: 1, spreadAngle: 0, pierce: 2, knockback: 0, boomerang: false,
+};
+/** ORBIT: praeziser, sauberer Schuss (1.9 x 13 = 24.7 DPS). */
+export const WEAPON_ORBITER: WeaponDef = {
+  id: 'orbiter', fireRate: 1.9, damage: 13, projectileSpeed: 19, range: 14,
+  projectileCount: 1, spreadAngle: 0, pierce: 1, knockback: 0, boomerang: false,
+};
+
 export const HEROES: readonly HeroDef[] = [
   { id: 'volt', color: 0x00e5ff, price: 0, maxHp: 100, speed: 6.0, dashCooldown: 2.5, weapon: WEAPON_BLASTER },
   { id: 'blitz', color: 0xffe97a, price: 250, maxHp: 70, speed: 7.2, dashCooldown: 2.0, weapon: WEAPON_PULSE },
   { id: 'brocken', color: 0xff8a5c, price: 500, maxHp: 150, speed: 5.0, dashCooldown: 3.0, weapon: WEAPON_SPREAD },
+  // NEU (Premium-Helden, balancierte Sidegrades): teuer = Prestige + Optik + eigene Waffe, NICHT mehr Macht.
+  { id: 'koloss', color: 0xffb060, price: 1200, maxHp: 200, speed: 4.4, dashCooldown: 3.4, weapon: WEAPON_MOERSER },
+  // kristall/orbit: gesaettigte Default-Farbe (nicht fast-weiss) -> Facetten/Halo lesen auch OHNE
+  // Farbvariante; die Colorway ueberschreibt sie weiterhin komplett.
+  { id: 'kristall', color: 0x5ad2ff, price: 1500, maxHp: 110, speed: 6.2, dashCooldown: 2.3, weapon: WEAPON_PRISMA },
+  { id: 'phantom', color: 0x9a3dff, price: 2000, maxHp: 75, speed: 7.0, dashCooldown: 1.9, weapon: WEAPON_RAILGUN },
+  { id: 'orbit', color: 0x33d0ff, price: 2500, maxHp: 120, speed: 6.0, dashCooldown: 2.4, weapon: WEAPON_ORBITER },
 ];
 
 export function getHero(id: string): HeroDef {

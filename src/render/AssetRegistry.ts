@@ -67,6 +67,17 @@ export class AssetRegistry {
   readonly geoHeroWing = new BoxGeometry(0.72, 0.05, 0.2);
   readonly geoHeroShoulder = new BoxGeometry(0.26, 0.42, 0.52);
   readonly geoHeroEngine = new SphereGeometry(0.12, 8, 6);
+  // NEU (Premium-Helden): eigene Silhouetten-Bausteine fuer den Wow-Effekt.
+  /** KOLOSS: breites niedriges Hex-Prisma (Festungs-Rumpf). */
+  readonly geoHeroBastion = new CylinderGeometry(0.66, 0.78, 0.5, 6);
+  /** PHANTOM: flache gepfeilte Raute (im Shape zu einer Stealth-Klinge gestaucht). */
+  readonly geoHeroStealthHull = new OctahedronGeometry(0.5);
+  /** KRISTALL: facettiertes Ikosaeder (Rumpf + kleinere Splitter). */
+  readonly geoHeroCrystal = new IcosahedronGeometry(0.42);
+  /** ORBIT: leuchtender Kern. */
+  readonly geoHeroOrb = new SphereGeometry(0.42, 16, 12);
+  /** ORBIT: duenner flacher Halo-Ring (rotiert). */
+  readonly geoHeroHalo = new TorusGeometry(0.6, 0.05, 8, 32);
 
   // Gegner: weisses Material, Farbe kommt pro Instanz (instanceColor)
   readonly matEnemy = new MeshBasicMaterial({ color: 0xffffff });
@@ -187,6 +198,8 @@ export class AssetRegistry {
       this.geoTorusBoss,
       this.geoHeroDartHull, this.geoHeroWedgeHull, this.geoHeroFin,
       this.geoHeroWing, this.geoHeroShoulder, this.geoHeroEngine,
+      this.geoHeroBastion, this.geoHeroStealthHull, this.geoHeroCrystal,
+      this.geoHeroOrb, this.geoHeroHalo,
     ];
     for (const g of geos) g.dispose();
     const mats: Material[] = [
