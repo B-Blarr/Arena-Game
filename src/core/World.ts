@@ -22,7 +22,7 @@ import type { HeroDef } from '../config/heroes';
 import { ROOM_NORMAL, type RoomDef } from '../config/rooms';
 import {
   makeRng, Rng,
-  RNG_STREAM_DROPS, RNG_STREAM_EVENTS, RNG_STREAM_PATH, RNG_STREAM_SUMMONS,
+  RNG_STREAM_DROPS, RNG_STREAM_EVENTS, RNG_STREAM_HAZARD, RNG_STREAM_PATH, RNG_STREAM_SUMMONS,
   RNG_STREAM_UPGRADES, RNG_STREAM_UPGRADES_P2, RNG_STREAM_WAVES,
 } from './Rng';
 import type { EventBus } from './EventBus';
@@ -72,6 +72,9 @@ export class World {
   rngEvents: Rng = new Rng(5);
   /** NEU (Reise-Modus): Weg-Wahl-Angebote (eigener Stream, im Klassik nie gezogen). */
   rngPath: Rng = new Rng(7);
+  /** NEU (Reise-Ausbau): Gefahren-Zonen-Positionen (Minenfeld). Eigener Stream,
+   *  im Klassik nie gezogen -> Daily byte-identisch. */
+  rngHazard: Rng = new Rng(9);
   /** Goldene Welle aktiv: doppelte Kern-Drops (SurpriseDirector setzt das Flag). */
   goldenWave = false;
   /** NEU (Reise-Modus): Raum-Modifikator der laufenden Welle. Klassik/Boss:
@@ -147,6 +150,7 @@ export class World {
     this.rngSummons = makeRng(seed, RNG_STREAM_SUMMONS);
     this.rngEvents = makeRng(seed, RNG_STREAM_EVENTS);
     this.rngPath = makeRng(seed, RNG_STREAM_PATH);
+    this.rngHazard = makeRng(seed, RNG_STREAM_HAZARD);
     this.goldenWave = false;
     // NEU (Reise-Modus): roomMods BEDINGUNGSLOS neutralisieren — sonst leckt ein
     // vorheriger Reise-Lauf in einen danach gestarteten (klassischen) Daily.

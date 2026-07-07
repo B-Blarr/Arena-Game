@@ -127,17 +127,23 @@ export class WaveSystem {
       while ((spent[ENEMY_CHASER] as number) < target && remaining >= 4) buy(ENEMY_CHASER);
     }
 
-    // NEU (Reise-Modus, Schwarm-Kammer): erzwungen viele winzige Schwarm-Gegner.
-    // buy(SWARM) zieht KEINE Elite-Draws (Schwarm nicht in ELITE.eligible), und bei
-    // ROOM_NORMAL ist swarmFill undefined -> Block uebersprungen -> 0 Zusatz-Draws.
-    const swarmFill = world.roomMods.swarmFill ?? 0;
-    if (swarmFill > 0) {
-      const swarmCost = (ENEMIES[ENEMY_SWARM] as EnemyDef).budgetCost;
-      const swarmTarget = total * swarmFill;
-      while ((spent[ENEMY_SWARM] as number) < swarmTarget && remaining >= swarmCost) buy(ENEMY_SWARM);
+    // NEU (Reise-Modus, Mono-Typ-/Schwarm-Raeume): erzwingt EINEN Gegnertyp bis zu
+    // einem Budget-Anteil (Schwarm, Panzerwall, Schuetzenstand, Geisterstunde,
+    // Zellteilung). Bei ROOM_NORMAL ist forceType undefined -> Block uebersprungen
+    // -> 0 Zusatz-Draws (Klassik byte-identisch). Ist der erzwungene Typ elite-faehig
+    // (Panzer/Schuetze/Splitter), zieht buy() dort Elite-Rolls — aber NUR im Reise-Modus.
+    const forceType = world.roomMods.forceType;
+    if (forceType !== undefined && (world.roomMods.forceShare ?? 0) > 0) {
+      const cost = (ENEMIES[forceType] as EnemyDef).budgetCost;
+      const forceTarget = total * (world.roomMods.forceShare as number);
+      while ((spent[forceType] as number) < forceTarget && remaining >= cost) buy(forceType);
     }
 
-    // Restbudget zufaellig verteilen (Anteils-Deckel je Typ beachten)
+    // Restbudget zufaellig verteilen (Anteils-Deckel je Typ beachten).
+    // NEU (Mono-Raeume): das Restbudget NICHT mit billigen Fuellern (Schwarm/Verfolger)
+    // fluten, sonst dominieren die den Typ-Raum per Kopfzahl. Nur wenn ein forceType
+    // gesetzt ist (Reise) -> Klassik unveraendert.
+    const monoFiller = forceType !== undefined;
     for (let guard = 0; guard < 200; guard++) {
       const candidates: number[] = [];
       for (let t = 0; t < ENEMIES.length; t++) {
@@ -146,6 +152,8 @@ export class WaveSystem {
         if (def.budgetCost <= 0 || minWave > w) continue;
         if (def.budgetCost > remaining) continue;
         if ((spent[t] as number) + def.budgetCost > total * def.budgetShare) continue;
+        // Mono-Raum: billige Massen-Fueller raus (ausser sie SIND der erzwungene Typ)
+        if (monoFiller && (t === ENEMY_SWARM || t === ENEMY_CHASER) && t !== forceType) continue;
         candidates.push(t);
       }
       if (candidates.length === 0) break;

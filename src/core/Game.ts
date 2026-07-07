@@ -20,6 +20,7 @@ import { CoopSystem } from '../systems/CoopSystem';
 import { JuiceDirector } from '../systems/JuiceDirector';
 import { ParticleSystem } from '../systems/ParticleSystem';
 import { PathSystem } from '../systems/PathSystem';
+import { HazardSystem } from '../systems/HazardSystem';
 import { PickupSystem } from '../systems/PickupSystem';
 import { RumbleSystem } from '../systems/RumbleSystem';
 import { RunStats } from '../systems/RunStats';
@@ -89,6 +90,7 @@ export class Game {
   readonly upgrades: UpgradeSystem;
   readonly surprise: SurpriseDirector;
   readonly path: PathSystem; // NEU (Reise-Modus)
+  readonly hazards: HazardSystem; // NEU (Reise-Ausbau, Minenfeld)
   readonly runStats: RunStats;
   readonly stickers: StickerSystem;
   readonly juice: JuiceDirector;
@@ -151,6 +153,7 @@ export class Game {
     this.upgrades = new UpgradeSystem(this.world, this.events, this.score);
     this.surprise = new SurpriseDirector(this.world, this.events, this.pickupSystem);
     this.path = new PathSystem(this.world); // NEU (Reise-Modus)
+    this.hazards = new HazardSystem(this.world, this.events); // NEU (Reise-Ausbau)
     this.runStats = new RunStats(this.events);
     // Kill-Zaehler MUSS vor dem StickerSystem abonnieren: dessen
     // kills-Check liest stats.totalKills und soll den frischen Kill sehen

@@ -62,6 +62,9 @@ export const RNG_STREAM_UPGRADES_P2 = 0x94d049bb;
  *  pro Entscheidung (analog EVENTS). Im Klassik-Modus wird er geseedet, aber NIE
  *  gezogen -> verschiebt keinen anderen Stream, Daily bleibt byte-identisch. */
 export const RNG_STREAM_PATH = 0x165667b1;
+/** NEU (Reise-Ausbau): Gefahren-Zonen-Positionen (Minenfeld). Eigener Stream,
+ *  im Klassik geseedet aber NIE gezogen -> Daily byte-identisch. */
+export const RNG_STREAM_HAZARD = 0x2545f491;
 
 export function makeRng(seed: number, stream: number): Rng {
   return new Rng((seed ^ stream) >>> 0);

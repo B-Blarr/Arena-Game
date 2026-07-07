@@ -199,6 +199,8 @@ export class RunState implements GameState {
       p.arenaRadius = g.world.arenaRadius;
       p.pullStrength = rm.pullStrength ?? 0;
     }
+    // NEU (Reise-Ausbau): Gefahren-Zonen der Welle zuruecksetzen (liest roomMods.hazard).
+    g.hazards.reset();
     // VOR waves.startWave: Spawns/Scaling muessen das Golden-Flag schon sehen
     g.surprise.rollForWave(w);
     g.waves.startWave(w);
@@ -278,6 +280,8 @@ export class RunState implements GameState {
     g.coopSystem.update(dt);
     g.pickupSystem.update(dt);
     g.surprise.update(dt);
+    // NEU (Reise-Ausbau): Gefahren-Zonen nur waehrend der aktiven Welle ticken lassen.
+    if (this.phase === 'wave') g.hazards.update(dt);
     g.score.update(dt);
     g.particles.update(dt);
 

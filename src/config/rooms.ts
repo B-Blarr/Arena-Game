@@ -8,10 +8,12 @@
  * sind komposition-identisch zu heute.
  *
  * NEU (Ausbau): jeder Raum kann eine eigene Arena-Groesse (arenaMult), Optik
- * (theme) und einen Namens-Charakter (enemyScaleMult / eliteScaleMult / swarmFill
- * ...) haben. ALLE neuen Felder sind optional mit No-Op-Default (x1 / 0 / undefined),
+ * (theme) und einen Namens-Charakter (enemyScaleMult / eliteScaleMult / forceType /
+ * hazard ...) haben. ALLE neuen Felder sind optional mit No-Op-Default (x1 / 0 / undefined),
  * damit ROOM_NORMAL und der Klassik-Pfad byte-identisch bleiben (kein neuer RNG-Draw).
  */
+
+import { ENEMY_SHOOTER, ENEMY_SWARM, ENEMY_TANK, ENEMY_SPLITTER, ENEMY_PHANTOM } from './enemies';
 
 /** Rein optische Raum-Faerbung (Render-only, nie Gameplay/RNG). Fehlende Felder
  *  fallen auf das aktuelle Biome zurueck. Farben als 0xRRGGBB. */
@@ -22,6 +24,25 @@ export interface RoomTheme {
   ring?: number;
   fogDensity?: number;
   gridIntensity?: number;
+  /** NEU (Atmosphaere): laufende Optik-Animation (Render-only, KEIN RNG).
+   *  pulseFog = Nebel atmet, swirl = Grid dreht sich, flicker = Blitze. */
+  anim?: 'pulseFog' | 'swirl' | 'flicker';
+}
+
+/** NEU (Gefahren-Zonen): rote Boden-Kreise, die kurz nach der Warnung zuenden und
+ *  NUR den Spieler treffen (rot = ausweichen). Wiederverwendung des MINOS-Bomben-
+ *  Vokabulars (enemyFuse-Warnring + explosion). Nur im Reise-Modus aktiv. */
+export interface HazardDef {
+  /** Sekunden zwischen zwei Zonen-Salven. */
+  interval: number;
+  /** Vorwarnzeit vom Erscheinen bis zur Zuendung. */
+  warn: number;
+  /** Radius der Schadenszone in Units. */
+  radius: number;
+  /** Grundschaden bei Zuendung (x world.mods.enemyDamage fuer Schwierigkeit). */
+  damage: number;
+  /** Zonen pro Salve. */
+  count: number;
 }
 
 export interface RoomDef {
@@ -39,8 +60,10 @@ export interface RoomDef {
   eliteMult: number;
   /** Ueberschreibt ELITE.maxPerWave, wenn gesetzt (Elite-Kammer). */
   eliteMaxPerWave?: number;
-  /** Erzwingt zusaetzliche kleine Schwarm-Gegner: Budget-Anteil (0 = aus). */
-  swarmFill?: number;
+  /** Mono-Typ-Raeume: erzwingt einen Gegnertyp (Index) ... */
+  forceType?: number;
+  /** ... bis zu diesem Budget-Anteil (0..1, z.B. 0.7). Ohne forceType wirkungslos. */
+  forceShare?: number;
 
   // --- gelesen in World.scalingForWave / Enemy ---
   hpMult: number;
@@ -60,6 +83,8 @@ export interface RoomDef {
   maxEnemiesMult?: number;
   /** Singularitaet: sanfter Sog des Spielers zur Mitte (Units/s, 0 = aus). */
   pullStrength?: number;
+  /** Minenfeld: periodische Gefahren-Zonen am Boden (undefined = keine). */
+  hazard?: HazardDef;
   /** Rein optische Raum-Faerbung (undefined = reines Biome). */
   theme?: RoomTheme;
 
@@ -114,7 +139,7 @@ const ROOM_STORM: RoomDef = {
   budgetMult: 1.15, eliteMult: 1.0,
   hpMult: 1.0, speedMult: 1.35, damageMult: 1.25,
   coreDropBonus: 1, guaranteeRare: false, healFrac: 0, bonusCores: 0,
-  theme: { bg: 0x080618, grid: 0x6a5cff, wall: 0x8f7dff, ring: 0x9adfff, fogDensity: 0.024, gridIntensity: 0.5 },
+  theme: { bg: 0x080618, grid: 0x6a5cff, wall: 0x8f7dff, ring: 0x9adfff, fogDensity: 0.024, gridIntensity: 0.5, anim: 'flicker' },
 };
 
 /** Rast/Oase: wenige, schwaechere Gegner + Heilung, dafuer karge Belohnung.
@@ -144,7 +169,7 @@ const ROOM_HORDE: RoomDef = {
   id: 'horde', icon: '🐝', isRisk: true, minWave: 3, weight: 16,
   budgetMult: 1.5, eliteMult: 0.5,
   hpMult: 0.7, speedMult: 1.1, damageMult: 0.9,
-  swarmFill: 0.5, enemyScaleMult: 0.8, maxEnemiesMult: 1.6,
+  forceType: ENEMY_SWARM, forceShare: 0.5, enemyScaleMult: 0.8, maxEnemiesMult: 1.6,
   arenaMult: 1.2,
   coreDropBonus: 0, guaranteeRare: false, healFrac: 0, bonusCores: 4,
   theme: { bg: 0x0c1402, grid: 0xa8ff3d, wall: 0xc8ff5c, ring: 0xd6ff7a, fogDensity: 0.018, gridIntensity: 0.5 },
@@ -157,7 +182,7 @@ const ROOM_FINSTERNIS: RoomDef = {
   budgetMult: 1.1, eliteMult: 1.0,
   hpMult: 1.0, speedMult: 1.0, damageMult: 1.0,
   coreDropBonus: 1, guaranteeRare: false, healFrac: 0, bonusCores: 3,
-  theme: { bg: 0x010104, grid: 0x1a3a5c, wall: 0x24506e, ring: 0x3d6e8f, fogDensity: 0.042, gridIntensity: 0.18 },
+  theme: { bg: 0x010104, grid: 0x1a3a5c, wall: 0x24506e, ring: 0x3d6e8f, fogDensity: 0.042, gridIntensity: 0.18, anim: 'pulseFog' },
 };
 
 /** NEU Singularitaet: sanfter Sog des Spielers zur Mitte -> man muss gegen die Drift
@@ -168,12 +193,67 @@ const ROOM_SINGULAR: RoomDef = {
   hpMult: 1.0, speedMult: 1.0, damageMult: 1.0,
   pullStrength: 3.5, arenaMult: 1.1,
   coreDropBonus: 1, guaranteeRare: true, healFrac: 0, bonusCores: 6,
-  theme: { bg: 0x0a0418, grid: 0x8f5cff, wall: 0xb07aff, ring: 0xc07aff, fogDensity: 0.026, gridIntensity: 0.45 },
+  theme: { bg: 0x0a0418, grid: 0x8f5cff, wall: 0xb07aff, ring: 0xc07aff, fogDensity: 0.026, gridIntensity: 0.45, anim: 'swirl' },
+};
+
+/** NEU Minenfeld: periodische Gefahren-Zonen am Boden (rot = ausweichen, treffen
+ *  NUR den Spieler). Etwas weniger Gegner, dafuer Kern-Bonus fuer die Nervenprobe. */
+const ROOM_MINEFIELD: RoomDef = {
+  id: 'minefield', icon: '💥', isRisk: true, minWave: 4, weight: 16,
+  budgetMult: 0.85, eliteMult: 1.0,
+  hpMult: 1.0, speedMult: 1.0, damageMult: 1.0,
+  coreDropBonus: 1, guaranteeRare: false, healFrac: 0, bonusCores: 3,
+  hazard: { interval: 3.0, warn: 1.4, radius: 3.2, damage: 18, count: 2 },
+  theme: { bg: 0x160a02, grid: 0xff8c1a, wall: 0xffb04d, ring: 0xffd08a, fogDensity: 0.022, gridIntensity: 0.5 },
+};
+
+/** NEU Panzerwall: fast nur Panzer — wenige, langsame, extrem zaehe Kolosse.
+ *  Belagerungs-Gefuehl; maxAlive der Panzer drosselt die Gleichzeitig-Zahl. */
+const ROOM_TANKS: RoomDef = {
+  id: 'tanks', icon: '🛡️', isRisk: true, minWave: 7, weight: 14,
+  budgetMult: 1.25, eliteMult: 1.0,
+  hpMult: 1.0, speedMult: 1.0, damageMult: 1.0,
+  forceType: ENEMY_TANK, forceShare: 0.8, maxEnemiesMult: 1.2,
+  coreDropBonus: 1, guaranteeRare: false, healFrac: 0, bonusCores: 0,
+  theme: { bg: 0x0a0e14, grid: 0x7f93b3, wall: 0x9fb4d8, ring: 0xc0d4f0, fogDensity: 0.022, gridIntensity: 0.42 },
+};
+
+/** NEU Schuetzenstand: fast nur Schuetzen — Kugelhagel aus der Distanz, staendig
+ *  in Bewegung bleiben. */
+const ROOM_SHOOTERS: RoomDef = {
+  id: 'shooters', icon: '🎯', isRisk: true, minWave: 4, weight: 15,
+  budgetMult: 1.0, eliteMult: 1.0,
+  hpMult: 1.0, speedMult: 1.0, damageMult: 1.0,
+  forceType: ENEMY_SHOOTER, forceShare: 0.85, arenaMult: 1.1,
+  coreDropBonus: 1, guaranteeRare: false, healFrac: 0, bonusCores: 0,
+  theme: { bg: 0x140f02, grid: 0xffd21a, wall: 0xffe25c, ring: 0xfff0a0, fogDensity: 0.02, gridIntensity: 0.5 },
+};
+
+/** NEU Geisterstunde: fast nur Phantome — teleportierendes Chaos, sehr hektisch. */
+const ROOM_PHANTOMS: RoomDef = {
+  id: 'phantoms', icon: '👻', isRisk: true, minWave: 8, weight: 12,
+  budgetMult: 1.05, eliteMult: 1.0,
+  hpMult: 1.0, speedMult: 1.0, damageMult: 1.0,
+  forceType: ENEMY_PHANTOM, forceShare: 0.85,
+  coreDropBonus: 1, guaranteeRare: false, healFrac: 0, bonusCores: 0,
+  theme: { bg: 0x0c0616, grid: 0x9a6bff, wall: 0xb98cff, ring: 0xd6b3ff, fogDensity: 0.03, gridIntensity: 0.35, anim: 'flicker' },
+};
+
+/** NEU Zellteilung: fast nur Splitter — teilen sich beim Tod, der Schirm fuellt
+ *  sich rasant, Combo-Fest. */
+const ROOM_SPLITTERS: RoomDef = {
+  id: 'splitters', icon: '🧫', isRisk: true, minWave: 6, weight: 14,
+  budgetMult: 1.0, eliteMult: 1.0,
+  hpMult: 1.0, speedMult: 1.0, damageMult: 1.0,
+  forceType: ENEMY_SPLITTER, forceShare: 0.85, maxEnemiesMult: 1.3, arenaMult: 1.1,
+  coreDropBonus: 0, guaranteeRare: false, healFrac: 0, bonusCores: 3,
+  theme: { bg: 0x02140f, grid: 0x1fd6a0, wall: 0x4dffc3, ring: 0x8affda, fogDensity: 0.02, gridIntensity: 0.5 },
 };
 
 export const ROOMS: readonly RoomDef[] = [
   ROOM_NORMAL, ROOM_TREASURE, ROOM_ELITE, ROOM_STORM, ROOM_OASIS,
   ROOM_MYSTERY, ROOM_HORDE, ROOM_FINSTERNIS, ROOM_SINGULAR,
+  ROOM_MINEFIELD, ROOM_TANKS, ROOM_SHOOTERS, ROOM_PHANTOMS, ROOM_SPLITTERS,
 ];
 
 /** Risiko-Raeume werden im Angebot bevorzugt (Draw 1+2), "meist zwei Risiken". */

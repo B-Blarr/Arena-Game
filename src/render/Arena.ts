@@ -80,6 +80,12 @@ export class Arena {
   private targetRadius = ARENA_RADIUS;
   /** Aktive Raum-Optik (Render-only); null = reines Biome (Klassik/Normal). */
   private roomTheme: RoomTheme | null = null;
+  /** NEU (Atmosphaere): laufende Optik-Animation der Raum-Optik. */
+  private themeAnim?: 'pulseFog' | 'swirl' | 'flicker';
+  private animTime = 0;
+  private flickerTimer = 0;
+  /** Grid-Textur (fuer swirl-Rotation). */
+  private gridTex!: CanvasTexture;
   private readonly bgColor = new Color(0x050510);
   private readonly fog = new FogExp2(0x050510, FOG_DENSITY);
   private beatPulse = 0;
@@ -168,6 +174,7 @@ export class Arena {
 
   private buildFloor(scene: Scene): void {
     const gridTex = this.makeGridTexture();
+    this.gridTex = gridTex; // NEU (Atmosphaere): fuer swirl-Rotation
     const geo = this.track(new PlaneGeometry(90, 90));
     // Grid liegt in der Emissive-Map: der Puls steuert emissiveIntensity,
     // emissive-Farbe = Biome-Tint, die Grundflaeche bleibt dunkel.
@@ -313,6 +320,14 @@ export class Arena {
   /** NEU (Reise-Ausbau): Raum-Optik setzen (null = reines Biome). */
   setRoomTheme(theme: RoomTheme | null): void {
     this.roomTheme = theme;
+    this.themeAnim = theme?.anim;
+    // Grid-Rotation nur im swirl-Raum; sonst zurueck auf achsen-parallel.
+    if (this.themeAnim !== 'swirl' && this.gridTex) {
+      this.gridTex.rotation = 0;
+      this.gridTex.needsUpdate = true;
+    } else if (this.themeAnim === 'swirl' && this.gridTex) {
+      this.gridTex.center.set(0.5, 0.5);
+    }
     this.refreshTargets();
   }
 
@@ -392,6 +407,26 @@ export class Arena {
       this.currentRadius += (this.targetRadius - this.currentRadius) * k;
       if (Math.abs(this.currentRadius - this.targetRadius) < 0.01) this.currentRadius = this.targetRadius;
       this.applyRadiusScale();
+    }
+
+    // NEU (Atmosphaere): laufende Optik-Animation je Raum (rein visuell, kein RNG).
+    if (this.themeAnim) {
+      this.animTime += rawDt;
+      if (this.themeAnim === 'pulseFog') {
+        // Nebel "atmet" um den Zielwert (Finsternis wird dichter/lichter)
+        this.fog.density = Math.max(0, this.tFogDensity + Math.sin(this.animTime * 1.5) * 0.01);
+      } else if (this.themeAnim === 'swirl') {
+        // Grid dreht sich langsam wie ein Strudel (Singularitaet)
+        this.gridTex.rotation += rawDt * 0.15;
+        this.gridTex.needsUpdate = true;
+      } else if (this.themeAnim === 'flicker') {
+        // Gewitter: gelegentlicher heller Grid-Blitz (Math.random ist rein visuell)
+        this.flickerTimer -= rawDt;
+        if (this.flickerTimer <= 0) {
+          this.beatPulse = Math.max(this.beatPulse, 0.9);
+          this.flickerTimer = 0.3 + Math.random() * 1.4;
+        }
+      }
     }
 
     this.floorMat.emissiveIntensity = this.gridIntensity + this.beatPulse * 0.25;

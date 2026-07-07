@@ -82,6 +82,11 @@ export const STR = {
     horde: { name: 'Schwarm', risk: 'Riesige Übermacht', reward: 'Combo-Fest + Kerne' },
     finsternis: { name: 'Finsternis', risk: 'Kampf im Dunkeln', reward: 'Extra Kerne' },
     singular: { name: 'Singularität', risk: 'Sog zur Mitte', reward: 'Reiche Beute + Seltenes' },
+    minefield: { name: 'Minenfeld', risk: 'Boden-Explosionen', reward: 'Extra Kerne' },
+    tanks: { name: 'Panzerwall', risk: 'Zähe Kolosse', reward: 'Extra Kerne' },
+    shooters: { name: 'Schützenstand', risk: 'Kugelhagel von fern', reward: 'Extra Kerne' },
+    phantoms: { name: 'Geisterstunde', risk: 'Teleport-Chaos', reward: 'Extra Kerne' },
+    splitters: { name: 'Zellteilung', risk: 'Endlose Teilung', reward: 'Combo-Fest + Kerne' },
   } as Record<string, { name: string; risk: string; reward: string }>,
 
   // Pause
