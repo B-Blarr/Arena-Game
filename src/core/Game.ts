@@ -528,6 +528,10 @@ export class Game {
 
   dispose(): void {
     this.loop.stop();
+    // FIX: aktiven FSM-State verlassen, BEVOR seine Abhaengigkeiten entsorgt werden —
+    // entfernt den window-keydown-Handler von RunState/CoopSetup/GameOver (sonst
+    // Listener-Leak + Geister-Pause auf totem State bei jedem Vite-HMR).
+    this.fsm.dispose();
     for (const d of this.disposers) d();
     this.input.dispose();
     this.music.dispose();

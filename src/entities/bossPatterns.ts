@@ -9,6 +9,13 @@ import type { Boss } from './Boss';
  * dass auch ein 7-Jaehriger reagieren kann.
  */
 export function updateBoss(boss: Boss, dt: number, world: World, events: EventBus): void {
+  // FIX: Der Boss-Schaden faellt in collision/combat NACH diesem update; ein Boss,
+  // dessen hp im Vorframe auf 0 geklemmt wurde, wuerde hier sonst noch ein volles
+  // Muster fahren (letzte Salve) bzw. die Hydra wuerde bei hp=0 ueber eine Schwelle
+  // noch verwaiste Minis spawnen. Tot = kein Muster mehr; RunState.handleBossDeath
+  // uebernimmt den Tod im selben Frame. Waehrend der Hydra-Mini-Phase ist der Boss
+  // 'hidden' und unverwundbar -> hp bleibt > 0, der Guard greift dort nie.
+  if (boss.hp <= 0) return;
   boss.prevX = boss.x;
   boss.prevZ = boss.z;
   if (boss.flashTimer > 0) boss.flashTimer -= dt;

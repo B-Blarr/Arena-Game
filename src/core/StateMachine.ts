@@ -22,4 +22,11 @@ export class StateMachine {
   render(alpha: number, rawDt: number): void {
     this.current?.render(alpha, rawDt);
   }
+
+  /** FIX: aktiven State sauber verlassen (entfernt dessen window-Listener) — sonst
+   *  leakt jeder HMR-Reload einen keydown-Handler auf einen entsorgten State. */
+  dispose(): void {
+    this.current?.exit();
+    this.current = null;
+  }
 }

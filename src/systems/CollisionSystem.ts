@@ -171,7 +171,9 @@ export class CollisionSystem {
           proj.pierceLeft--;
           return false;
         }
-        return true;
+        // FIX: Bumerang wird vom Boss NICHT verbraucht (wie im Gegner-Block) — er
+        // fliegt durch und kehrt zurueck, statt beim Boss zu verschwinden.
+        return !proj.boomerang || this.consumeBoomerangHit(proj);
       }
     }
     if (boss) {
@@ -200,7 +202,8 @@ export class CollisionSystem {
             proj.pierceLeft--;
             return false;
           }
-          return true;
+          // FIX: Bumerang wird von Minis NICHT verbraucht (wie im Gegner-Block).
+          return !proj.boomerang || this.consumeBoomerangHit(proj);
         }
       }
     }

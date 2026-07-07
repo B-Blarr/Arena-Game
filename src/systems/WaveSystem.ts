@@ -121,8 +121,12 @@ export class WaveSystem {
       for (let g = 0; g < def.groupSize; g++) this.pending.push(type | (affix << 8));
     };
 
-    // Lesbarkeit fuer Einsteiger: W1-7 mindestens 30 % Verfolger
-    if (w <= 7) {
+    const forceType = world.roomMods.forceType;
+
+    // Lesbarkeit fuer Einsteiger: W1-7 mindestens 30 % Verfolger.
+    // FIX: in Mono-Raeumen (forceType gesetzt) NICHT vorfuellen, sonst verwaessern die
+    // Chaser den Themen-Typ. Klassik ist forceType undefined -> unveraendert.
+    if (w <= 7 && forceType === undefined) {
       const target = total * 0.3;
       while ((spent[ENEMY_CHASER] as number) < target && remaining >= 4) buy(ENEMY_CHASER);
     }
@@ -132,7 +136,6 @@ export class WaveSystem {
     // Zellteilung). Bei ROOM_NORMAL ist forceType undefined -> Block uebersprungen
     // -> 0 Zusatz-Draws (Klassik byte-identisch). Ist der erzwungene Typ elite-faehig
     // (Panzer/Schuetze/Splitter), zieht buy() dort Elite-Rolls — aber NUR im Reise-Modus.
-    const forceType = world.roomMods.forceType;
     if (forceType !== undefined && (world.roomMods.forceShare ?? 0) > 0) {
       const cost = (ENEMIES[forceType] as EnemyDef).budgetCost;
       const forceTarget = total * (world.roomMods.forceShare as number);

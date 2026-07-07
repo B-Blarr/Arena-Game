@@ -210,7 +210,7 @@ const ROOM_MINEFIELD: RoomDef = {
 /** NEU Panzerwall: fast nur Panzer — wenige, langsame, extrem zaehe Kolosse.
  *  Belagerungs-Gefuehl; maxAlive der Panzer drosselt die Gleichzeitig-Zahl. */
 const ROOM_TANKS: RoomDef = {
-  id: 'tanks', icon: '🛡️', isRisk: true, minWave: 7, weight: 14,
+  id: 'tanks', icon: '🛡️', isRisk: true, minWave: 8, weight: 14,
   budgetMult: 1.25, eliteMult: 1.0,
   hpMult: 1.0, speedMult: 1.0, damageMult: 1.0,
   forceType: ENEMY_TANK, forceShare: 0.8, maxEnemiesMult: 1.2,
@@ -231,7 +231,7 @@ const ROOM_SHOOTERS: RoomDef = {
 
 /** NEU Geisterstunde: fast nur Phantome — teleportierendes Chaos, sehr hektisch. */
 const ROOM_PHANTOMS: RoomDef = {
-  id: 'phantoms', icon: '👻', isRisk: true, minWave: 8, weight: 12,
+  id: 'phantoms', icon: '👻', isRisk: true, minWave: 9, weight: 12,
   budgetMult: 1.05, eliteMult: 1.0,
   hpMult: 1.0, speedMult: 1.0, damageMult: 1.0,
   forceType: ENEMY_PHANTOM, forceShare: 0.85,

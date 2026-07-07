@@ -38,6 +38,8 @@ export class RunState implements GameState {
   private tutStage: TutStage = 'done';
   private collectPromptShown = false;
   private pauseKeyHandler: ((e: KeyboardEvent) => void) | null = null;
+  /** FIX: Handle des Hard-Unlock-Banner-Timeouts (in exit abgebrochen). */
+  private unlockBannerTimer = 0;
   /** Wiederverwendetes Input-Array fuer combat.update (keine Allokationen). */
   private readonly inputs: InputState[] = [];
   private readonly unsubs: Array<() => void> = [];
@@ -149,6 +151,10 @@ export class RunState implements GameState {
     g.input.resetTransient();
     g.events.emit('runStarted', {});
     this.startWave(1);
+    // FIX: Arena-Optik/Groesse SOFORT einnehmen (startWave(1) hat via waveStarted die
+    // Ziele gesetzt) — sonst morpht Wand/Ring/Farbe ~2s vom letzten Raum des Vorlaufs
+    // (z.B. Oase-Radius 17.6) in den neuen Lauf.
+    g.arena.snapToTargets();
     // Onboarding nur solo — im Koop erklaeren sich die Spieler gegenseitig
     if (g.world.isCoop) this.tutStage = 'done';
     else this.initTutorial();
@@ -165,6 +171,10 @@ export class RunState implements GameState {
     if (this.pauseKeyHandler) {
       window.removeEventListener('keydown', this.pauseKeyHandler);
       this.pauseKeyHandler = null;
+    }
+    if (this.unlockBannerTimer) {
+      window.clearTimeout(this.unlockBannerTimer);
+      this.unlockBannerTimer = 0;
     }
     g.uiNav.setInputFilter(null);
     g.upgradeScreen.hide();
@@ -343,7 +353,9 @@ export class RunState implements GameState {
     if (w >= HARD_UNLOCK_WAVE && g.runDifficulty === 'normal' && !g.save.data.hardUnlocked) {
       g.save.data.hardUnlocked = true;
       g.save.save();
-      window.setTimeout(() => g.popups.banner(STR.hardUnlocked, 'gold-banner'), 2000);
+      // FIX: Handle merken + in exit() abbrechen — sonst feuert der Banner ueber
+      // GameOver/Menue, falls der Spieler binnen 2s nach dem Clear stirbt.
+      this.unlockBannerTimer = window.setTimeout(() => g.popups.banner(STR.hardUnlocked, 'gold-banner'), 2000);
     }
   }
 
