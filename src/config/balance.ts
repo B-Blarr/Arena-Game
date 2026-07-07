@@ -95,7 +95,10 @@ export interface DifficultyMods {
 export const DIFFICULTIES: Record<Difficulty, DifficultyMods> = {
   easy: { playerHp: 1.5, enemySpeed: 0.85, enemyHp: 0.8, enemyDamage: 0.75, budget: 0.85, heartChance: 0.07, coreMult: 0.8, eliteChanceMult: 0.5 },
   normal: { playerHp: 1.0, enemySpeed: 1.0, enemyHp: 1.0, enemyDamage: 1.0, budget: 1.0, heartChance: 0.03, coreMult: 1.0, eliteChanceMult: 1.0 },
-  hard: { playerHp: 1.0, enemySpeed: 1.1, enemyHp: 1.25, enemyDamage: 1.25, budget: 1.15, heartChance: 0.02, coreMult: 1.5, eliteChanceMult: 1.3 },
+  // GEAENDERT (Balancing "Schwer soll schwer sein"): deutlich angezogen ueber die SKILL-Hebel
+  // (Schaden/Tempo/Anzahl/Elites + weniger Heilung) statt ueber Gegner-HP — HP verpufft gegen
+  // DPS-Builds (z.B. Mythic Singularitaet ~4x DPS). enemyHp/playerHp bewusst unveraendert.
+  hard: { playerHp: 1.0, enemySpeed: 1.18, enemyHp: 1.25, enemyDamage: 1.4, budget: 1.3, heartChance: 0.015, coreMult: 1.6, eliteChanceMult: 1.6 },
 };
 
 /** "Schwer" wird freigeschaltet, wenn Welle 10 auf Normal erreicht wurde. */
@@ -196,10 +199,16 @@ export const SURPRISE = {
 export const COMBO = {
   window: 2.5,
   /** [Kills-Schwelle, Multiplikator] aufsteigend. */
+  // GEAENDERT (Bug-Fix): Stufen 4x (30 Kills) + 5x (50 Kills) ergaenzt. Vorher deckelte der
+  // Multiplikator bei 3.0 -> die Erfolge comboKoenig (verlangt 4) und comboGott (5) waren
+  // mathematisch unerreichbar und blockierten die Seite "Herausforderung" + 100%-Gold-Belohnung.
+  // Lange treffer-freie Kill-Serien (Kette bricht bei playerHit) werden nun mit mehr Score belohnt.
   tiers: [
     [5, 1.5],
     [10, 2],
     [20, 3],
+    [30, 4],
+    [50, 5],
   ] as ReadonlyArray<readonly [number, number]>,
 };
 

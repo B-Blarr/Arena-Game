@@ -78,7 +78,9 @@ export class Popups {
       }),
       events.on('comboChanged', (e) => {
         // Popup nur an den Stufen-Schwellen
-        if (e.kills === 5 || e.kills === 10 || e.kills === 20) {
+        // GEAENDERT (Bug-Fix): 30/50 ergaenzt, damit die neuen Combo-Stufen 4x/5x ebenfalls
+        // "Combo ×4!/×5!" melden (Tier-Mapping >=20 -> 't3' deckt sie bereits ab).
+        if (e.kills === 5 || e.kills === 10 || e.kills === 20 || e.kills === 30 || e.kills === 50) {
           const tier = e.kills >= 20 ? 't3' : e.kills >= 10 ? 't2' : 't1';
           this.combo(`Combo ×${e.multiplier}!`, tier);
         }
