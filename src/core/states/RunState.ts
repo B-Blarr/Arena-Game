@@ -1,6 +1,7 @@
 import { ARENA_RADIUS, COOP, HARD_UNLOCK_WAVE, LIMITS, META, isBossWave } from '../../config/balance';
 import { getHero } from '../../config/heroes';
 import { ROOM_NORMAL, type RoomDef } from '../../config/rooms';
+import { getTrail } from '../../config/trails';
 import { getColorway } from '../../config/stickers';
 import { STR } from '../../config/strings.de';
 import { UPGRADE_VALUES as UV } from '../../config/upgrades'; // NEU: Zeitbruch-Zeitskala
@@ -40,6 +41,8 @@ export class RunState implements GameState {
   private pauseKeyHandler: ((e: KeyboardEvent) => void) | null = null;
   /** FIX: Handle des Hard-Unlock-Banner-Timeouts (in exit abgebrochen). */
   private unlockBannerTimer = 0;
+  /** NEU (Spur-Effekte): Frame-Drossel fuer den kosmetischen Trail (jeder 2. Frame). */
+  private trailTick = 0;
   /** Wiederverwendetes Input-Array fuer combat.update (keine Allokationen). */
   private readonly inputs: InputState[] = [];
   private readonly unsubs: Array<() => void> = [];
@@ -282,6 +285,11 @@ export class RunState implements GameState {
       return;
     }
 
+    // NEU (Belohnungsart "Spur-Effekte"): gewaehlten Trail einmal aufloesen + Frame-Drossel
+    // (jeder 2. Frame reicht, spart Partikel). Rein kosmetisch, kein seeded RNG.
+    const trail = getTrail(g.save.data.settings.trailId, g.save.data.unlockedTrails);
+    this.trailTick ^= 1;
+
     // Input + Bewegung pro Spieler (Solo: nur Slot 0)
     this.inputs.length = 0;
     for (let i = 0; i < world.players.length; i++) {
@@ -290,6 +298,10 @@ export class RunState implements GameState {
       this.inputs.push(input);
       p.update(dt, input.moveX, input.moveZ, input.dashJustPressed);
       if (p.isDashing) g.particles.dashTrail(p.x, p.z);
+      // Kosmetische Spur nur beim Laufen (nicht im Dash, der hat seine eigene Spur).
+      else if (trail && this.trailTick === 0 && Math.abs(p.velX) + Math.abs(p.velZ) > 0.4) {
+        g.particles.heroTrail(p.x, p.z, trail);
+      }
     }
 
     g.collision.fillSpatialHash();

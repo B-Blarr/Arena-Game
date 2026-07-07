@@ -35,6 +35,8 @@ export interface SaveSettings {
   weaponId: string;
   /** Farbvariante der Figur ('default' = Heldenfarbe), aus dem Sticker-Album. */
   colorwayId: string;
+  /** NEU (Belohnungsart): gewaehlter Spur-Effekt ('none' = aus), aus dem Album. */
+  trailId: string;
 }
 
 export interface SaveData {
@@ -67,6 +69,8 @@ export interface SaveData {
   stickerRewards: string[];
   /** Freigeschaltete Farbvarianten. */
   unlockedColorways: string[];
+  /** NEU (Belohnungsart): freigeschaltete Spur-Effekte. */
+  unlockedTrails: string[];
   /** Letzter Album-Besuch (ISO) — steuert die NEU-Badges. */
   lastAlbumSeen: string;
 }
@@ -112,6 +116,7 @@ function defaults(): SaveData {
       heroId: 'volt',
       weaponId: 'default',
       colorwayId: 'default',
+      trailId: 'none',
     },
     stats: { totalKills: 0, totalRuns: 0 },
     dailyBest: null,
@@ -120,6 +125,7 @@ function defaults(): SaveData {
     stickerPageRewards: [],
     stickerRewards: [],
     unlockedColorways: [],
+    unlockedTrails: [],
     lastAlbumSeen: '',
   };
 }
@@ -182,6 +188,7 @@ function sanitize(raw: unknown): SaveData {
     if (typeof s.heroId === 'string') d.settings.heroId = s.heroId;
     if (typeof s.weaponId === 'string') d.settings.weaponId = s.weaponId;
     if (typeof s.colorwayId === 'string') d.settings.colorwayId = s.colorwayId;
+    if (typeof s.trailId === 'string') d.settings.trailId = s.trailId;
   }
   if (typeof r.stats === 'object' && r.stats !== null) {
     const st = r.stats as Record<string, unknown>;
@@ -214,6 +221,9 @@ function sanitize(raw: unknown): SaveData {
   if (Array.isArray(r.unlockedColorways)) {
     d.unlockedColorways = r.unlockedColorways.filter((c): c is string => typeof c === 'string');
   }
+  if (Array.isArray(r.unlockedTrails)) {
+    d.unlockedTrails = r.unlockedTrails.filter((c): c is string => typeof c === 'string');
+  }
   if (typeof r.lastAlbumSeen === 'string') d.lastAlbumSeen = r.lastAlbumSeen;
   // Kreuz-Konsistenz: eine abgeholte Seiten-Belohnung MUSS ihre Farbvariante
   // freigeschaltet haben (sonst waere sie unwiederbringlich verloren, weil
@@ -228,11 +238,13 @@ function sanitize(raw: unknown): SaveData {
       d.unlockedColorways.push(page.reward.colorwayId);
     }
   }
-  // Gleiche Kreuz-Konsistenz fuer abgeholte Pro-Erfolg-Belohnungen
+  // Gleiche Kreuz-Konsistenz fuer abgeholte Pro-Erfolg-Belohnungen (Farbvariante ODER Trail)
   for (const claimed of d.stickerRewards) {
     const def = STICKERS.find((s) => s.id === claimed);
     if (def?.reward?.kind === 'colorway' && !d.unlockedColorways.includes(def.reward.colorwayId)) {
       d.unlockedColorways.push(def.reward.colorwayId);
+    } else if (def?.reward?.kind === 'trail' && !d.unlockedTrails.includes(def.reward.trailId)) {
+      d.unlockedTrails.push(def.reward.trailId);
     }
   }
 
@@ -245,6 +257,9 @@ function sanitize(raw: unknown): SaveData {
   }
   if (d.settings.colorwayId !== 'default' && !d.unlockedColorways.includes(d.settings.colorwayId)) {
     d.settings.colorwayId = 'default';
+  }
+  if (d.settings.trailId !== 'none' && !d.unlockedTrails.includes(d.settings.trailId)) {
+    d.settings.trailId = 'none';
   }
   return d;
 }

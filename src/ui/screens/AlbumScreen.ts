@@ -7,6 +7,7 @@ import {
   stickersOfPage,
   type StickerDef,
 } from '../../config/stickers';
+import { TRAILS } from '../../config/trails';
 import type { Sfx } from '../../audio/Sfx';
 import type { SaveData, SaveManager } from '../../save/SaveManager';
 
@@ -258,13 +259,28 @@ export class AlbumScreen {
     return `<span class="color-chip" style="background:#${hex}"></span>`;
   }
 
+  /** NEU (Belohnungsart): Chip fuer einen Spur-Effekt (rainbow -> prismatischer Chip). */
+  private trailChip(trailId: string): string {
+    const t = TRAILS.find((tr) => tr.id === trailId);
+    if (!t || t.color === 'rainbow') return '<span class="color-chip prismatic"></span>';
+    const hex = t.color.toString(16).padStart(6, '0');
+    return `<span class="color-chip" style="background:#${hex}"></span>`;
+  }
+
   /** Pro-Erfolg-Belohnung im Detail: Abholen-Button bzw. „✔" wenn schon geholt. */
   private stickerRewardHtml(def: StickerDef): string {
     if (!def.reward) return '';
-    const label = def.reward.kind === 'cores'
-      ? STR.albumRewardCores(def.reward.amount)
-      : STR.albumRewardColorway(STR.colorways[def.reward.colorwayId] ?? def.reward.colorwayId);
-    const chip = def.reward.kind === 'colorway' ? this.colorChip(def.reward.colorwayId) : '';
+    let label: string;
+    let chip = '';
+    if (def.reward.kind === 'cores') {
+      label = STR.albumRewardCores(def.reward.amount);
+    } else if (def.reward.kind === 'colorway') {
+      label = STR.albumRewardColorway(STR.colorways[def.reward.colorwayId] ?? def.reward.colorwayId);
+      chip = this.colorChip(def.reward.colorwayId);
+    } else {
+      label = STR.albumRewardTrail(STR.trails[def.reward.trailId] ?? def.reward.trailId);
+      chip = this.trailChip(def.reward.trailId);
+    }
     if (this.save.data.stickerRewards.includes(def.id)) {
       return `<span class="album-reward-done">✔ ${label} ${chip}</span>`;
     }
@@ -276,7 +292,8 @@ export class AlbumScreen {
     const data = this.save.data;
     if (!def.reward || data.stickerRewards.includes(def.id)) return;
     if (def.reward.kind === 'cores') data.cores += def.reward.amount;
-    else data.unlockedColorways.push(def.reward.colorwayId);
+    else if (def.reward.kind === 'colorway') data.unlockedColorways.push(def.reward.colorwayId);
+    else data.unlockedTrails.push(def.reward.trailId);
     data.stickerRewards.push(def.id);
     this.save.save();
     this.sfx.stickerFanfare();

@@ -9,6 +9,7 @@ import {
   Scene,
 } from 'three';
 import { ENEMIES } from '../config/enemies';
+import type { TrailDef } from '../config/trails';
 import type { EventBus } from '../core/EventBus';
 import type { AssetRegistry } from '../render/AssetRegistry';
 
@@ -278,6 +279,26 @@ export class ParticleSystem {
     this.burst(x, z, 0x00e5ff, 2, {
       speedMin: 0.2, speedMax: 0.8, lifeMin: 0.15, lifeMax: 0.3,
       gravity: 0, sizeMin: 0.08, sizeMax: 0.14, upBias: 0.5,
+    });
+  }
+
+  /** NEU (Belohnungsart "Spur-Effekte"): kosmetischer Wake hinter dem laufenden Helden.
+   *  1 Partikel in der Trail-Farbe (rainbow zyklt den Hue). Rein FX, kein seeded RNG. */
+  private trailHue = 0;
+  heroTrail(x: number, z: number, def: TrailDef): void {
+    let color: number;
+    if (def.color === 'rainbow') {
+      this.trailHue = (this.trailHue + 0.02) % 1;
+      color = tmpColor.setHSL(this.trailHue, 0.9, 0.6).getHex();
+    } else {
+      color = def.color;
+    }
+    this.burst(x, z, color, 1, {
+      speedMin: 0.1, speedMax: 0.6, upBias: 0.3,
+      lifeMin: def.life * 0.7, lifeMax: def.life,
+      gravity: def.gravity ?? 0,
+      sizeMin: def.size * 0.7, sizeMax: def.size,
+      whiteFrac: 0.05,
     });
   }
 

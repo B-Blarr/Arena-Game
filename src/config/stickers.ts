@@ -30,7 +30,9 @@ export type StickerTrigger =
 /** Belohnung, die ein EINZELNER Erfolg bringt (im Album-Detail abgeholt). */
 export type StickerReward =
   | { kind: 'cores'; amount: number }
-  | { kind: 'colorway'; colorwayId: string };
+  | { kind: 'colorway'; colorwayId: string }
+  /** NEU (Belohnungsart): schaltet einen Spur-Effekt frei (src/config/trails.ts). */
+  | { kind: 'trail'; trailId: string };
 
 export interface StickerDef {
   id: string;
@@ -77,6 +79,9 @@ export const COLORWAYS: readonly ColorwayDef[] = [
   { id: 'prismatisch', body: 0xffffff, animated: true },
   // NEU (Reise-Ausbau): Belohnung der Reise-Album-Seite (kein Rot)
   { id: 'amethyst', body: 0xc07aff },
+  // NEU (Reise-Ausbau 2): Belohnungen der neuen Reise-Seiten (kein Rot)
+  { id: 'kosmos', body: 0x00ffb0 },
+  { id: 'sternenstaub', body: 0xe8c8ff, engine: 0xffffff },
 ];
 
 export function getColorway(id: string, unlocked: readonly string[]): ColorwayDef | undefined {
@@ -97,6 +102,9 @@ export const ALBUM_PAGES: readonly AlbumPageDef[] = [
   { id: 'geheim2', icon: '🕵️', reward: { kind: 'colorway', colorwayId: 'kobalt' } },
   // NEU (Reise-Ausbau): Reise-Modus-Erfolge
   { id: 'reise', icon: '🧭', reward: { kind: 'colorway', colorwayId: 'amethyst' } },
+  // NEU (Reise-Ausbau 2): Reise-Meisterschaft + geheime Reise-Herausforderungen
+  { id: 'reise2', icon: '🌟', reward: { kind: 'colorway', colorwayId: 'kosmos' } },
+  { id: 'reiseGeheim', icon: '🌌', reward: { kind: 'colorway', colorwayId: 'sternenstaub' } },
 ];
 
 /** Belohnung fuer 100 %: Gold-Colorway (Sonderfall neben den Seiten). */
@@ -218,6 +226,30 @@ export const STICKERS: readonly StickerDef[] = [
   { id: 'reiseProfi', icon: '🎒', rarity: 'rare', page: 'reise', trigger: { kind: 'counter', counter: 'journeyRuns', goal: 15 } },
   { id: 'weltenbummler', icon: '🗺️', rarity: 'epic', page: 'reise', trigger: { kind: 'counterSet', counters: ['room:treasure', 'room:elite', 'room:storm', 'room:oasis', 'room:horde', 'room:finsternis', 'room:singular'] } },
   { id: 'reiseWelle25', icon: '🏆', rarity: 'legendary', page: 'reise', trigger: { kind: 'flag', flag: 'journeyWave25' }, reward: { kind: 'cores', amount: 400 } },
+
+  // ---------------------------------------------- Seite 12: Reise-Meisterschaft (Reward: kosmos)
+  // Neue Raum-Counter werden erst durch diese Referenzen "scharf" (ab dann gezaehlt).
+  { id: 'minenmeister', icon: '💥', rarity: 'rare', page: 'reise2', trigger: { kind: 'counter', counter: 'room:minefield', goal: 5 } },
+  { id: 'panzerbrecher', icon: '🛡️', rarity: 'rare', page: 'reise2', trigger: { kind: 'counter', counter: 'room:tanks', goal: 5 } },
+  { id: 'kugelhagel', icon: '🎯', rarity: 'rare', page: 'reise2', trigger: { kind: 'counter', counter: 'room:shooters', goal: 5 } },
+  { id: 'geisterbanner', icon: '👻', rarity: 'rare', page: 'reise2', trigger: { kind: 'counter', counter: 'room:phantoms', goal: 5 } },
+  { id: 'windlaeufer', icon: '🌬️', rarity: 'rare', page: 'reise2', trigger: { kind: 'counter', counter: 'room:windkanal', goal: 5 } },
+  { id: 'glasbrecher', icon: '💠', rarity: 'rare', page: 'reise2', trigger: { kind: 'counter', counter: 'room:glasscannon', goal: 5 } },
+  { id: 'wandbrecher', icon: '⭕', rarity: 'rare', page: 'reise2', trigger: { kind: 'counter', counter: 'room:collapse', goal: 5 } },
+  { id: 'wagemut', icon: '🎲', rarity: 'epic', page: 'reise2', trigger: { kind: 'counter', counter: 'journeyRiskCleared', goal: 60 }, reward: { kind: 'trail', trailId: 'komet' } },
+  { id: 'reiseVeteran', icon: '🎒', rarity: 'epic', page: 'reise2', trigger: { kind: 'counter', counter: 'journeyRuns', goal: 30 }, reward: { kind: 'trail', trailId: 'plasma' } },
+  { id: 'reiseWelle30', icon: '🚩', rarity: 'epic', page: 'reise2', trigger: { kind: 'flag', flag: 'journeyWave30' }, reward: { kind: 'trail', trailId: 'funken' } },
+  { id: 'neulandErkunder', icon: '🗺️', rarity: 'legendary', page: 'reise2', trigger: { kind: 'counterSet', counters: ['room:minefield', 'room:tanks', 'room:shooters', 'room:phantoms', 'room:windkanal', 'room:glasscannon', 'room:collapse'] }, reward: { kind: 'trail', trailId: 'frost' } },
+  { id: 'reiseKenner', icon: '🏅', rarity: 'legendary', page: 'reise2', trigger: { kind: 'counter', counter: 'journeyRiskCleared', goal: 150 }, reward: { kind: 'cores', amount: 500 } },
+
+  // ---------------------------------------------- Seite 13: Geheime Reise (Reward: sternenstaub)
+  { id: 'reiseUnberuehrt', icon: '🕊️', rarity: 'legendary', page: 'reiseGeheim', secret: true, trigger: { kind: 'flag', flag: 'journeyNoHit25' }, reward: { kind: 'trail', trailId: 'regenbogen' } },
+  { id: 'reiseDaemon', icon: '👹', rarity: 'legendary', page: 'reiseGeheim', secret: true, trigger: { kind: 'flag', flag: 'journeyNoHit30' }, reward: { kind: 'cores', amount: 1000 } },
+  { id: 'reiseGrenzenlos', icon: '🌠', rarity: 'legendary', page: 'reiseGeheim', secret: true, trigger: { kind: 'flag', flag: 'journeyWave40' }, reward: { kind: 'cores', amount: 700 } },
+  { id: 'reiseEisern', icon: '🧗', rarity: 'epic', page: 'reiseGeheim', secret: true, trigger: { kind: 'flag', flag: 'journeyNoDash20' }, reward: { kind: 'cores', amount: 400 } },
+  { id: 'reiseAskese', icon: '🩹', rarity: 'epic', page: 'reiseGeheim', secret: true, trigger: { kind: 'flag', flag: 'journeyNoHeal20' }, reward: { kind: 'cores', amount: 400 } },
+  { id: 'reiseGenuegsam', icon: '🍃', rarity: 'epic', page: 'reiseGeheim', secret: true, trigger: { kind: 'flag', flag: 'journeyNoCores15' }, reward: { kind: 'cores', amount: 300 } },
+  { id: 'reiseVielfalt', icon: '🌈', rarity: 'epic', page: 'reiseGeheim', secret: true, trigger: { kind: 'flag', flag: 'journeyVariety' }, reward: { kind: 'cores', amount: 500 } },
 ];
 
 export function stickersOfPage(pageId: string): StickerDef[] {

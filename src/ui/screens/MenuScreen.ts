@@ -1,6 +1,7 @@
 import { STR } from '../../config/strings.de';
 import { HEROES } from '../../config/heroes';
 import { COLORWAYS } from '../../config/stickers';
+import { TRAILS } from '../../config/trails';
 import { AlbumScreen } from './AlbumScreen';
 import type { Difficulty } from '../../config/balance';
 import type { SaveManager } from '../../save/SaveManager';
@@ -66,6 +67,7 @@ export class MenuScreen {
       <div class="menu-subtitle">${STR.subtitle}</div>
       <div class="hero-row"></div>
       <div class="menu-colorways"></div>
+      <div class="menu-trails"></div>
       <div class="menu-buttons">
         <div class="menu-buttons-row">
           <button class="btn btn-primary menu-play" data-nav-default data-key="menu-play">${STR.play}</button>
@@ -195,6 +197,42 @@ export class MenuScreen {
           this.refresh();
         });
         cwRow.appendChild(chip);
+      }
+    }
+
+    // NEU (Belohnungsart): Spur-Effekt-Chips (nur sichtbar, wenn welche freigeschaltet sind)
+    const trRow = this.root.querySelector('.menu-trails') as HTMLElement;
+    trRow.innerHTML = '';
+    if (save.unlockedTrails.length > 0) {
+      const label = document.createElement('span');
+      label.className = 'menu-colorways-label';
+      label.textContent = `${STR.trailLabel}:`;
+      trRow.appendChild(label);
+      const trOpts: Array<{ id: string; color: number; name: string; rainbow?: boolean }> = [
+        { id: 'none', color: 0x556070, name: STR.trailNone },
+      ];
+      for (const t of TRAILS) {
+        if (save.unlockedTrails.includes(t.id)) {
+          trOpts.push({
+            id: t.id,
+            color: t.color === 'rainbow' ? 0xffffff : t.color,
+            name: STR.trails[t.id] ?? t.id,
+            rainbow: t.color === 'rainbow',
+          });
+        }
+      }
+      for (const opt of trOpts) {
+        const chip = document.createElement('button');
+        chip.className = `color-chip-btn${save.settings.trailId === opt.id ? ' active' : ''}${opt.rainbow ? ' prismatic' : ''}`;
+        chip.dataset.key = `trail-${opt.id}`;
+        chip.title = opt.name;
+        chip.style.setProperty('--chip', `#${opt.color.toString(16).padStart(6, '0')}`);
+        chip.addEventListener('click', () => {
+          save.settings.trailId = opt.id;
+          this.cb.onSettingChanged();
+          this.refresh();
+        });
+        trRow.appendChild(chip);
       }
     }
 

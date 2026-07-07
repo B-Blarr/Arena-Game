@@ -177,6 +177,7 @@ export const STR = {
   albumRewardLocked: 'Sammle alle Erfolge dieser Seite!',
   albumRewardCores: (n: number) => `Belohnung: ⬡ ${n} Kerne`,
   albumRewardColorway: (name: string) => `Belohnung: Farbe „${name}"`,
+  albumRewardTrail: (name: string) => `Belohnung: Spur „${name}"`,
   albumGoldReward: (n: number) => `Alle ${n} Erfolge: GOLD-Farbe für alle Helden!`,
   albumSince: (date: string) => `Seit ${date}`,
   albumProgress: (got: number, total: number) => `${got}/${total}`,
@@ -184,6 +185,16 @@ export const STR = {
   gameOverNewStickers: 'Neue Erfolge:',
   colorLabel: 'Farbe',
   colorDefault: 'Standard',
+  // NEU (Belohnungsart): Spur-Effekte
+  trailLabel: 'Spur',
+  trailNone: 'Keine',
+  trails: {
+    komet: 'Komet',
+    funken: 'Funken',
+    plasma: 'Plasma',
+    frost: 'Frost',
+    regenbogen: 'Regenbogen',
+  } as Record<string, string>,
 
   albumPages: {
     start: 'Erste Schritte',
@@ -197,6 +208,8 @@ export const STR = {
     herausforderung: 'Herausforderung',
     geheim2: 'Geheimnisse II',
     reise: 'Reise',
+    reise2: 'Reise-Meister',
+    reiseGeheim: 'Geheime Reise',
   } as Record<string, string>,
 
   colorways: {
@@ -213,6 +226,8 @@ export const STR = {
     platin: 'Platin',
     prismatisch: 'Prismatisch',
     amethyst: 'Amethyst',
+    kosmos: 'Kosmos',
+    sternenstaub: 'Sternenstaub',
   } as Record<string, string>,
 
   stickers: {
@@ -320,6 +335,27 @@ export const STR = {
     reiseProfi: { name: 'Reise-Profi', desc: 'Spiele 15 Runden im Reise-Modus' },
     weltenbummler: { name: 'Weltenbummler', desc: 'Besuche jeden Raum-Typ im Reise-Modus mindestens einmal' },
     reiseWelle25: { name: 'Ferne Welten', desc: 'Erreiche Welle 25 im Reise-Modus — bringt 400 Kerne' },
+
+    minenmeister: { name: 'Minenmeister', desc: 'Räume 5-mal ein Minenfeld' },
+    panzerbrecher: { name: 'Panzerbrecher', desc: 'Räume 5-mal einen Panzerwall' },
+    kugelhagel: { name: 'Kugelhagel', desc: 'Räume 5-mal einen Schützenstand' },
+    geisterbanner: { name: 'Geisterbanner', desc: 'Räume 5-mal eine Geisterstunde' },
+    windlaeufer: { name: 'Windläufer', desc: 'Räume 5-mal einen Windkanal' },
+    glasbrecher: { name: 'Glasbrecher', desc: 'Räume 5-mal einen Glaskanonen-Raum' },
+    wandbrecher: { name: 'Wandbrecher', desc: 'Räume 5-mal eine Kollaps-Arena' },
+    wagemut: { name: 'Wagemut', desc: 'Räume 60 Risiko-Räume im Reise-Modus — bringt die Spur „Komet"' },
+    reiseVeteran: { name: 'Reise-Veteran', desc: 'Spiele 30 Reise-Läufe — bringt die Spur „Plasma"' },
+    reiseWelle30: { name: 'Grenzgänger', desc: 'Erreiche Welle 30 im Reise-Modus — bringt die Spur „Funken"' },
+    neulandErkunder: { name: 'Neuland-Erkunder', desc: 'Meistere jeden neuen Reise-Raum — bringt die Spur „Frost"' },
+    reiseKenner: { name: 'Reise-Kenner', desc: 'Räume 150 Risiko-Räume im Reise-Modus — bringt 500 Kerne' },
+
+    reiseUnberuehrt: { name: 'Unberührt', desc: 'Erreiche Welle 25 im Reise-Modus ohne einen Treffer — bringt die Spur „Regenbogen"', hint: 'Weit reisen, ohne einen Kratzer …' },
+    reiseDaemon: { name: 'Dämon der Reise', desc: 'Erreiche Welle 30 im Reise-Modus ohne einen Treffer — bringt 1000 Kerne', hint: 'Makellos, bis tief in die Nacht …' },
+    reiseGrenzenlos: { name: 'Grenzenlos', desc: 'Erreiche Welle 40 im Reise-Modus — bringt 700 Kerne', hint: 'Wie weit trägt dich der Weg wirklich?' },
+    reiseEisern: { name: 'Eiserne Reise', desc: 'Erreiche Welle 20 im Reise-Modus ohne einen Dash', hint: 'Bleib am Boden, egal wie lang der Weg …' },
+    reiseAskese: { name: 'Askese', desc: 'Erreiche Welle 20 im Reise-Modus ohne ein Herz zu sammeln', hint: 'Reise weit und heile nie …' },
+    reiseGenuegsam: { name: 'Reise-Genügsam', desc: 'Erreiche Welle 15 im Reise-Modus ohne einen Kern aufzusammeln', hint: 'Lass unterwegs allen Glanz liegen …' },
+    reiseVielfalt: { name: 'Vielreisender', desc: 'Räume 8 verschiedene Raum-Typen in EINEM Reise-Lauf', hint: 'Nimm in einem Lauf jeden Weg mit …' },
   } as Record<string, { name: string; desc: string; hint?: string }>,
 
   // Shop

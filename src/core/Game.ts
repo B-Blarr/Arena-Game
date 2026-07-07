@@ -328,9 +328,17 @@ export class Game {
         this.arena.setRoomTheme(this.world.roomMods.theme ?? null);
         // NEU (Windkanal): Wind-Vektor fuer den Grid-Scroll-Telegraph (0 = kein Wind).
         this.arena.setDrift(this.world.driftX, this.world.driftZ, this.world.driftStrength);
-        // NEU (Sinnes-Signatur): Per-Raum-Grade (Bloom/Vignette). theme null -> {} -> Basis.
-        const t = this.world.roomMods.theme;
-        this.renderer.setGrade({ bloom: t?.bloom, vignette: t?.vignette });
+        // NEU (Boss-Auftritt): Boss-Wellen bekommen die Akzentfarbe des Bosses (Ringe/Grid/
+        // Sterne) + einen kino-tiefen Grade. Der Boss ist beim Emit schon gespawnt. NACH
+        // setRoomTheme, damit die Stern-Toenung gewinnt. Nicht-Boss -> neutral + Raum-Grade.
+        if (e.isBossWave) {
+          this.arena.setBossAccent(this.world.boss?.def.color ?? 0xffffff);
+          this.renderer.setGrade({ bloom: 0.35, vignette: 0.35 });
+        } else {
+          this.arena.setBossAccent(null);
+          const t = this.world.roomMods.theme;
+          this.renderer.setGrade({ bloom: t?.bloom, vignette: t?.vignette });
+        }
       }),
       this.events.on('bossDied', () => this.arena.setBossMode(false)),
       // Boss-Stampfer laesst das Boden-Grid aufleuchten

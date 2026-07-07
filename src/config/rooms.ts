@@ -153,16 +153,18 @@ const ROOM_TREASURE: RoomDef = {
   theme: { bg: 0x1a1206, grid: 0xffc83d, wall: 0xffc83d, ring: 0xffd76a, fogDensity: 0.020, gridIntensity: 0.55, bloom: 0.5, vignette: -0.05, starTint: 0xffe0a0, starSpeed: 0.8 },
 };
 
-/** Elite-Kammer: viel mehr Elite-Gegner (mehr Beute) + garantiert Rare.
- *  Namens-Charakter: engere Arena, vereinzelt RIESIGE, zaehe Elites. */
+/** Elite-Kammer: "Thronsaal" — WENIGE, RIESIGE, bedrohliche Kolosse in einer engen,
+ *  ominoesen Kammer. Namens-Charakter jetzt viel staerker: eigenes Gold/Violett-Thron-Theme
+ *  (nicht mehr das Biome-Magenta), atmende pulseFog-Atmosphaere, ALLE Gegner groesser
+ *  (enemyScaleMult), weniger Budget aber mehr/groessere Elites. */
 const ROOM_ELITE: RoomDef = {
   id: 'elite', icon: '💀', isRisk: true, minWave: 6, weight: 20,
-  budgetMult: 0.9, eliteMult: 3.0, eliteMaxPerWave: 4,
+  budgetMult: 0.8, eliteMult: 3.5, eliteMaxPerWave: 5,
   hpMult: 1.1, speedMult: 1.0, damageMult: 1.1,
-  eliteScaleMult: 1.5, eliteHpMult: 1.4,
-  arenaMult: 0.9,
+  enemyScaleMult: 1.15, eliteScaleMult: 1.5, eliteHpMult: 1.4,
+  arenaMult: 0.85,
   coreDropBonus: 0, guaranteeRare: true, healFrac: 0, bonusCores: 0,
-  theme: { bg: 0x140109, grid: 0xd23dff, wall: 0xff3df2, ring: 0xff5ce0, fogDensity: 0.026, gridIntensity: 0.4, bloom: 0.2, vignette: 0.2, starTint: 0xff6ad5, starSpeed: 1.2 },
+  theme: { bg: 0x0c0418, grid: 0xffc83d, wall: 0x9a3dff, ring: 0xffe08a, fogDensity: 0.030, gridIntensity: 0.35, anim: 'pulseFog', bloom: 0.3, vignette: 0.35, starTint: 0xd4a017, starSpeed: 0.6 },
 };
 
 /** Sturm/Gefahr: deutlich schnellere+staerkere Gegner, dafuer doppelte Kerne.
@@ -324,9 +326,14 @@ const ROOM_COLLAPSE: RoomDef = {
   id: 'collapse', icon: '⭕', isRisk: true, minWave: 5, weight: 13,
   budgetMult: 1.0, eliteMult: 1.0,
   hpMult: 1.0, speedMult: 1.0, damageMult: 1.0,
-  arenaMult: 1.1, arenaShrinkTo: 0.6, arenaShrinkRate: 0.18,
+  // NEU (distinkter): deutlich spuerbarerer Shrink (schneller + engeres Ende, faengt weiter
+  // nie ein: Boden 22*0.52 ~= 11.4). Enger werdender Raum fuellt sich staerker.
+  arenaMult: 1.1, arenaShrinkTo: 0.52, arenaShrinkRate: 0.28, maxEnemiesMult: 1.2,
+  // NEU (Signatur-Gefahr): Rand-Zonen im Ring-Muster kriechen mit der schrumpfenden Wand
+  // nach innen ("die Waende schlagen zu"). Bewusst mild fuer Kinder (1 Zone, grosse Vorwarnung).
+  hazard: { interval: 3.2, warn: 1.4, radius: 2.6, damage: 12, count: 1, color: 0xff6a3d, countRampEvery: 6, countMax: 2, intervalMin: 2.4, patterns: ['ring'] },
   coreDropBonus: 1, guaranteeRare: false, healFrac: 0, bonusCores: 4,
-  theme: { bg: 0x160806, grid: 0xff6a3d, wall: 0xff8a5c, ring: 0xffb08a, fogDensity: 0.024, gridIntensity: 0.5, bloom: 0.2, vignette: 0.25, starTint: 0xff8060, starSpeed: 1.5 },
+  theme: { bg: 0x160806, grid: 0xff6a3d, wall: 0xff8a5c, ring: 0xffb08a, fogDensity: 0.024, gridIntensity: 0.5, anim: 'flicker', bloom: 0.2, vignette: 0.25, starTint: 0xff8060, starSpeed: 1.5 },
 };
 
 export const ROOMS: readonly RoomDef[] = [

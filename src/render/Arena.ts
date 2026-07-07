@@ -109,6 +109,9 @@ export class Arena {
 
   private currentBiome = 0;
   private bossMode = false;
+  /** NEU (Boss-Auftritt): Akzentfarbe des aktuellen Bosses (Ringe/Grid/Sterne),
+   *  null = kein Boss. Rein visuell. */
+  private bossAccent: number | null = null;
 
   constructor(scene: Scene) {
     scene.background = this.bgColor;
@@ -316,6 +319,20 @@ export class Arena {
   /** Boss-Dramatik an/aus (bossDied -> aus), ohne das Biome zu wechseln. */
   setBossMode(on: boolean): void {
     this.bossMode = on;
+    if (!on) {
+      // Boss vorbei: Akzent loeschen + Sterne zurueck auf Raum-/Neutral-Toenung.
+      this.bossAccent = null;
+      if (this.starMat) this.starMat.color.set(this.roomTheme?.starTint ?? 0xffffff);
+    }
+    this.refreshTargets();
+  }
+
+  /** NEU (Boss-Auftritt): Akzentfarbe des Bosses setzen (Ringe/Grid/Sterne toenen).
+   *  Game.ts ruft das im waveStarted-Handler NACH setRoomTheme, damit die Stern-Toenung
+   *  gewinnt. color null = kein Boss (neutral). Rein visuell. */
+  setBossAccent(color: number | null): void {
+    this.bossAccent = color;
+    if (this.starMat) this.starMat.color.set(color ?? this.roomTheme?.starTint ?? 0xffffff);
     this.refreshTargets();
   }
 
@@ -373,11 +390,15 @@ export class Arena {
     this.tFogDensity = FOG_DENSITY;
     this.tGridIntensity = b.gridIntensity;
     if (this.bossMode) {
-      // dunkler, dichter Nebel, weisse Ringe — kein Strobe, nur Lerp
-      this.tBg.lerp(new Color(0x000000), 0.55);
+      // NEU (Boss-Auftritt): deutlich dunkler + dichter Nebel + Ringe/Grid in der
+      // Boss-Akzentfarbe (pro Boss eigen). Kein Strobe, nur Lerp.
+      this.tBg.lerp(new Color(0x000000), 0.72);
       this.tFogDensity = FOG_DENSITY_BOSS;
-      this.tGridIntensity = Math.min(this.tGridIntensity, 0.35);
-      this.tRing.set(0xffffff).multiplyScalar(2.0);
+      this.tGridIntensity = Math.min(this.tGridIntensity, 0.3);
+      const acc = this.bossAccent ?? 0xffffff;
+      this.tRing.set(acc).multiplyScalar(2.2);
+      // Grid Richtung Boss-Farbe ziehen (halb) -> jeder Boss faerbt die Arena anders.
+      this.tGrid.lerp(new Color(acc), 0.5);
     }
     // NEU (Reise-Ausbau): Raum-Optik ueberschreibt gesetzte Felder (Render-only).
     // Boss-Wellen nutzen ROOM_NORMAL -> roomTheme === null -> kein Konflikt.
@@ -460,7 +481,8 @@ export class Arena {
       }
     }
 
-    this.floorMat.emissiveIntensity = this.gridIntensity + this.beatPulse * 0.25;
+    // NEU (Boss-Auftritt): im Boss-Modus atmet das Grid staerker mit dem Musik-Takt.
+    this.floorMat.emissiveIntensity = this.gridIntensity + this.beatPulse * (this.bossMode ? 0.5 : 0.25);
 
     // Langsame Himmelsdrehung (NEU: Per-Raum-Tempo-Faktor der Sinnes-Signatur)
     this.stars.rotation.y += rawDt * 0.01 * this.starSpeedMult;

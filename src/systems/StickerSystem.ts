@@ -46,6 +46,8 @@ export class StickerSystem {
   private runTookHit = false;
   /** In diesem Run erhaltene Kapsel-Arten (fuer „Paket-Meister"). */
   private readonly capsuleKindsThisRun = new Set<string>();
+  /** NEU (Reise-Ausbau 2): in DIESEM Reise-Lauf gemeisterte Raum-Typen (fuer „Vielfalt"). */
+  private readonly journeyRoomsThisRun = new Set<string>();
   /** Waehrend finishRun keine Toasts (die Zusammenfassung zeigt sie). */
   private inFinishRun = false;
 
@@ -206,6 +208,8 @@ export class StickerSystem {
       events.on('journeyRoomCleared', (e) => {
         this.bump(`room:${e.room}`);
         if (e.isRisk) this.bump('journeyRiskCleared');
+        // NEU (Reise-Ausbau 2): verschiedene Raum-Typen in EINEM Lauf (fuer „Vielfalt").
+        this.journeyRoomsThisRun.add(e.room);
       }),
     );
   }
@@ -227,6 +231,16 @@ export class StickerSystem {
       this.bumpOwn('journeyRuns');
       if (ctx.wave >= 15) this.setFlag('journeyWave15');
       if (ctx.wave >= 25) this.setFlag('journeyWave25');
+      // NEU (Reise-Ausbau 2): weitere Reise-Meilensteine + geheime Herausforderungen.
+      // Alle aus vorhandenen Run-Deltas / runTookHit abgeleitet (kein neues Tracking).
+      if (ctx.wave >= 30) this.setFlag('journeyWave30');
+      if (ctx.wave >= 40) this.setFlag('journeyWave40');
+      if (!this.runTookHit && ctx.wave >= 25) this.setFlag('journeyNoHit25');
+      if (!this.runTookHit && ctx.wave >= 30) this.setFlag('journeyNoHit30');
+      if ((this.runDeltas.dashes ?? 0) === 0 && ctx.wave >= 20) this.setFlag('journeyNoDash20');
+      if ((this.runDeltas.hearts ?? 0) === 0 && ctx.wave >= 20) this.setFlag('journeyNoHeal20');
+      if ((this.runDeltas.cores ?? 0) === 0 && ctx.wave >= 15) this.setFlag('journeyNoCores15');
+      if (this.journeyRoomsThisRun.size >= 8) this.setFlag('journeyVariety');
     }
     if (ctx.difficulty === 'hard' && ctx.wave >= 10) this.setFlag('hardWave10');
     if (ctx.difficulty === 'hard' && ctx.wave >= 20) this.setFlag('hardWave20');
@@ -353,6 +367,7 @@ export class StickerSystem {
     this.bhKills = 0;
     this.runTookHit = false;
     this.capsuleKindsThisRun.clear();
+    this.journeyRoomsThisRun.clear();
   }
 
   dispose(): void {
