@@ -88,10 +88,19 @@ export class Popups {
       }),
       events.on('waveStarted', (e) => {
         if (e.isBossWave) return;
-        // Goldene Welle: EIN kombinierter Banner (es gibt nur ein Banner-Element).
+        // Goldene Welle: EIN kombinierter Banner (hat Vorrang vor dem Raum-Auftritt).
         // Marker-Klasse `golden-wave` + laengere Haltezeit -> gut lesbar (~3,5 s).
         if (this.world.goldenWave) {
           this.banner(`${STR.waveIncoming} ${e.wave} — ${STR.goldenWave}`, 'gold-banner golden-wave', 4500);
+          return;
+        }
+        // NEU (Raum-Auftritt): echte Reise-Raeume bekommen Name + Flavor in der Akzentfarbe,
+        // die Wellennummer bleibt prominent (Zeile 1). Klassik/Normal -> schlichtes "Welle X".
+        const rm = this.world.roomMods;
+        const info = STR.rooms[rm.id];
+        if (rm.id !== 'normal' && info) {
+          const accent = rm.theme?.grid ?? rm.theme?.ring ?? 0xffffff;
+          this.bannerRoom(e.wave, info.name, info.flavor, accent);
         } else {
           this.banner(`${STR.waveIncoming} ${e.wave}`, '');
         }
@@ -219,6 +228,24 @@ export class Popups {
     this.bannerTimeout = window.setTimeout(() => {
       this.bannerEl.classList.remove('show');
     }, holdMs);
+  }
+
+  /** NEU (Raum-Auftritt): zweizeiliger Reise-Banner — Wellennummer (grosse Banner-Schrift,
+   *  bleibt prominent) + Raumname und Flavor in der Akzentfarbe. Nutzt DAS Wellen-Banner-
+   *  Element (kein Extra-Layout); Akzent via inline `--accent` (wie die Sticker-Toast). */
+  bannerRoom(wave: number, name: string, flavor: string, accent: number): void {
+    window.clearTimeout(this.bannerTimeout);
+    const hex = `#${(accent & 0xffffff).toString(16).padStart(6, '0')}`;
+    this.bannerEl.innerHTML =
+      `<span class="banner-room-wave">${STR.waveIncoming} ${wave}</span>` +
+      `<span class="banner-room-sub">${name} · ${flavor}</span>`;
+    this.bannerEl.className = 'banner room-banner';
+    this.bannerEl.style.setProperty('--accent', hex);
+    void this.bannerEl.offsetWidth;
+    this.bannerEl.classList.add('show');
+    this.bannerTimeout = window.setTimeout(() => {
+      this.bannerEl.classList.remove('show');
+    }, 2600);
   }
 
   /** NEU: „Besonderer" Banner (Mythisch/Legendaer) auf EIGENEM Element — laeuft

@@ -12,8 +12,9 @@ export interface GameEvents {
   enemyKilled: { x: number; z: number; enemyType: number; points: number; scale: number; elite: boolean };
   explosion: { x: number; z: number; radius: number; color: number };
   projectileWallHit: { x: number; z: number };
-  /** Bomber-Zuendung: roter Warn-Ring am Boden. */
-  enemyFuse: { x: number; z: number; radius: number; duration: number };
+  /** Bomber-Zuendung: roter Warn-Ring am Boden. NEU (Sturm-Blitze): optionale Farbe
+   *  (undefined = rot; Bomber/MINOS bleiben rot, Hazard-Raeume koennen faerben). */
+  enemyFuse: { x: number; z: number; radius: number; duration: number; color?: number };
   /** Kern-Dieb frisst einen liegenden Kern. */
   coreStolen: { x: number; z: number; carried: number };
   /** Kern-Dieb entkommt mitsamt Beute. */

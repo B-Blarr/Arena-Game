@@ -203,14 +203,31 @@ export class RunState implements GameState {
     const coop = g.world.players.length > 1;
     g.world.arenaRadius = ARENA_RADIUS * (rm.arenaMult ?? 1);
     g.world.maxEnemiesLimit = Math.round((coop ? COOP.maxEnemies : LIMITS.maxEnemies) * (rm.maxEnemiesMult ?? 1));
-    // Player hat kein world-Handle: Clamp-Radius + Singularitaets-Sog pro Spieler setzen.
+    // NEU (Windkanal): konstante Windrichtung DETERMINISTISCH aus der Wellennummer
+    // (kein RNG; goldener Winkel streut die Richtung ueber die Wellen, damit jede Welle
+    // anders weht). driftStrength 0/undefined -> alle 0 (No-Op im Klassik/Normal).
+    if (rm.driftStrength) {
+      const angle = w * 2.399963; // goldener Winkel in rad
+      g.world.driftX = Math.cos(angle);
+      g.world.driftZ = Math.sin(angle);
+      g.world.driftStrength = rm.driftStrength;
+    } else {
+      g.world.driftX = 0;
+      g.world.driftZ = 0;
+      g.world.driftStrength = 0;
+    }
+    // Player hat kein world-Handle: Clamp-Radius + Singularitaets-Sog + Wind-Drift pro Spieler setzen.
     for (let i = 0; i < g.world.players.length; i++) {
       const p = g.world.players[i] as Player;
       p.arenaRadius = g.world.arenaRadius;
       p.pullStrength = rm.pullStrength ?? 0;
+      p.driftX = g.world.driftX;
+      p.driftZ = g.world.driftZ;
+      p.driftStrength = g.world.driftStrength;
     }
     // NEU (Reise-Ausbau): Gefahren-Zonen der Welle zuruecksetzen (liest roomMods.hazard).
-    g.hazards.reset();
+    // Wellennummer fuer die Skalierung (mehr Zonen/schnelleres Tempo spaeter).
+    g.hazards.reset(w);
     // VOR waves.startWave: Spawns/Scaling muessen das Golden-Flag schon sehen
     g.surprise.rollForWave(w);
     g.waves.startWave(w);
@@ -291,7 +308,24 @@ export class RunState implements GameState {
     g.pickupSystem.update(dt);
     g.surprise.update(dt);
     // NEU (Reise-Ausbau): Gefahren-Zonen nur waehrend der aktiven Welle ticken lassen.
-    if (this.phase === 'wave') g.hazards.update(dt);
+    if (this.phase === 'wave') {
+      g.hazards.update(dt);
+      // NEU (Kollaps-Arena): die Wand faehrt pro Welle langsam nach innen. Gameplay-Clamp
+      // (world.arenaRadius + je Spieler, Player hat kein world-Handle) UND Optik
+      // (arena.setRadius, lerpt weich) muessen synchron mitlaufen. arenaShrinkTo undefined
+      // -> Tick uebersprungen -> Klassik/Normal: konstante Arena.
+      const rm = world.roomMods;
+      if (rm.arenaShrinkTo != null && world.arenaRadius > ARENA_RADIUS * rm.arenaShrinkTo) {
+        world.arenaRadius = Math.max(
+          ARENA_RADIUS * rm.arenaShrinkTo,
+          world.arenaRadius - (rm.arenaShrinkRate ?? 0) * dt,
+        );
+        for (let i = 0; i < world.players.length; i++) {
+          (world.players[i] as Player).arenaRadius = world.arenaRadius;
+        }
+        g.arena.setRadius(world.arenaRadius);
+      }
+    }
     g.score.update(dt);
     g.particles.update(dt);
 

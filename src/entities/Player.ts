@@ -73,6 +73,11 @@ export class Player {
   arenaRadius = ARENA_RADIUS;
   /** NEU (Reise-Ausbau): Singularitaets-Sog zur Mitte (Units/s, 0 = aus). */
   pullStrength = 0;
+  /** NEU (Reise-Ausbau, Windkanal): konstanter gerichteter Drift — Einheitsvektor (X/Z)
+   *  + Staerke (Units/s, 0 = aus). RunState.startWave setzt die Werte pro Welle. */
+  driftX = 0;
+  driftZ = 0;
+  driftStrength = 0;
 
   // Dash
   dashTimer = 0;
@@ -146,9 +151,12 @@ export class Player {
     this.rapidFireTimer = 0;
     this.healCarry = 0;
     this.blackHoleTimer = 0;
-    // NEU (Reise-Ausbau): Arena/Sog neutral starten (startWave setzt sie pro Welle).
+    // NEU (Reise-Ausbau): Arena/Sog/Drift neutral starten (startWave setzt sie pro Welle).
     this.arenaRadius = ARENA_RADIUS;
     this.pullStrength = 0;
+    this.driftX = 0;
+    this.driftZ = 0;
+    this.driftStrength = 0;
     this.reviveAvailable = (perma.secondChance ?? 0) > 0;
     this.phoenixCharge = false; // NEU: Phoenixkern erst per Upgrade-Wahl laden
     this.phoenixBlastPending = false;
@@ -366,6 +374,13 @@ export class Player {
           this.x -= (this.x / pd) * step;
           this.z -= (this.z / pd) * step;
         }
+      }
+      // NEU (Reise-Ausbau, Windkanal): konstanter gerichteter Drift. Nur ausserhalb des
+      // Dash (der bleibt knackig). KEIN Distanz-Cap — die Brise darf gegen die Wand
+      // druecken, der Arena-Clamp unten faengt es ab. driftStrength=0 -> No-Op.
+      if (this.driftStrength > 0) {
+        this.x += this.driftX * this.driftStrength * dt;
+        this.z += this.driftZ * this.driftStrength * dt;
       }
     }
 

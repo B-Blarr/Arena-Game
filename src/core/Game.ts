@@ -326,6 +326,11 @@ export class Game {
         // Klassik/Boss/Normal -> Radius 22 + theme null -> unveraenderte Optik.
         this.arena.setRadius(this.world.arenaRadius);
         this.arena.setRoomTheme(this.world.roomMods.theme ?? null);
+        // NEU (Windkanal): Wind-Vektor fuer den Grid-Scroll-Telegraph (0 = kein Wind).
+        this.arena.setDrift(this.world.driftX, this.world.driftZ, this.world.driftStrength);
+        // NEU (Sinnes-Signatur): Per-Raum-Grade (Bloom/Vignette). theme null -> {} -> Basis.
+        const t = this.world.roomMods.theme;
+        this.renderer.setGrade({ bloom: t?.bloom, vignette: t?.vignette });
       }),
       this.events.on('bossDied', () => this.arena.setBossMode(false)),
       // Boss-Stampfer laesst das Boden-Grid aufleuchten

@@ -22,6 +22,10 @@ const CA_BASE = 0.0006;
 /** Zusatz-Offset bei vollem Kick (Boss-Tod). */
 const CA_KICK = 0.0035;
 const CA_KICK_DECAY_TIME = 0.35;
+/** NEU (Sinnes-Signatur): Basiswerte fuer Bloom/Vignette (Klassik/Normal). Raeume
+ *  verschieben sie ueber setGrade als Delta. */
+const BLOOM_BASE = 0.9;
+const VIGNETTE_BASE = 0.55;
 
 /**
  * WebGLRenderer + pmndrs-postprocessing-Composer.
@@ -38,6 +42,9 @@ export class Renderer {
   fxIntensity = 1;
   private caKick = 0;
   private readonly ca: ChromaticAberrationEffect;
+  /** NEU (Sinnes-Signatur): pro Raum ueber setGrade angepasst (Basis + Delta * fxIntensity). */
+  private readonly bloom: BloomEffect;
+  private readonly vignette: VignetteEffect;
   private readonly onResize: () => void;
 
   constructor(canvas: HTMLCanvasElement, scene: Scene, camera: PerspectiveCamera) {
@@ -57,9 +64,9 @@ export class Renderer {
     });
     this.composer.addPass(new RenderPass(scene, camera));
 
-    const bloom = new BloomEffect({
+    this.bloom = new BloomEffect({
       mipmapBlur: true,
-      intensity: 0.9,
+      intensity: BLOOM_BASE,
       luminanceThreshold: 0.6,
       luminanceSmoothing: 0.2,
     });
@@ -69,8 +76,8 @@ export class Renderer {
       radialModulation: true,
       modulationOffset: 0.2,
     });
-    const vignette = new VignetteEffect({ offset: 0.28, darkness: 0.55 });
-    this.composer.addPass(new EffectPass(camera, bloom, tone, this.ca, vignette));
+    this.vignette = new VignetteEffect({ offset: 0.28, darkness: VIGNETTE_BASE });
+    this.composer.addPass(new EffectPass(camera, this.bloom, tone, this.ca, this.vignette));
 
     this.onResize = () => {
       camera.aspect = window.innerWidth / window.innerHeight;
@@ -84,6 +91,14 @@ export class Renderer {
   /** Kurzer CA-Stoss (Boss-Tod 1.0, Spieler-Treffer 0.5, Dash 0.35). */
   kickAberration(v: number): void {
     this.caKick = Math.max(this.caKick, Math.min(1, v));
+  }
+
+  /** NEU (Sinnes-Signatur): Per-Raum-Grade als DELTA auf die Basis (Bloom/Vignette).
+   *  Das Delta wird mit fxIntensity gedaempft -> "Effekte reduzieren" zieht die Raum-Optik
+   *  sanft Richtung Basis. Aufruf mit {} (Normal/Klassik) ergibt exakt die Basiswerte. */
+  setGrade(grade: { bloom?: number; vignette?: number }): void {
+    this.bloom.intensity = Math.max(0, BLOOM_BASE + (grade.bloom ?? 0) * this.fxIntensity);
+    this.vignette.darkness = Math.max(0, VIGNETTE_BASE + (grade.vignette ?? 0) * this.fxIntensity);
   }
 
   render(deltaSec: number): void {

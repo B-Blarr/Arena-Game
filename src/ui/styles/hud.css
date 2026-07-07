@@ -399,6 +399,30 @@ body.reduce-fx .hud-combo.c3 .hud-combo-ring {
   100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
 }
 
+/* NEU (Raum-Auftritt): zweizeiliger Reise-Banner. Zeile 1 = Wellennummer (grosse
+   Banner-Schrift, bleibt prominent), Zeile 2 = Raumname + Flavor in der Akzentfarbe
+   (--accent, inline gesetzt). Nutzt das Wellen-Banner-Element; Flex-Spalte stapelt. */
+.banner.room-banner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1em;
+}
+
+.banner-room-wave {
+  display: block;
+}
+
+.banner-room-sub {
+  display: block;
+  color: var(--accent, var(--text-1));
+  font-size: clamp(1rem, 2.5vw, 1.5rem);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  text-shadow: 0 0 12px var(--accent, rgba(255, 255, 255, 0.6));
+}
+
 /* NEU: „Besonderer" Banner (Mythisch/Legendaer) — EIGENES Element (special-banner),
    damit der Wellen-Banner ihn nicht ueberschreibt. Eigene Position (top:20%, ueber
    dem Wellen-Banner bei 30%), laenger sichtbar (~3,5 s). */

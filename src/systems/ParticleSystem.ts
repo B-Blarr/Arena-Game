@@ -221,9 +221,10 @@ export class ParticleSystem {
         this.burst(e.x, e.z, 0x00e5ff, 6, { speedMin: 1, speedMax: 3, lifeMin: 0.2, lifeMax: 0.35, gravity: 0, sizeMin: 0.06, sizeMax: 0.12 });
       }),
       // ---------------- Neue Inhalte ----------------
-      // Bomber-Zuendung: statischer roter Warn-Ring in Blast-Groesse
+      // Bomber-Zuendung: statischer Warn-Ring in Blast-Groesse (NEU: Farbe optional,
+      // Default rot; Sturm-Blitze faerben ihn elektrisch-blau).
       events.on('enemyFuse', (e) => {
-        this.spawnRing(e.x, e.z, e.radius * 0.97, e.radius, e.duration, 0.6, 0xff3b30, 'hold');
+        this.spawnRing(e.x, e.z, e.radius * 0.97, e.radius, e.duration, 0.6, e.color ?? 0xff3b30, 'hold');
       }),
       // Elite-Schild zerbricht: weisser Klirr-Ring
       events.on('eliteShieldBroken', (e) => {

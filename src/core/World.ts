@@ -81,8 +81,15 @@ export class World {
    *  ROOM_NORMAL (bit-exakte Identitaet). NIE world.mods mutieren, nur hier lesen. */
   roomMods: RoomDef = ROOM_NORMAL;
   /** NEU (Reise-Ausbau): Arena-Radius der laufenden Welle. Klassik/Boss/Normal:
-   *  ARENA_RADIUS (22). RunState.startWave setzt roomMods.arenaMult ein. */
+   *  ARENA_RADIUS (22). RunState.startWave setzt roomMods.arenaMult ein.
+   *  Kollaps-Arena tickt ihn in RunState.update pro Frame nach innen. */
   arenaRadius = ARENA_RADIUS;
+  /** NEU (Windkanal): gerichteter Drift der laufenden Welle — Einheitsvektor (X/Z) +
+   *  Staerke (Units/s). Klassik/Normal: 0 (No-Op). RunState.startWave setzt die
+   *  Richtung deterministisch pro Welle; Player kopiert sich die Werte (kein world-Handle). */
+  driftX = 0;
+  driftZ = 0;
+  driftStrength = 0;
   /** In diesem Lauf gesammelte Kerne (geteilte Team-Waehrung). */
   runCores = 0;
   /** Spielzeit im Lauf (fuer Bob-Animationen etc.). */
@@ -158,6 +165,11 @@ export class World {
     // NEU (Reise-Ausbau): Arena-Radius neutralisieren, sonst leckt ein Reise-Lauf
     // (kleinere/groessere Arena) in einen danach gestarteten Daily.
     this.arenaRadius = ARENA_RADIUS;
+    // NEU (Windkanal): Drift bedingungslos neutralisieren, sonst leckt ein Reise-Wind
+    // in einen danach gestarteten (klassischen) Daily.
+    this.driftX = 0;
+    this.driftZ = 0;
+    this.driftStrength = 0;
     this.enemyTimeScale = 1; // NEU: Zeitbruch startet jeden Lauf inaktiv
     this.runCores = 0;
     this.elapsed = 0;

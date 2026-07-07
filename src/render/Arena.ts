@@ -72,6 +72,9 @@ export class Arena {
   private pylonMat!: MeshBasicMaterial;
   private pylonMesh!: InstancedMesh;
   private stars!: Points;
+  /** NEU (Sinnes-Signatur): Sternen-Material (Per-Raum-Toenung) + Dreh-Tempo-Faktor. */
+  private starMat!: PointsMaterial;
+  private starSpeedMult = 1;
   // NEU (Reise-Ausbau): Wand + Ringe fuer die per-Raum-Groesse skalierbar halten
   // (einmal mit ARENA_RADIUS gebaut, danach nur ueber .scale angepasst).
   private wallMesh!: Mesh;
@@ -81,9 +84,13 @@ export class Arena {
   /** Aktive Raum-Optik (Render-only); null = reines Biome (Klassik/Normal). */
   private roomTheme: RoomTheme | null = null;
   /** NEU (Atmosphaere): laufende Optik-Animation der Raum-Optik. */
-  private themeAnim?: 'pulseFog' | 'swirl' | 'flicker';
+  private themeAnim?: 'pulseFog' | 'swirl' | 'flicker' | 'drift';
   private animTime = 0;
   private flickerTimer = 0;
+  /** NEU (Windkanal): Wind-Vektor + Staerke fuer den Grid-Scroll-Telegraph (Render-only). */
+  private driftX = 0;
+  private driftZ = 0;
+  private driftStrength = 0;
   /** Grid-Textur (fuer swirl-Rotation). */
   private gridTex!: CanvasTexture;
   private readonly bgColor = new Color(0x050510);
@@ -292,6 +299,7 @@ export class Arena {
         fog: false,
       }),
     );
+    this.starMat = mat; // NEU (Sinnes-Signatur): fuer Per-Raum-Toenung gemerkt
     this.stars = new Points(geo, mat);
     scene.add(this.stars);
   }
@@ -317,6 +325,14 @@ export class Arena {
     this.targetRadius = r;
   }
 
+  /** NEU (Windkanal): Wind-Vektor + Staerke fuer den Grid-Scroll-Telegraph (Render-only).
+   *  strength 0 -> kein Scroll (Game.ts pusht das aus world.drift* daneben zum Radius). */
+  setDrift(dx: number, dz: number, strength: number): void {
+    this.driftX = dx;
+    this.driftZ = dz;
+    this.driftStrength = strength;
+  }
+
   /** NEU (Reise-Ausbau): Raum-Optik setzen (null = reines Biome). */
   setRoomTheme(theme: RoomTheme | null): void {
     this.roomTheme = theme;
@@ -328,6 +344,14 @@ export class Arena {
     } else if (this.themeAnim === 'swirl' && this.gridTex) {
       this.gridTex.center.set(0.5, 0.5);
     }
+    // NEU (Windkanal): Grid-Offset nur im drift-Raum scrollen; sonst zuruecksetzen.
+    if (this.themeAnim !== 'drift' && this.gridTex) {
+      this.gridTex.offset.set(0, 0);
+      this.gridTex.needsUpdate = true;
+    }
+    // NEU (Sinnes-Signatur): Sternenhimmel pro Raum toenen + Dreh-Tempo (undefined = neutral).
+    if (this.starMat) this.starMat.color.set(theme?.starTint ?? 0xffffff);
+    this.starSpeedMult = theme?.starSpeed ?? 1;
     this.refreshTargets();
   }
 
@@ -426,13 +450,20 @@ export class Arena {
           this.beatPulse = Math.max(this.beatPulse, 0.9);
           this.flickerTimer = 0.3 + Math.random() * 1.4;
         }
+      } else if (this.themeAnim === 'drift') {
+        // NEU (Windkanal): Grid scrollt in Windrichtung -> zeigt, wohin die Brise schiebt.
+        if (this.gridTex && this.driftStrength > 0) {
+          this.gridTex.offset.x += this.driftX * rawDt * 0.08;
+          this.gridTex.offset.y += this.driftZ * rawDt * 0.08;
+          this.gridTex.needsUpdate = true;
+        }
       }
     }
 
     this.floorMat.emissiveIntensity = this.gridIntensity + this.beatPulse * 0.25;
 
-    // Langsame Himmelsdrehung
-    this.stars.rotation.y += rawDt * 0.01;
+    // Langsame Himmelsdrehung (NEU: Per-Raum-Tempo-Faktor der Sinnes-Signatur)
+    this.stars.rotation.y += rawDt * 0.01 * this.starSpeedMult;
   }
 
   dispose(): void {
