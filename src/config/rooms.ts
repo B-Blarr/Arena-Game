@@ -174,9 +174,9 @@ const ROOM_STORM: RoomDef = {
   budgetMult: 1.15, eliteMult: 1.0,
   hpMult: 1.0, speedMult: 1.35, damageMult: 1.25,
   // NEU (Sturm-Blitze): vereinzelte, gut vorgewarnte elektrische Einschlaege ueber das
-  // HazardSystem. Bewusst schwach dosiert (kleiner Radius, 1 Blitz, spaet max 2) — der
-  // Sturm ist ohnehin hart. Reise-only -> Klassik zieht rngHazard weiterhin nie.
-  hazard: { interval: 2.6, warn: 1.2, radius: 2.2, damage: 12, count: 1, color: 0x9adfff, countRampEvery: 5, countMax: 2, intervalMin: 2.0 },
+  // HazardSystem. Bewusst schwach dosiert (kleiner Radius) — der Sturm ist ohnehin hart.
+  // Skaliert: 1 Blitz (W2-6) -> 2 (W7-11) -> 3 (W12+). Reise-only -> Klassik zieht rngHazard nie.
+  hazard: { interval: 2.6, warn: 1.2, radius: 2.2, damage: 12, count: 1, color: 0x9adfff, countRampEvery: 5, countMax: 3, intervalMin: 2.0 },
   coreDropBonus: 1, guaranteeRare: false, healFrac: 0, bonusCores: 0,
   theme: { bg: 0x080618, grid: 0x6a5cff, wall: 0x8f7dff, ring: 0x9adfff, fogDensity: 0.024, gridIntensity: 0.5, anim: 'flicker', bloom: 0.3, vignette: 0.1, starTint: 0x9adfff, starSpeed: 2.2 },
 };
