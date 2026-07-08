@@ -83,43 +83,51 @@ export class MenuScreen {
   }
 
   private build(): void {
+    // GEAENDERT (Layout-Fix kleine Screens): Inhalt in einen scrollbaren .menu-scroll-Track,
+    // die Steuerungs-Hinweise in einen .menu-footer-Track. Zwei getrennte Flex-Spuren -> die
+    // Hilfe kann sich nie mehr mit den Buttons/Toggles ueberlappen; bei zu wenig Hoehe scrollt
+    // der Inhalt statt zu kollidieren. .menu-corner/.menu-profile bleiben absolute Overlays.
     this.root.innerHTML = `
       <div class="menu-corner left"><span>⬡</span><span class="menu-cores">0</span></div>
       <div class="menu-corner right">${STR.bestScore}: <span class="menu-best">0</span></div>
       <button class="menu-profile" title="${STR.profilesTitle}">👤 <span class="menu-profile-name"></span></button>
-      <h1 class="title-glow menu-title"><span class="accent">NEON</span> ARENA</h1>
-      <div class="menu-subtitle">${STR.subtitle}</div>
-      <div class="hero-row"></div>
-      <div class="menu-colorways"></div>
-      <div class="menu-trails"></div>
-      <div class="menu-buttons">
-        <div class="menu-buttons-row">
-          <button class="btn btn-primary menu-play" data-nav-default data-key="menu-play">${STR.play}</button>
-          <button class="btn menu-coop" data-key="menu-coop">${STR.coopButton}</button>
+      <div class="menu-scroll">
+        <h1 class="title-glow menu-title"><span class="accent">NEON</span> ARENA</h1>
+        <div class="menu-subtitle">${STR.subtitle}</div>
+        <div class="hero-row"></div>
+        <div class="menu-colorways"></div>
+        <div class="menu-trails"></div>
+        <div class="menu-buttons">
+          <div class="menu-buttons-row">
+            <button class="btn btn-primary menu-play" data-nav-default data-key="menu-play">${STR.play}</button>
+            <button class="btn menu-coop" data-key="menu-coop">${STR.coopButton}</button>
+          </div>
+          <div class="menu-buttons-row">
+            <button class="btn menu-shop" data-key="menu-shop">🛠 ${STR.shop}</button>
+            <button class="btn btn-gold menu-leaderboard" data-key="menu-lb">🏆 ${STR.leaderboard}</button>
+            <button class="btn btn-magenta menu-album" data-key="menu-album">🏅 ${STR.album}<span class="menu-album-new"></span></button>
+          </div>
         </div>
-        <div class="menu-buttons-row">
-          <button class="btn menu-shop" data-key="menu-shop">🛠 ${STR.shop}</button>
-          <button class="btn btn-gold menu-leaderboard" data-key="menu-lb">🏆 ${STR.leaderboard}</button>
-          <button class="btn btn-magenta menu-album" data-key="menu-album">🏅 ${STR.album}<span class="menu-album-new"></span></button>
+        <div class="menu-options">
+          <div class="toggle-row"><span class="option-label">${STR.difficulty}</span><span class="segmented seg-diff"></span></div>
+          <div class="toggle-row"><span class="option-label">${STR.autoAim}</span><span class="segmented seg-aim"></span></div>
+          <div class="toggle-row"><span class="option-label" title="${STR.dailySeedHint}">${STR.dailySeed}</span><span class="segmented seg-daily"></span></div>
+          <div class="toggle-row"><span class="option-label" title="${STR.journeyModeHint}">${STR.journeyMode}</span><span class="segmented seg-journey"></span></div>
         </div>
       </div>
-      <div class="menu-options">
-        <div class="toggle-row"><span class="option-label">${STR.difficulty}</span><span class="segmented seg-diff"></span></div>
-        <div class="toggle-row"><span class="option-label">${STR.autoAim}</span><span class="segmented seg-aim"></span></div>
-        <div class="toggle-row"><span class="option-label" title="${STR.dailySeedHint}">${STR.dailySeed}</span><span class="segmented seg-daily"></span></div>
-        <div class="toggle-row"><span class="option-label" title="${STR.journeyModeHint}">${STR.journeyMode}</span><span class="segmented seg-journey"></span></div>
+      <div class="menu-footer">
+        <div class="menu-hint">
+          <span><span class="keycap">W</span><span class="keycap">A</span><span class="keycap">S</span><span class="keycap">D</span> / Pfeile: Laufen</span>
+          <span><span class="keycap">Leertaste</span> Dash</span>
+          <span><span class="keycap">P</span>/<span class="keycap">Esc</span> Pause</span>
+        </div>
+        <div class="menu-hint menu-hint-pad">
+          <span>${STR.padHint}</span>
+          <span>${STR.padNavHint}</span>
+        </div>
+        <div class="menu-sound-hint">${STR.padSoundHint}</div>
+        <div class="menu-warn text-dim"></div>
       </div>
-      <div class="menu-hint">
-        <span><span class="keycap">W</span><span class="keycap">A</span><span class="keycap">S</span><span class="keycap">D</span> / Pfeile: Laufen</span>
-        <span><span class="keycap">Leertaste</span> Dash</span>
-        <span><span class="keycap">P</span>/<span class="keycap">Esc</span> Pause</span>
-      </div>
-      <div class="menu-hint menu-hint-pad">
-        <span>${STR.padHint}</span>
-        <span>${STR.padNavHint}</span>
-      </div>
-      <div class="menu-sound-hint">${STR.padSoundHint}</div>
-      <div class="menu-warn text-dim" style="position:absolute; bottom:64px; font-size:1rem; color:#ffb84d;"></div>
     `;
     this.heroRow = this.root.querySelector('.hero-row') as HTMLElement;
     this.diffSeg = this.root.querySelector('.seg-diff') as HTMLElement;
