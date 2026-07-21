@@ -1,5 +1,6 @@
 import { STR } from '../../config/strings.de';
 import type { SaveManager } from '../../save/SaveManager';
+import { escapeHtml } from '../../utils/html';
 
 export interface LeaderboardCallbacks {
   onBack: () => void;
@@ -41,8 +42,9 @@ export class LeaderboardScreen {
         this.render();
       });
     });
-    (this.root.querySelector('.leaderboard-back') as HTMLButtonElement)
-      .addEventListener('click', () => this.cb.onBack());
+    (this.root.querySelector('.leaderboard-back') as HTMLButtonElement).addEventListener('click', () =>
+      this.cb.onBack(),
+    );
   }
 
   render(): void {
@@ -87,7 +89,8 @@ export class LeaderboardScreen {
         <tbody>
     `;
     rows.forEach((r, i) => {
-      const medal = i === 0 && r.best > 0 ? '🥇' : i === 1 && r.best > 0 ? '🥈' : i === 2 && r.best > 0 ? '🥉' : String(i + 1);
+      const medal =
+        i === 0 && r.best > 0 ? '🥇' : i === 1 && r.best > 0 ? '🥈' : i === 2 && r.best > 0 ? '🥉' : String(i + 1);
       const active = r.id === this.save.activeId ? ' class="lb-active"' : '';
       html += `
         <tr${active}>
@@ -107,8 +110,4 @@ export class LeaderboardScreen {
     }
     this.tableWrap.innerHTML = html;
   }
-}
-
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }

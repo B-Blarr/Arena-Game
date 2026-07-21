@@ -1,5 +1,6 @@
 import { STR } from '../../config/strings.de';
 import { MAX_PROFILES, MAX_PROFILE_NAME_LEN, type SaveManager } from '../../save/SaveManager';
+import { escapeHtml } from '../../utils/html';
 
 export interface ProfilesCallbacks {
   onBack: () => void;
@@ -47,8 +48,7 @@ export class ProfilesScreen {
     this.createBtn = this.root.querySelector('.profile-create-btn') as HTMLButtonElement;
     this.hintEl = this.root.querySelector('.profile-hint') as HTMLElement;
 
-    (this.root.querySelector('.profiles-back') as HTMLButtonElement)
-      .addEventListener('click', () => this.cb.onBack());
+    (this.root.querySelector('.profiles-back') as HTMLButtonElement).addEventListener('click', () => this.cb.onBack());
     this.createBtn.addEventListener('click', () => this.create());
     this.inputEl.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') this.create();
@@ -139,8 +139,4 @@ export class ProfilesScreen {
       this.listEl.appendChild(card);
     }
   }
-}
-
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }

@@ -2,6 +2,7 @@ import { STR } from '../../config/strings.de';
 import type { Difficulty } from '../../config/balance';
 import type { InputManager, InputSource } from '../../input/InputManager';
 import type { SaveManager } from '../../save/SaveManager';
+import { escapeHtml } from '../../utils/html';
 
 export interface CoopSetupCallbacks {
   onBack: () => void;
@@ -60,8 +61,7 @@ export class CoopSetupScreen {
     this.diffSeg = this.root.querySelector('.coop-diff') as HTMLElement;
     this.hintEl = this.root.querySelector('.coop-hint') as HTMLElement;
     this.startBtn = this.root.querySelector('.coop-start') as HTMLButtonElement;
-    (this.root.querySelector('.coop-back') as HTMLButtonElement)
-      .addEventListener('click', () => this.cb.onBack());
+    (this.root.querySelector('.coop-back') as HTMLButtonElement).addEventListener('click', () => this.cb.onBack());
     this.startBtn.addEventListener('click', () => this.tryStart());
   }
 
@@ -195,8 +195,4 @@ export class CoopSetupScreen {
       : STR.guest;
     this.cb.onStart(this.selectedP2, name, this.difficulty);
   }
-}
-
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }

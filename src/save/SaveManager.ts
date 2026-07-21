@@ -87,7 +87,7 @@ interface ProfileRegistry {
   profiles: ProfileMeta[];
 }
 
-function defaults(): SaveData {
+export function defaults(): SaveData {
   return {
     version: 1,
     cores: 0,
@@ -135,7 +135,7 @@ function isDifficulty(v: unknown): v is Difficulty {
 }
 
 /** Fuellt fehlende/falsche Felder mit Defaults auf — kein Crash bei kaputtem Save. */
-function sanitize(raw: unknown): SaveData {
+export function sanitize(raw: unknown): SaveData {
   const d = defaults();
   if (typeof raw !== 'object' || raw === null) return d;
   const r = raw as Record<string, unknown>;
@@ -333,9 +333,10 @@ export class SaveManager {
       }
     }
     if (profiles.length === 0) return null;
-    const activeId = typeof r.activeId === 'string' && profiles.some((p) => p.id === r.activeId)
-      ? r.activeId
-      : (profiles[0] as ProfileMeta).id;
+    const activeId =
+      typeof r.activeId === 'string' && profiles.some((p) => p.id === r.activeId)
+        ? r.activeId
+        : (profiles[0] as ProfileMeta).id;
     return { version: 2, activeId, profiles };
   }
 
