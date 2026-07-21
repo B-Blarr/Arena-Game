@@ -45,7 +45,10 @@ export class Hud {
 
   onMuteToggle: (() => void) | null = null;
 
-  constructor(events: EventBus, private readonly sfx: Sfx) {
+  constructor(
+    events: EventBus,
+    private readonly sfx: Sfx,
+  ) {
     this.root = document.getElementById('hud') as HTMLElement;
     this.root.innerHTML = `
       <div class="hud-cores"><span class="core-icon">⬡</span><span class="hud-cores-val">0</span></div>
@@ -142,8 +145,7 @@ export class Hud {
       }),
       events.on('bossSpawned', (e) => {
         this.bossWrap.classList.remove('hidden');
-        this.bossName.textContent =
-          (STR.bosses[e.name] ?? e.name.toUpperCase());
+        this.bossName.textContent = STR.bosses[e.name] ?? e.name.toUpperCase();
         // Drama: Leiste fuellt sich in 1 s von 0 auf 100 %
         this.bossFill.style.transition = 'none';
         this.bossFill.style.transform = 'scaleX(0)';
@@ -183,8 +185,7 @@ export class Hud {
     const low = frac < 0.3 && hp > 0;
     wrap.classList.toggle('low', low);
     // Herzschlag/Vignette: reagiert, sobald IRGENDEIN Spieler knapp ist
-    this.lowHp = this.hpWrap.classList.contains('low')
-      || (this.coopActive && this.hpWrap2.classList.contains('low'));
+    this.lowHp = this.hpWrap.classList.contains('low') || (this.coopActive && this.hpWrap2.classList.contains('low'));
     this.vignette?.classList.toggle('active', this.lowHp);
     if (damaged) this.flashHpBar(idx);
   }

@@ -1,11 +1,4 @@
-import {
-  HalfFloatType,
-  NoToneMapping,
-  PerspectiveCamera,
-  Scene,
-  Vector2,
-  WebGLRenderer,
-} from 'three';
+import { HalfFloatType, NoToneMapping, PerspectiveCamera, Scene, Vector2, WebGLRenderer } from 'three';
 import {
   BloomEffect,
   ChromaticAberrationEffect,

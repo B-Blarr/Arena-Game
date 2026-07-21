@@ -34,12 +34,18 @@ export class PathSystem {
     // wird IMMER gezogen, auch wenn der Pool leer waere — feste Draw-Zahl.
     for (let k = 0; k < 2; k++) {
       const roll = rng.next();
-      const pick = weightedPickByRoll(eligibleRisk.filter((r) => !chosen.includes(r)), roll);
+      const pick = weightedPickByRoll(
+        eligibleRisk.filter((r) => !chosen.includes(r)),
+        roll,
+      );
       if (pick) chosen.push(pick);
     }
     // Draw 3: Wildcard aus dem Gesamt-Pool (normal/oasis nur hier moeglich, selten).
     const rollC = rng.next();
-    const wildcard = weightedPickByRoll(eligibleAll.filter((r) => !chosen.includes(r)), rollC);
+    const wildcard = weightedPickByRoll(
+      eligibleAll.filter((r) => !chosen.includes(r)),
+      rollC,
+    );
     if (wildcard) chosen.push(wildcard);
 
     // Draw 4: IMMER ziehen (haelt die Draw-Zahl konstant). Loest eine evtl. gezogene

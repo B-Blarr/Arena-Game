@@ -127,8 +127,7 @@ export class CollisionSystem {
       const rr = e.radius + proj.radius;
       const d2 = segPointDist2(proj.prevX, proj.prevZ, proj.x, proj.z, e.x, e.z);
       if (d2 < rr * rr) {
-        const distToStart =
-          (e.x - proj.prevX) * (e.x - proj.prevX) + (e.z - proj.prevZ) * (e.z - proj.prevZ);
+        const distToStart = (e.x - proj.prevX) * (e.x - proj.prevX) + (e.z - proj.prevZ) * (e.z - proj.prevZ);
         if (distToStart < bestD2) {
           bestD2 = distToStart;
           hitIdx = idx;
@@ -162,9 +161,7 @@ export class CollisionSystem {
       if (segPointDist2(proj.prevX, proj.prevZ, proj.x, proj.z, boss.x, boss.z) < rr * rr) {
         projectileMarkHit(proj, BOSS_HIT_UID);
         const crit = Math.random() < owner.stats.critChance;
-        const damage = Math.round(
-          proj.damage * (crit ? owner.stats.critMultiplier : 1) * owner.damageBoost,
-        );
+        const damage = Math.round(proj.damage * (crit ? owner.stats.critMultiplier : 1) * owner.damageBoost);
         boss.takeDamage(damage, this.events);
         this.events.emit('enemyHit', { x: proj.x, z: proj.z, damage, crit, enemyType: -1 });
         if (proj.pierceLeft > 0) {
@@ -187,9 +184,7 @@ export class CollisionSystem {
         if (segPointDist2(proj.prevX, proj.prevZ, proj.x, proj.z, m.x, m.z) < rr * rr) {
           projectileMarkHit(proj, miniHitUid(mi));
           const crit = Math.random() < owner.stats.critChance;
-          const damage = Math.round(
-            proj.damage * (crit ? owner.stats.critMultiplier : 1) * owner.damageBoost,
-          );
+          const damage = Math.round(proj.damage * (crit ? owner.stats.critMultiplier : 1) * owner.damageBoost);
           m.hp -= damage;
           m.flashTimer = 0.08;
           m.scalePop = 0.2;

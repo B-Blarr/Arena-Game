@@ -21,9 +21,16 @@ import {
 import type { HeroDef } from '../config/heroes';
 import { ROOM_NORMAL, type RoomDef } from '../config/rooms';
 import {
-  makeRng, Rng,
-  RNG_STREAM_DROPS, RNG_STREAM_EVENTS, RNG_STREAM_HAZARD, RNG_STREAM_PATH, RNG_STREAM_SUMMONS,
-  RNG_STREAM_UPGRADES, RNG_STREAM_UPGRADES_P2, RNG_STREAM_WAVES,
+  makeRng,
+  Rng,
+  RNG_STREAM_DROPS,
+  RNG_STREAM_EVENTS,
+  RNG_STREAM_HAZARD,
+  RNG_STREAM_PATH,
+  RNG_STREAM_SUMMONS,
+  RNG_STREAM_UPGRADES,
+  RNG_STREAM_UPGRADES_P2,
+  RNG_STREAM_WAVES,
 } from './Rng';
 import type { EventBus } from './EventBus';
 
@@ -120,12 +127,7 @@ export class World {
     return ++this.uidCounter;
   }
 
-  reset(
-    seed: number,
-    difficulty: Difficulty,
-    configs: readonly PlayerConfig[],
-    isDaily: boolean,
-  ): void {
+  reset(seed: number, difficulty: Difficulty, configs: readonly PlayerConfig[], isDaily: boolean): void {
     this.enemies.clear();
     this.playerProjectiles.clear();
     this.enemyProjectiles.clear();
@@ -268,9 +270,13 @@ export class World {
   }
 
   spawnEnemyProjectile(
-    x: number, z: number,
-    dirX: number, dirZ: number,
-    speed: number, damage: number, range: number,
+    x: number,
+    z: number,
+    dirX: number,
+    dirZ: number,
+    speed: number,
+    damage: number,
+    range: number,
     fromBoss = false, // NEU: Boss-Projektile werden vom "Zeitbruch"-Slow ausgenommen
   ): Projectile | null {
     const p = this.enemyProjectiles.spawn();

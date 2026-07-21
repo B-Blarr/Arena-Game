@@ -10,7 +10,10 @@ export class SpatialHash {
   private readonly counts: Int32Array;
   private readonly half: number;
 
-  constructor(halfExtent: number, private readonly cellSize: number) {
+  constructor(
+    halfExtent: number,
+    private readonly cellSize: number,
+  ) {
     this.half = halfExtent;
     this.cols = Math.ceil((halfExtent * 2) / cellSize);
     this.cells = [];

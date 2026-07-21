@@ -186,14 +186,36 @@ export class Player {
   private computeStats(): PlayerStats {
     // Defaults fuer den Konstruktor (vor dem ersten reset())
     return {
-      maxHp: PLAYER.maxHp, speed: PLAYER.speed, fireRate: 2.5, damage: 10,
-      projectileSpeed: 18, range: 14, projectileCount: 1, spreadAngle: 0,
-      pierce: 0, knockback: 0, critChance: PLAYER.critChance, critMultiplier: PLAYER.critMultiplier,
-      pickupRadius: PLAYER.pickupRadius, coreChanceMult: 1, lifestealPerKill: 0,
-      orbCount: 0, orbDamage: UV.orbDamage, dashDamage: 0, dashCharges: 1,
-      dashCooldown: DASH.cooldown, frostSlow: 0, frostDuration: 0,
-      novaChance: 0, novaDamage: UV.novaDamage, ricochet: 0, boomerang: false,
-      cloneDamageFrac: 0, orbitalDamage: 0, blackHolePull: 0, overchargeBonus: 0,
+      maxHp: PLAYER.maxHp,
+      speed: PLAYER.speed,
+      fireRate: 2.5,
+      damage: 10,
+      projectileSpeed: 18,
+      range: 14,
+      projectileCount: 1,
+      spreadAngle: 0,
+      pierce: 0,
+      knockback: 0,
+      critChance: PLAYER.critChance,
+      critMultiplier: PLAYER.critMultiplier,
+      pickupRadius: PLAYER.pickupRadius,
+      coreChanceMult: 1,
+      lifestealPerKill: 0,
+      orbCount: 0,
+      orbDamage: UV.orbDamage,
+      dashDamage: 0,
+      dashCharges: 1,
+      dashCooldown: DASH.cooldown,
+      frostSlow: 0,
+      frostDuration: 0,
+      novaChance: 0,
+      novaDamage: UV.novaDamage,
+      ricochet: 0,
+      boomerang: false,
+      cloneDamageFrac: 0,
+      orbitalDamage: 0,
+      blackHolePull: 0,
+      overchargeBonus: 0,
       projectileRadius: UV.projectileRadiusBase,
       prismShotDamage: 0, // NEU (mythisch)
     };
@@ -210,9 +232,7 @@ export class Player {
     const turboLv = perma.turbo ?? 0;
     const luckLv = perma.luck ?? 0;
 
-    s.maxHp = Math.round(
-      this.hero.maxHp * (1 + armorLv * 0.1) * this.mods.playerHp + st('maxHp') * UV.maxHpPerStack,
-    );
+    s.maxHp = Math.round(this.hero.maxHp * (1 + armorLv * 0.1) * this.mods.playerHp + st('maxHp') * UV.maxHpPerStack);
     s.speed = this.hero.speed * (1 + turboLv * 0.05) * (1 + st('speed') * UV.speedPerStack);
     // NEU (mythisch): Singularitaet verdoppelt Feuerrate UND Schaden (fliesst via
     // damageMult auch in Orb/Nova/Orbital/Prisma). Faktor 1, solange nicht gewaehlt.
@@ -410,7 +430,10 @@ export class Player {
       this.blackHoleZ = hz;
       this.blackHoleTimer = UV.blackHoleDuration;
       this.events.emit('blackHole', {
-        x: hx, z: hz, radius: UV.blackHoleRadius, duration: UV.blackHoleDuration,
+        x: hx,
+        z: hz,
+        radius: UV.blackHoleRadius,
+        duration: UV.blackHoleDuration,
       });
     }
 
@@ -426,7 +449,10 @@ export class Player {
     this.hp -= amount;
     this.iFrames = PLAYER.iFramesAfterHit;
     this.events.emit('playerHit', {
-      damage: amount, hp: Math.max(0, this.hp), maxHp: this.stats.maxHp, playerIndex: this.index,
+      damage: amount,
+      hp: Math.max(0, this.hp),
+      maxHp: this.stats.maxHp,
+      playerIndex: this.index,
     });
     if (this.hp <= 0) {
       if (this.phoenixCharge) {
@@ -440,7 +466,10 @@ export class Player {
         this.events.emit('phoenixRevived', { playerIndex: this.index, x: this.x, z: this.z });
         // HUD/HP-Balken ueber die bestehende Heil-Pipeline aktualisieren (wie revive())
         this.events.emit('playerHealed', {
-          amount: this.hp, hp: this.hp, maxHp: this.stats.maxHp, playerIndex: this.index,
+          amount: this.hp,
+          hp: this.hp,
+          maxHp: this.stats.maxHp,
+          playerIndex: this.index,
         });
       } else if (this.reviveAvailable) {
         this.reviveAvailable = false;
@@ -470,7 +499,10 @@ export class Player {
     // Als Heilung melden: HUD-Balken/-Text und "+40"-Popup laufen ueber
     // die bestehende Pipeline (sonst bliebe "AM BODEN" stehen)
     this.events.emit('playerHealed', {
-      amount: this.hp, hp: this.hp, maxHp: this.stats.maxHp, playerIndex: this.index,
+      amount: this.hp,
+      hp: this.hp,
+      maxHp: this.stats.maxHp,
+      playerIndex: this.index,
     });
   }
 
@@ -481,7 +513,10 @@ export class Player {
     const gained = this.hp - before;
     if (gained > 0) {
       this.events.emit('playerHealed', {
-        amount: gained, hp: this.hp, maxHp: this.stats.maxHp, playerIndex: this.index,
+        amount: gained,
+        hp: this.hp,
+        maxHp: this.stats.maxHp,
+        playerIndex: this.index,
       });
     }
   }

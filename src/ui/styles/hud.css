@@ -60,8 +60,13 @@
 }
 
 @keyframes hp-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.55; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
 }
 
 .hud-hp-text {
@@ -109,7 +114,9 @@
   transition: transform 0.15s ease;
 }
 
-.hud-score-value.pop { transform: scale(1.15); }
+.hud-score-value.pop {
+  transform: scale(1.15);
+}
 
 .hud-combo {
   display: none;
@@ -121,10 +128,18 @@
   font-weight: 800;
 }
 
-.hud-combo.visible { display: flex; }
-.hud-combo.c1 { color: var(--accent); }
-.hud-combo.c2 { color: var(--accent-2); }
-.hud-combo.c3 { color: var(--gold); }
+.hud-combo.visible {
+  display: flex;
+}
+.hud-combo.c1 {
+  color: var(--accent);
+}
+.hud-combo.c2 {
+  color: var(--accent-2);
+}
+.hud-combo.c3 {
+  color: var(--gold);
+}
 
 /* Max-Combo: langsamer Gold-Puls (kein Strobe) */
 .hud-combo.c3 .hud-combo-ring {
@@ -133,8 +148,13 @@
 }
 
 @keyframes combo-max {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.15); }
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
 }
 
 body.reduce-fx .hud-combo.c3 .hud-combo-ring {
@@ -163,12 +183,18 @@ body.reduce-fx .hud-combo.c3 .hud-combo-ring {
   text-shadow: var(--glow-text);
 }
 
-.hud-cores .core-icon { font-size: 1.25rem; }
+.hud-cores .core-icon {
+  font-size: 1.25rem;
+}
 
-.hud-cores.pop { animation: counter-pop 0.15s ease; }
+.hud-cores.pop {
+  animation: counter-pop 0.15s ease;
+}
 
 @keyframes counter-pop {
-  50% { transform: scale(1.3); }
+  50% {
+    transform: scale(1.3);
+  }
 }
 
 /* ---------- Dash-Cooldown (unten rechts) ---------- */
@@ -183,8 +209,7 @@ body.reduce-fx .hud-combo.c3 .hud-combo-ring {
   align-items: center;
   justify-content: center;
   font-size: 1.375rem;
-  background:
-    conic-gradient(var(--accent) calc(var(--dash-t) * 360deg), rgba(255, 255, 255, 0.1) 0deg);
+  background: conic-gradient(var(--accent) calc(var(--dash-t) * 360deg), rgba(255, 255, 255, 0.1) 0deg);
   box-shadow: 0 0 12px rgba(0, 229, 255, 0.35);
   transition: transform 0.15s ease;
 }
@@ -199,7 +224,10 @@ body.reduce-fx .hud-combo.c3 .hud-combo-ring {
   justify-content: center;
 }
 
-.hud-dash.ready { transform: scale(1.12); box-shadow: 0 0 22px rgba(0, 229, 255, 0.8); }
+.hud-dash.ready {
+  transform: scale(1.12);
+  box-shadow: 0 0 22px rgba(0, 229, 255, 0.8);
+}
 
 /* Zweite Dash-Ladung (Doppel-Dash-Upgrade) */
 .hud-dash-charges {
@@ -278,8 +306,13 @@ body.reduce-fx .hud-combo.c3 .hud-combo-ring {
 }
 
 @keyframes vignette-pulse {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 #screen-flash {
@@ -294,12 +327,18 @@ body.reduce-fx .hud-combo.c3 .hud-combo-ring {
 }
 
 @keyframes white-flash {
-  0% { opacity: 0.85; }
-  100% { opacity: 0; }
+  0% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+  }
 }
 
 /* ---------- Popups (Schadenszahlen, Combo, Banner) ---------- */
-#popup-layer { overflow: hidden; }
+#popup-layer {
+  overflow: hidden;
+}
 
 .dmg-popup {
   position: absolute;
@@ -342,16 +381,38 @@ body.reduce-fx .hud-combo.c3 .hud-combo-ring {
   animation: combo-in 1s ease forwards;
 }
 
-.combo-popup.t1 { color: var(--accent); text-shadow: 0 0 12px rgba(0, 229, 255, 0.8); }
-.combo-popup.t2 { color: var(--accent-2); text-shadow: 0 0 12px rgba(255, 61, 242, 0.8); }
-.combo-popup.t3 { color: var(--gold); text-shadow: 0 0 12px rgba(255, 200, 61, 0.8); }
+.combo-popup.t1 {
+  color: var(--accent);
+  text-shadow: 0 0 12px rgba(0, 229, 255, 0.8);
+}
+.combo-popup.t2 {
+  color: var(--accent-2);
+  text-shadow: 0 0 12px rgba(255, 61, 242, 0.8);
+}
+.combo-popup.t3 {
+  color: var(--gold);
+  text-shadow: 0 0 12px rgba(255, 200, 61, 0.8);
+}
 
 @keyframes combo-in {
-  0% { opacity: 0; transform: translateX(-50%) scale(0.6); }
-  20% { opacity: 1; transform: translateX(-50%) scale(1.15); }
-  32% { transform: translateX(-50%) scale(1); }
-  80% { opacity: 1; }
-  100% { opacity: 0; transform: translateX(-50%) scale(1); }
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.6);
+  }
+  20% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1.15);
+  }
+  32% {
+    transform: translateX(-50%) scale(1);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) scale(1);
+  }
 }
 
 .banner {
@@ -376,8 +437,14 @@ body.reduce-fx .hud-combo.c3 .hud-combo-ring {
   animation: banner-in 1.8s ease forwards;
 }
 
-.banner.boss-banner { color: #ff5a70; text-shadow: 0 0 18px rgba(255, 46, 76, 0.9); }
-.banner.gold-banner { color: var(--gold); text-shadow: 0 0 18px rgba(255, 200, 61, 0.9); }
+.banner.boss-banner {
+  color: #ff5a70;
+  text-shadow: 0 0 18px rgba(255, 46, 76, 0.9);
+}
+.banner.gold-banner {
+  color: var(--gold);
+  text-shadow: 0 0 18px rgba(255, 200, 61, 0.9);
+}
 
 /* Boss-Banner: dramatischer Zoom mit zusammenlaufender Sperrung */
 .banner.boss-banner.show {
@@ -392,11 +459,24 @@ body.reduce-fx .hud-combo.c3 .hud-combo-ring {
 }
 
 @keyframes banner-golden {
-  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
-  6% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
-  10% { transform: translate(-50%, -50%) scale(1); }
-  90% { opacity: 1; }
-  100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.6);
+  }
+  6% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+  10% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1);
+  }
 }
 
 /* NEU (Raum-Auftritt): zweizeiliger Reise-Banner. Zeile 1 = Wellennummer (grosse
@@ -455,10 +535,7 @@ body.reduce-fx .hud-combo.c3 .hud-combo-ring {
 
 /* Mythisch: fliessender Regenbogen-Text */
 .special-banner.mythic {
-  background: linear-gradient(
-    100deg,
-    #ff5ce1, #ffd24d, #6dff8a, #4de6ff, #7a5cff, #ff5ce1
-  );
+  background: linear-gradient(100deg, #ff5ce1, #ffd24d, #6dff8a, #4de6ff, #7a5cff, #ff5ce1);
   background-size: 220% auto;
   -webkit-background-clip: text;
   background-clip: text;
@@ -474,16 +551,33 @@ body.reduce-fx .hud-combo.c3 .hud-combo-ring {
 }
 
 @keyframes banner-special {
-  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
-  6% { opacity: 1; transform: translate(-50%, -50%) scale(1.08); }
-  10% { transform: translate(-50%, -50%) scale(1); }
-  90% { opacity: 1; }
-  100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.6);
+  }
+  6% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.08);
+  }
+  10% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1);
+  }
 }
 
 @keyframes banner-prism-flow {
-  from { background-position: 0% center; }
-  to { background-position: 220% center; }
+  from {
+    background-position: 0% center;
+  }
+  to {
+    background-position: 220% center;
+  }
 }
 
 /* "Effekte reduzieren": statischer Regenbogen, kein Fliessen. */
@@ -492,18 +586,45 @@ body.reduce-fx .special-banner.mythic.show {
 }
 
 @keyframes banner-in {
-  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
-  12% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
-  18% { transform: translate(-50%, -50%) scale(1); }
-  80% { opacity: 1; }
-  100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.6);
+  }
+  12% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+  18% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1);
+  }
 }
 
 @keyframes banner-boss-in {
-  0% { opacity: 0; transform: translate(-50%, -50%) scale(1.3); letter-spacing: 0.4em; }
-  15% { opacity: 1; transform: translate(-50%, -50%) scale(1); letter-spacing: 0.12em; }
-  80% { opacity: 1; }
-  100% { opacity: 0; transform: translate(-50%, -50%) scale(1); letter-spacing: 0.12em; }
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.3);
+    letter-spacing: 0.4em;
+  }
+  15% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+    letter-spacing: 0.12em;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1);
+    letter-spacing: 0.12em;
+  }
 }
 
 /* ---------- Onboarding-Prompts ---------- */
@@ -527,8 +648,13 @@ body.reduce-fx .special-banner.mythic.show {
 }
 
 @keyframes prompt-float {
-  0%, 100% { transform: translateX(-50%) translateY(0); }
-  50% { transform: translateX(-50%) translateY(-6px); }
+  0%,
+  100% {
+    transform: translateX(-50%) translateY(0);
+  }
+  50% {
+    transform: translateX(-50%) translateY(-6px);
+  }
 }
 
 /* ---------- Erfolgs-Karte (Erfolg-Unlock, zentral-oben, gequeued) ----------
@@ -548,11 +674,7 @@ body.reduce-fx .special-banner.mythic.show {
   min-width: 240px;
   max-width: 90vw;
   padding: 1.1rem 2.2rem 1.25rem;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--rarity) 22%, var(--panel-bg)),
-    var(--panel-bg)
-  );
+  background: linear-gradient(180deg, color-mix(in srgb, var(--rarity) 22%, var(--panel-bg)), var(--panel-bg));
   border: 2px solid var(--rarity);
   border-radius: 18px;
   box-shadow:
@@ -562,7 +684,9 @@ body.reduce-fx .special-banner.mythic.show {
   opacity: 0;
   transform: translate(-50%, -50%) scale(0.85);
   pointer-events: none;
-  transition: opacity 0.3s ease, transform 0.3s ease;
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s ease;
 }
 
 /* weicher, pulsierender Rarity-Halo hinter der Karte */
@@ -571,11 +695,7 @@ body.reduce-fx .special-banner.mythic.show {
   position: absolute;
   inset: -40px;
   border-radius: 50%;
-  background: radial-gradient(
-    circle,
-    color-mix(in srgb, var(--rarity) 35%, transparent),
-    transparent 70%
-  );
+  background: radial-gradient(circle, color-mix(in srgb, var(--rarity) 35%, transparent), transparent 70%);
   z-index: -1;
   pointer-events: none;
 }
@@ -589,14 +709,30 @@ body.reduce-fx .special-banner.mythic.show {
 }
 
 @keyframes sticker-pop {
-  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
-  60% { opacity: 1; transform: translate(-50%, -50%) scale(1.08); }
-  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.5);
+  }
+  60% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
 }
 
 @keyframes sticker-halo {
-  0%, 100% { opacity: 0.5; transform: scale(0.95); }
-  50% { opacity: 0.9; transform: scale(1.08); }
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.08);
+  }
 }
 
 .sticker-toast-label {
@@ -616,9 +752,15 @@ body.reduce-fx .special-banner.mythic.show {
 }
 
 @keyframes sticker-icon-bounce {
-  0% { transform: scale(0.4) rotate(-12deg); }
-  55% { transform: scale(1.2) rotate(6deg); }
-  100% { transform: scale(1) rotate(0); }
+  0% {
+    transform: scale(0.4) rotate(-12deg);
+  }
+  55% {
+    transform: scale(1.2) rotate(6deg);
+  }
+  100% {
+    transform: scale(1) rotate(0);
+  }
 }
 
 .sticker-toast-name {
@@ -634,8 +776,12 @@ body.reduce-fx .sticker-toast.show {
   opacity: 1;
   transform: translate(-50%, -50%) scale(1);
 }
-body.reduce-fx .sticker-toast.show::before { animation: none; }
-body.reduce-fx .sticker-toast-icon { animation: none; }
+body.reduce-fx .sticker-toast.show::before {
+  animation: none;
+}
+body.reduce-fx .sticker-toast-icon {
+  animation: none;
+}
 
 /* ---------- Koop-HUD: zwei kompakte Spieler-Panels ---------- */
 .hud-hp-name {
@@ -650,7 +796,9 @@ body.reduce-fx .sticker-toast-icon { animation: none; }
 }
 
 /* Solo: Namensfeld leer und unsichtbar (Layout unveraendert) */
-.hud-hp-name:empty { display: none; }
+.hud-hp-name:empty {
+  display: none;
+}
 
 #hud.coop .hud-hp.p1 {
   left: 24px;
@@ -690,8 +838,12 @@ body.reduce-fx .sticker-toast-icon { animation: none; }
   transform: none;
 }
 
-.hud-hp.p2 .hud-hp-name { color: var(--accent-2); }
-#hud.coop .hud-hp.p1 .hud-hp-name { color: var(--accent); }
+.hud-hp.p2 .hud-hp-name {
+  color: var(--accent-2);
+}
+#hud.coop .hud-hp.p1 .hud-hp-name {
+  color: var(--accent);
+}
 
 /* Down-Zustand: Panel blinkt, Balken zeigt den Revive-Fortschritt in Gold */
 .hud-hp.downed .hud-hp-text {
@@ -704,8 +856,13 @@ body.reduce-fx .sticker-toast-icon { animation: none; }
 }
 
 @keyframes hud-downed-blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.35; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
 }
 
 /* Schmale Fenster: Namen weichen, Balken schrumpfen — keine Kollision */

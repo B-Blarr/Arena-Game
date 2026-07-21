@@ -96,9 +96,7 @@ export class UpgradeSystem {
     if (guaranteeRare) {
       // Garantierter Boss-Slot: mindestens Selten, aber NIE legendaer/mythisch (kein Bias)
       // GEAENDERT: mythic ebenfalls ausgeschlossen (wie legendaer).
-      const rarePool = pool.filter(
-        (u) => u.rarity !== 'common' && u.rarity !== 'legendary' && u.rarity !== 'mythic',
-      );
+      const rarePool = pool.filter((u) => u.rarity !== 'common' && u.rarity !== 'legendary' && u.rarity !== 'mythic');
       if (rarePool.length > 0) {
         const pick = this.weightedPick(rarePool, rng);
         picks.push(pick);

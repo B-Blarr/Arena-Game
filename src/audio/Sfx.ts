@@ -65,9 +65,7 @@ export class Sfx {
       events.on('thiefEscaped', () => this.thiefWhoosh()),
       events.on('blackHole', () => this.blackHoleRumble()),
       // GEAENDERT: Seltenheit mitgeben -> heroischere Fanfare fuer epic/legendary
-      events.on('stickerUnlocked', (e) =>
-        this.stickerFanfare(STICKERS.find((s) => s.id === e.id)?.rarity),
-      ),
+      events.on('stickerUnlocked', (e) => this.stickerFanfare(STICKERS.find((s) => s.id === e.id)?.rarity)),
       // Koop: Down = dumpfer Fall, Partner-Rettung = Revive-Fanfare
       events.on('playerDowned', () => this.playerDownedThud()),
       events.on('playerCoopRevived', () => this.revive()),
@@ -118,15 +116,7 @@ export class Sfx {
   // ------------------------------------------------ Bausteine
 
   /** Oszillator mit Frequenz-Sweep und perkussiver Huellkurve. */
-  private tone(
-    type: OscType,
-    f0: number,
-    f1: number,
-    dur: number,
-    vol: number,
-    startDelay = 0,
-    attack = 0.002,
-  ): void {
+  private tone(type: OscType, f0: number, f1: number, dur: number, vol: number, startDelay = 0, attack = 0.002): void {
     const ctx = this.engine.context;
     const bus = this.engine.sfxBus;
     if (!ctx || !bus) return;
@@ -235,7 +225,7 @@ export class Sfx {
     this.lastPickupTime = now;
     if (!this.engine.acquireVoice('pickup', 40, 0.16)) return;
     const penta = [0, 2, 4, 7, 9, 12];
-    const semis = penta[this.pickupStep % penta.length] as number + 12 * Math.floor(this.pickupStep / penta.length);
+    const semis = (penta[this.pickupStep % penta.length] as number) + 12 * Math.floor(this.pickupStep / penta.length);
     const f = 880 * Math.pow(2, semis / 12);
     this.tone('sine', f, f, 0.15, 0.25);
     this.tone('sine', f * 2, f * 2, 0.12, 0.1);

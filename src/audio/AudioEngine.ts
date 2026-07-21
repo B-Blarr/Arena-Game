@@ -121,9 +121,12 @@ export class AudioEngine {
     if (this.voices >= this.maxVoices) return false;
     this.lastPlayed.set(key, now);
     this.voices++;
-    window.setTimeout(() => {
-      this.voices = Math.max(0, this.voices - 1);
-    }, duration * 1000 + 50);
+    window.setTimeout(
+      () => {
+        this.voices = Math.max(0, this.voices - 1);
+      },
+      duration * 1000 + 50,
+    );
     return true;
   }
 

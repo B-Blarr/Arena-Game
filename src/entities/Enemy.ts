@@ -57,14 +57,41 @@ export interface Enemy {
 
 export function makeEnemy(): Enemy {
   return {
-    uid: 0, type: 0,
-    x: 0, z: 0, prevX: 0, prevZ: 0, kvx: 0, kvz: 0,
-    hp: 1, maxHp: 1, speed: 1, damage: 0, points: 0, radius: 0.5, sizeMult: 1, mass: 1, coreChance: 0,
-    flashTimer: 0, scalePop: 0, slowTimer: 0, slowFactor: 1,
-    fireTimer: 0, telegraphTimer: 0, spawnProtection: 0,
-    orbCooldown: 0, dashHitToken: -1, novaDepth: 0,
-    eliteAffix: 0, shieldHp: 0, carriedCores: 0, escaped: false, lastAttacker: 0,
-    yRot: 0, rotSpeed: 0, bobPhase: 0,
+    uid: 0,
+    type: 0,
+    x: 0,
+    z: 0,
+    prevX: 0,
+    prevZ: 0,
+    kvx: 0,
+    kvz: 0,
+    hp: 1,
+    maxHp: 1,
+    speed: 1,
+    damage: 0,
+    points: 0,
+    radius: 0.5,
+    sizeMult: 1,
+    mass: 1,
+    coreChance: 0,
+    flashTimer: 0,
+    scalePop: 0,
+    slowTimer: 0,
+    slowFactor: 1,
+    fireTimer: 0,
+    telegraphTimer: 0,
+    spawnProtection: 0,
+    orbCooldown: 0,
+    dashHitToken: -1,
+    novaDepth: 0,
+    eliteAffix: 0,
+    shieldHp: 0,
+    carriedCores: 0,
+    escaped: false,
+    lastAttacker: 0,
+    yRot: 0,
+    rotSpeed: 0,
+    bobPhase: 0,
   };
 }
 
@@ -76,14 +103,7 @@ export interface EnemyScaling {
   size: number;
 }
 
-export function initEnemy(
-  e: Enemy,
-  type: number,
-  x: number,
-  z: number,
-  scaling: EnemyScaling,
-  uid: number,
-): void {
+export function initEnemy(e: Enemy, type: number, x: number, z: number, scaling: EnemyScaling, uid: number): void {
   const def = ENEMIES[type] as EnemyDef;
   e.uid = uid;
   e.type = type;
@@ -109,9 +129,7 @@ export function initEnemy(
   e.slowFactor = 1;
   // Phantom: Blink-Timer deterministisch (uid-gestaffelt) — der Teleport ist
   // Gameplay, kein Kosmetik-Jitter, und darf den Daily Seed nicht brechen.
-  e.fireTimer = type === ENEMY_PHANTOM
-    ? PHANTOM_AI.blinkInterval * (0.6 + 0.15 * (uid % 4))
-    : 1 + Math.random() * 1.5;
+  e.fireTimer = type === ENEMY_PHANTOM ? PHANTOM_AI.blinkInterval * (0.6 + 0.15 * (uid % 4)) : 1 + Math.random() * 1.5;
   e.telegraphTimer = 0;
   e.spawnProtection = 0;
   e.orbCooldown = 0;

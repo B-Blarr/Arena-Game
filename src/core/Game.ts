@@ -222,7 +222,8 @@ export class Game {
       onChoose: (i) => this.runState.chooseUpgrade(i),
       onReroll: () => this.runState.rerollUpgrades(),
     });
-    this.pathScreen = new PathScreen({ // NEU (Reise-Modus)
+    this.pathScreen = new PathScreen({
+      // NEU (Reise-Modus)
       onChoose: (i) => this.runState.choosePath(i),
     });
     this.pauseScreen = new PauseScreen(this.save, {
@@ -460,7 +461,8 @@ export class Game {
       const p2Data = this.save.profileData(p2Id);
       p2Data.cores += coresEarned;
       p2Data.stats.totalRuns++;
-      if (this.runMode !== 'journey') { // NEU (Reise-Modus): Reise nicht in die Bestenliste
+      if (this.runMode !== 'journey') {
+        // NEU (Reise-Modus): Reise nicht in die Bestenliste
         if (finalScore > p2Data.bestScoresCoop[diff]) p2Data.bestScoresCoop[diff] = finalScore;
         if (wave > p2Data.bestWavesCoop[diff]) p2Data.bestWavesCoop[diff] = wave;
       }
@@ -481,9 +483,12 @@ export class Game {
       score: finalScore,
       wave,
       isRecord,
-      best: this.runMode === 'journey'
-        ? save.bestJourneyScores[diff]
-        : (isCoop ? save.bestScoresCoop[diff] : save.bestScores[diff]),
+      best:
+        this.runMode === 'journey'
+          ? save.bestJourneyScores[diff]
+          : isCoop
+            ? save.bestScoresCoop[diff]
+            : save.bestScores[diff],
       coresEarned,
       totalCores: save.cores,
       teaser: this.buildTeaser(),

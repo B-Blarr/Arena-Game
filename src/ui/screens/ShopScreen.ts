@@ -9,14 +9,24 @@ export interface ShopCallbacks {
 }
 
 const HERO_GLYPHS: Record<string, string> = {
-  volt: '▲', blitz: '⚡', brocken: '⬢',
+  volt: '▲',
+  blitz: '⚡',
+  brocken: '⬢',
   // NEU (Premium-Helden)
-  koloss: '🗿', kristall: '💎', phantom: '👁', orbit: '🪐',
+  koloss: '🗿',
+  kristall: '💎',
+  phantom: '👁',
+  orbit: '🪐',
 };
 const HERO_COLORS: Record<string, string> = {
-  volt: '#00e5ff', blitz: '#ffe97a', brocken: '#ff8a5c',
+  volt: '#00e5ff',
+  blitz: '#ffe97a',
+  brocken: '#ff8a5c',
   // NEU (Premium-Helden)
-  koloss: '#ffb060', kristall: '#bff6ff', phantom: '#b57aff', orbit: '#bff8ff',
+  koloss: '#ffb060',
+  kristall: '#bff6ff',
+  phantom: '#b57aff',
+  orbit: '#bff8ff',
 };
 const WEAPON_GLYPHS: Record<string, string> = { laser: '✦', star: '✶' };
 
@@ -182,8 +192,9 @@ export class ShopScreen {
       const item = document.createElement('div');
       item.className = 'panel shop-bonus';
       item.dataset.key = `bonus-${bonus.id}`;
-      const pips = Array.from({ length: maxLevel }, (_, i) =>
-        `<span class="shop-pip${i < level ? ' filled' : ''}"></span>`,
+      const pips = Array.from(
+        { length: maxLevel },
+        (_, i) => `<span class="shop-pip${i < level ? ' filled' : ''}"></span>`,
       ).join('');
       item.innerHTML = `
         <div class="shop-bonus-info">

@@ -1,8 +1,15 @@
 import type { EventBus } from '../core/EventBus';
 
 const SCREEN_IDS = [
-  'screen-menu', 'screen-upgrade', 'screen-path', 'screen-pause', 'screen-gameover',
-  'screen-shop', 'screen-profiles', 'screen-leaderboard', 'screen-album',
+  'screen-menu',
+  'screen-upgrade',
+  'screen-path',
+  'screen-pause',
+  'screen-gameover',
+  'screen-shop',
+  'screen-profiles',
+  'screen-leaderboard',
+  'screen-album',
   'screen-coop-setup',
 ] as const;
 export type ScreenId = (typeof SCREEN_IDS)[number];
@@ -35,7 +42,9 @@ export class UiManager {
     const ui = document.getElementById('ui') as HTMLElement;
     const onClick = (e: Event): void => {
       const target = e.target as HTMLElement | null;
-      if (target?.closest('.btn, .hero-card, .upgrade-card, .segmented button, .hud-mute, .menu-profile, .profile-select')) {
+      if (
+        target?.closest('.btn, .hero-card, .upgrade-card, .segmented button, .hud-mute, .menu-profile, .profile-select')
+      ) {
         events.emit('uiClick', {});
       }
     };

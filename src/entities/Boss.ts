@@ -1,8 +1,4 @@
-import {
-  bossCooldownMult,
-  bossProjectileSpeedMult,
-  type BossDef,
-} from '../config/bosses';
+import { bossCooldownMult, bossProjectileSpeedMult, type BossDef } from '../config/bosses';
 import type { EventBus } from '../core/EventBus';
 
 export interface BossMini {
@@ -21,8 +17,17 @@ export interface BossMini {
 
 function makeMini(): BossMini {
   return {
-    active: false, x: 0, z: 0, prevX: 0, prevZ: 0,
-    hp: 1, maxHp: 1, fireTimer: 2, flashTimer: 0, scalePop: 0, radius: 0.8,
+    active: false,
+    x: 0,
+    z: 0,
+    prevX: 0,
+    prevZ: 0,
+    hp: 1,
+    maxHp: 1,
+    fireTimer: 2,
+    flashTimer: 0,
+    scalePop: 0,
+    radius: 0.8,
   };
 }
 

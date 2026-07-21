@@ -1,11 +1,4 @@
-import {
-  COOP,
-  SPAWN,
-  enemyDamageFactor,
-  enemyHpFactor,
-  isBossWave,
-  waveBudget,
-} from '../config/balance';
+import { COOP, SPAWN, enemyDamageFactor, enemyHpFactor, isBossWave, waveBudget } from '../config/balance';
 import type { Player } from '../entities/Player';
 import { AFFIX_RAGE, AFFIX_SHIELD, ELITE, ENEMIES, ENEMY_CHASER, ENEMY_SWARM, type EnemyDef } from '../config/enemies';
 import { bossForWave, bossHp } from '../config/bosses';
@@ -95,10 +88,10 @@ export class WaveSystem {
     // Elite-Roll: seltene verstaerkte Einzel-Gegner (max. 2 pro Welle).
     // Laeuft ueber rngWaves — Daily Seed ergibt identische Elite-Plaene.
     const eliteMinWave = isEasy ? ELITE.minWaveEasy : ELITE.minWave;
-    const eliteChance = Math.min(
-      ELITE.baseChance + ELITE.chancePerWave * (w - eliteMinWave),
-      ELITE.maxChance,
-    ) * world.mods.eliteChanceMult * world.roomMods.eliteMult;
+    const eliteChance =
+      Math.min(ELITE.baseChance + ELITE.chancePerWave * (w - eliteMinWave), ELITE.maxChance) *
+      world.mods.eliteChanceMult *
+      world.roomMods.eliteMult;
     // NEU (Reise-Modus): Elite-Kammer hebt das Elite-Limit an (sonst ELITE.maxPerWave).
     const maxElites = world.roomMods.eliteMaxPerWave ?? ELITE.maxPerWave;
     let elitesThisWave = 0;
@@ -108,12 +101,7 @@ export class WaveSystem {
       remaining -= def.budgetCost;
       spent[type] = (spent[type] as number) + def.budgetCost;
       let affix = 0;
-      if (
-        w >= eliteMinWave &&
-        elitesThisWave < maxElites &&
-        ELITE.eligible.includes(type) &&
-        rng.chance(eliteChance)
-      ) {
+      if (w >= eliteMinWave && elitesThisWave < maxElites && ELITE.eligible.includes(type) && rng.chance(eliteChance)) {
         affix = rng.chance(0.5) ? AFFIX_SHIELD : AFFIX_RAGE;
         elitesThisWave++;
       }

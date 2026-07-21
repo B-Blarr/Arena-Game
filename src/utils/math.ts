@@ -27,11 +27,7 @@ export function dist2(ax: number, az: number, bx: number, bz: number): number {
  * Kuerzeste Distanz² zwischen Punkt (px,pz) und Strecke (ax,az)->(bx,bz).
  * Swept-Check fuer Projektile gegen Kreis-Hitboxen (kein Tunneling).
  */
-export function segPointDist2(
-  ax: number, az: number,
-  bx: number, bz: number,
-  px: number, pz: number,
-): number {
+export function segPointDist2(ax: number, az: number, bx: number, bz: number, px: number, pz: number): number {
   const abx = bx - ax;
   const abz = bz - az;
   const abLen2 = abx * abx + abz * abz;

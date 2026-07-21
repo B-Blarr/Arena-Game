@@ -27,12 +27,8 @@
   --rarity-mythic: #e59cff; /* NEU: prismatischer Basiston (Name/Label); Karte animiert */
 
   /* Glow-Rezepte */
-  --glow-text:
-    0 0 8px rgba(0, 229, 255, 0.8),
-    0 0 24px rgba(0, 229, 255, 0.4);
-  --glow-box:
-    0 0 16px rgba(0, 229, 255, 0.35),
-    inset 0 0 24px rgba(0, 229, 255, 0.08);
+  --glow-text: 0 0 8px rgba(0, 229, 255, 0.8), 0 0 24px rgba(0, 229, 255, 0.4);
+  --glow-box: 0 0 16px rgba(0, 229, 255, 0.35), inset 0 0 24px rgba(0, 229, 255, 0.08);
 
   --font-display: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
   --font-body: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -77,9 +73,18 @@ body {
   pointer-events: none;
 }
 
-#hud { z-index: 10; }
-#fx-layer { z-index: 20; }
-#screens { z-index: 30; position: absolute; inset: 0; pointer-events: none; }
+#hud {
+  z-index: 10;
+}
+#fx-layer {
+  z-index: 20;
+}
+#screens {
+  z-index: 30;
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
 
 .screen {
   position: absolute;
@@ -128,7 +133,10 @@ body {
   border-radius: 10px;
   box-shadow: 0 0 12px color-mix(in srgb, var(--glow) 35%, transparent);
   cursor: pointer;
-  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease,
+    background 0.12s ease;
 }
 
 .btn:hover,
@@ -167,8 +175,12 @@ body {
   box-shadow: 0 0 36px rgba(0, 229, 255, 0.8);
 }
 
-.btn-gold { --glow: var(--gold); }
-.btn-magenta { --glow: var(--accent-2); }
+.btn-gold {
+  --glow: var(--gold);
+}
+.btn-magenta {
+  --glow: var(--accent-2);
+}
 
 /* ---------- Typo-Helfer ---------- */
 .title-glow {
@@ -180,7 +192,9 @@ body {
   text-shadow: var(--glow-text);
 }
 
-.text-dim { color: var(--text-2); }
+.text-dim {
+  color: var(--text-2);
+}
 
 /* ---------- Toggles / Segmented Control ---------- */
 .segmented {
@@ -202,7 +216,9 @@ body {
   padding: 0.6rem 1.2rem;
   min-height: 48px;
   cursor: pointer;
-  transition: background 0.12s ease, color 0.12s ease;
+  transition:
+    background 0.12s ease,
+    color 0.12s ease;
 }
 
 .segmented button:hover {

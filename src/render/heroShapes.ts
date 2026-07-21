@@ -6,19 +6,19 @@
  */
 
 export type HeroPartGeo =
-  | 'coneHull'    // klassischer Pfeil-Kegel (VOLT)
-  | 'dartHull'    // schlanker 4-seitiger Kegel (BLITZ)
-  | 'wedgeHull'   // flaches Dreiecks-Prisma (BROCKEN)
-  | 'fin'         // kleine Flosse
-  | 'wing'        // gepfeilter Fluegel
-  | 'shoulder'    // Panzer-Schulterplatte
-  | 'engine'      // Triebwerks-Glut
+  | 'coneHull' // klassischer Pfeil-Kegel (VOLT)
+  | 'dartHull' // schlanker 4-seitiger Kegel (BLITZ)
+  | 'wedgeHull' // flaches Dreiecks-Prisma (BROCKEN)
+  | 'fin' // kleine Flosse
+  | 'wing' // gepfeilter Fluegel
+  | 'shoulder' // Panzer-Schulterplatte
+  | 'engine' // Triebwerks-Glut
   // NEU (Premium-Helden):
-  | 'bastion'     // breites niedriges Hex-Prisma (KOLOSS)
+  | 'bastion' // breites niedriges Hex-Prisma (KOLOSS)
   | 'stealthHull' // flache gepfeilte Raute (PHANTOM)
   | 'crystalHull' // facettiertes Ikosaeder (KRISTALL)
-  | 'orbCore'     // leuchtender Kern (ORBIT)
-  | 'halo';       // duenner Ring, rotiert (ORBIT)
+  | 'orbCore' // leuchtender Kern (ORBIT)
+  | 'halo'; // duenner Ring, rotiert (ORBIT)
 
 export interface HeroShapePart {
   geo: HeroPartGeo;

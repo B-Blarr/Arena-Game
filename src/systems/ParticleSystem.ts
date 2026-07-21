@@ -19,12 +19,20 @@ const MAX_RINGS = 16;
 const MAX_LINES = 2;
 
 interface Particle {
-  x: number; y: number; z: number;
-  vx: number; vy: number; vz: number;
-  life: number; maxLife: number;
+  x: number;
+  y: number;
+  z: number;
+  vx: number;
+  vy: number;
+  vz: number;
+  life: number;
+  maxLife: number;
   size: number;
-  r: number; g: number; b: number;
-  rot: number; rotV: number;
+  r: number;
+  g: number;
+  b: number;
+  rot: number;
+  rotV: number;
   gravity: number;
 }
 
@@ -95,9 +103,21 @@ export class ParticleSystem {
   constructor(scene: Scene, assets: AssetRegistry, events: EventBus) {
     for (let i = 0; i < MAX_PARTICLES; i++) {
       this.particles.push({
-        x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0,
-        life: 0, maxLife: 1, size: 0.1, r: 1, g: 1, b: 1,
-        rot: 0, rotV: 0, gravity: -12,
+        x: 0,
+        y: 0,
+        z: 0,
+        vx: 0,
+        vy: 0,
+        vz: 0,
+        life: 0,
+        maxLife: 1,
+        size: 0.1,
+        r: 1,
+        g: 1,
+        b: 1,
+        rot: 0,
+        rotV: 0,
+        gravity: -12,
       });
     }
     this.mesh = new InstancedMesh(assets.geoParticle, assets.matParticle, MAX_PARTICLES);
@@ -124,8 +144,17 @@ export class ParticleSystem {
       mesh.visible = false;
       scene.add(mesh);
       this.rings.push({
-        active: false, mode: 'expand', age: 0, dur: 1,
-        r0: 0.5, r1: 3, x: 0, z: 0, baseOpacity: 0.8, mesh, mat,
+        active: false,
+        mode: 'expand',
+        age: 0,
+        dur: 1,
+        r0: 0.5,
+        r1: 3,
+        x: 0,
+        z: 0,
+        baseOpacity: 0.8,
+        mesh,
+        mat,
       });
     }
 
@@ -152,27 +181,50 @@ export class ParticleSystem {
       events.on('enemyKilled', (e) => {
         const color = e.enemyType >= 0 ? (ENEMIES[e.enemyType]?.color ?? 0xffffff) : 0x00f5d4;
         this.burst(e.x, e.z, color, Math.round(20 * e.scale), {
-          speedMin: 4, speedMax: 10, sizeMin: 0.1, sizeMax: 0.18 * e.scale,
+          speedMin: 4,
+          speedMax: 10,
+          sizeMin: 0.1,
+          sizeMax: 0.18 * e.scale,
         });
       }),
       events.on('enemyHit', (e) => {
         if (e.enemyType < 0) return; // Boss-Hits funkeln ueber eigene Events genug
         const color = ENEMIES[e.enemyType]?.color ?? 0xffffff;
-        this.burst(e.x, e.z, color, 3, { speedMin: 2, speedMax: 5, lifeMin: 0.2, lifeMax: 0.35, sizeMin: 0.06, sizeMax: 0.1 });
+        this.burst(e.x, e.z, color, 3, {
+          speedMin: 2,
+          speedMax: 5,
+          lifeMin: 0.2,
+          lifeMax: 0.35,
+          sizeMin: 0.06,
+          sizeMax: 0.1,
+        });
       }),
       events.on('explosion', (e) => {
         this.burst(e.x, e.z, e.color, 26, { speedMin: 5, speedMax: 12 });
         this.spawnRing(e.x, e.z, 0.5, e.radius + 0.8, 0.35, 0.8, e.color, 'expand');
       }),
       events.on('projectileWallHit', (e) => {
-        this.burst(e.x, e.z, 0x00e5ff, 3, { speedMin: 1.5, speedMax: 4, lifeMin: 0.15, lifeMax: 0.3, sizeMin: 0.05, sizeMax: 0.09 });
+        this.burst(e.x, e.z, 0x00e5ff, 3, {
+          speedMin: 1.5,
+          speedMax: 4,
+          lifeMin: 0.15,
+          lifeMax: 0.3,
+          sizeMin: 0.05,
+          sizeMax: 0.09,
+        });
       }),
       events.on('pickupCollected', (e) => {
-        const color =
-          e.kind === 'heart' ? 0x4dff88 :
-          e.kind === 'magnet' || e.kind === 'capsule' ? 0xffc83d : 0x00e5ff;
+        const color = e.kind === 'heart' ? 0x4dff88 : e.kind === 'magnet' || e.kind === 'capsule' ? 0xffc83d : 0x00e5ff;
         const count = e.kind === 'capsule' ? 18 : 5;
-        this.burst(e.x, e.z, color, count, { speedMin: 1, speedMax: 3, lifeMin: 0.2, lifeMax: 0.4, sizeMin: 0.05, sizeMax: 0.1, gravity: 2 });
+        this.burst(e.x, e.z, color, count, {
+          speedMin: 1,
+          speedMax: 3,
+          lifeMin: 0.2,
+          lifeMax: 0.4,
+          sizeMin: 0.05,
+          sizeMax: 0.1,
+          gravity: 2,
+        });
       }),
       events.on('portalOpened', (e) => {
         this.spawnRing(e.x, e.z, 0.3, 1.4, 1.0, 0.7, 0x00e5ff, 'hold');
@@ -219,7 +271,15 @@ export class ParticleSystem {
         // Position kommt nicht mit — Ring in Arena-Mitte waere falsch, daher nur Delay-Burst am Spieler via dashTrail-Aufrufe
       }),
       events.on('playerDashed', (e) => {
-        this.burst(e.x, e.z, 0x00e5ff, 6, { speedMin: 1, speedMax: 3, lifeMin: 0.2, lifeMax: 0.35, gravity: 0, sizeMin: 0.06, sizeMax: 0.12 });
+        this.burst(e.x, e.z, 0x00e5ff, 6, {
+          speedMin: 1,
+          speedMax: 3,
+          lifeMin: 0.2,
+          lifeMax: 0.35,
+          gravity: 0,
+          sizeMin: 0.06,
+          sizeMax: 0.12,
+        });
       }),
       // ---------------- Neue Inhalte ----------------
       // Bomber-Zuendung: statischer Warn-Ring in Blast-Groesse (NEU: Farbe optional,
@@ -264,7 +324,15 @@ export class ParticleSystem {
       }),
       // Dieb frisst einen Kern: kleiner Cyan-Puff
       events.on('coreStolen', (e) => {
-        this.burst(e.x, e.z, 0x00e5ff, 4, { speedMin: 1, speedMax: 2.5, lifeMin: 0.15, lifeMax: 0.3, gravity: 0, sizeMin: 0.05, sizeMax: 0.09 });
+        this.burst(e.x, e.z, 0x00e5ff, 4, {
+          speedMin: 1,
+          speedMax: 2.5,
+          lifeMin: 0.15,
+          lifeMax: 0.3,
+          gravity: 0,
+          sizeMin: 0.05,
+          sizeMax: 0.09,
+        });
       }),
       // Boss-Intro: weisser Ring + Burst am Spawnpunkt
       events.on('bossSpawned', (e) => {
@@ -277,8 +345,14 @@ export class ParticleSystem {
   /** Dash-Trail: pro Sim-Step waehrend des Dashes aufrufen. */
   dashTrail(x: number, z: number): void {
     this.burst(x, z, 0x00e5ff, 2, {
-      speedMin: 0.2, speedMax: 0.8, lifeMin: 0.15, lifeMax: 0.3,
-      gravity: 0, sizeMin: 0.08, sizeMax: 0.14, upBias: 0.5,
+      speedMin: 0.2,
+      speedMax: 0.8,
+      lifeMin: 0.15,
+      lifeMax: 0.3,
+      gravity: 0,
+      sizeMin: 0.08,
+      sizeMax: 0.14,
+      upBias: 0.5,
     });
   }
 
@@ -294,10 +368,14 @@ export class ParticleSystem {
       color = def.color;
     }
     this.burst(x, z, color, 1, {
-      speedMin: 0.1, speedMax: 0.6, upBias: 0.3,
-      lifeMin: def.life * 0.7, lifeMax: def.life,
+      speedMin: 0.1,
+      speedMax: 0.6,
+      upBias: 0.3,
+      lifeMin: def.life * 0.7,
+      lifeMax: def.life,
       gravity: def.gravity ?? 0,
-      sizeMin: def.size * 0.7, sizeMax: def.size,
+      sizeMin: def.size * 0.7,
+      sizeMax: def.size,
       whiteFrac: 0.05,
     });
   }
@@ -332,18 +410,26 @@ export class ParticleSystem {
       p.rot = Math.random() * Math.PI;
       p.rotV = (Math.random() - 0.5) * 12;
       if (Math.random() < whiteFrac) {
-        p.r = 2; p.g = 2; p.b = 2;
+        p.r = 2;
+        p.g = 2;
+        p.b = 2;
       } else {
-        p.r = tmpColor.r; p.g = tmpColor.g; p.b = tmpColor.b;
+        p.r = tmpColor.r;
+        p.g = tmpColor.g;
+        p.b = tmpColor.b;
       }
     }
   }
 
   spawnRing(
-    x: number, z: number,
-    r0: number, r1: number,
-    dur: number, opacity: number,
-    colorHex: number, mode: 'expand' | 'hold',
+    x: number,
+    z: number,
+    r0: number,
+    r1: number,
+    dur: number,
+    opacity: number,
+    colorHex: number,
+    mode: 'expand' | 'hold',
   ): void {
     let ring = this.rings.find((r) => !r.active);
     if (!ring) ring = this.rings[0] as Ring; // aeltester wird ueberschrieben
@@ -408,9 +494,13 @@ export class ParticleSystem {
         p.rot = Math.random() * Math.PI;
         p.rotV = (Math.random() - 0.5) * 10;
         if (Math.random() < 0.3) {
-          p.r = 2; p.g = 2; p.b = 2;
+          p.r = 2;
+          p.g = 2;
+          p.b = 2;
         } else {
-          p.r = 1.2; p.g = 0.7; p.b = 2.0; // violett
+          p.r = 1.2;
+          p.g = 0.7;
+          p.b = 2.0; // violett
         }
       }
     }

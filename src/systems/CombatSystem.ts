@@ -204,10 +204,7 @@ export class CombatSystem {
   private firePrismShot(p: Player, aimX: number, aimZ: number): void {
     const proj = this.world.playerProjectiles.spawn();
     if (!proj) return;
-    initProjectile(
-      proj, p.x, p.z, aimX, aimZ,
-      UV.prismShotSpeed, p.stats.prismShotDamage, UV.prismShotRange,
-    );
+    initProjectile(proj, p.x, p.z, aimX, aimZ, UV.prismShotSpeed, p.stats.prismShotDamage, UV.prismShotRange);
     proj.radius = UV.prismShotRadius;
     proj.pierceLeft = UV.prismShotPierce;
     proj.ownerIdx = p.index;
@@ -286,9 +283,7 @@ export class CombatSystem {
       return;
     }
 
-    const found = this.world.spatialHash.queryCircle(
-      hx, hz, UV.blackHoleRadius + MAX_ENEMY_RADIUS, holeQueryBuf,
-    );
+    const found = this.world.spatialHash.queryCircle(hx, hz, UV.blackHoleRadius + MAX_ENEMY_RADIUS, holeQueryBuf);
     for (let n = 0; n < found; n++) {
       const idx = holeQueryBuf[n] as number;
       if (idx >= this.world.enemies.count) continue;
@@ -425,7 +420,10 @@ export class CombatSystem {
     const def = e.type;
 
     this.events.emit('enemyKilled', {
-      x: e.x, z: e.z, enemyType: def, points: e.points,
+      x: e.x,
+      z: e.z,
+      enemyType: def,
+      points: e.points,
       scale: (def === ENEMY_TANK ? 1.8 : 1) * (e.eliteAffix > 0 ? ELITE.visualScale : 1),
       elite: e.eliteAffix > 0,
     });
@@ -490,9 +488,14 @@ export class CombatSystem {
    * Hash-Indizes dann bereits invalidiert (lebende Gegner wuerden verfehlt).
    */
   explode(
-    x: number, z: number,
-    radius: number, damage: number, depth: number,
-    color = 0xffc83d, fromPlayer = true, attackerIdx = 0,
+    x: number,
+    z: number,
+    radius: number,
+    damage: number,
+    depth: number,
+    color = 0xffc83d,
+    fromPlayer = true,
+    attackerIdx = 0,
   ): void {
     this.events.emit('explosion', { x, z, radius, color });
     const pool = this.world.enemies;

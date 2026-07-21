@@ -79,9 +79,12 @@ export class UpgradeScreen {
     this.revealLocked = hasLegendary || hasMythic;
     window.clearTimeout(this.revealTimeout);
     if (hasLegendary || hasMythic) {
-      this.revealTimeout = window.setTimeout(() => {
-        this.revealLocked = false;
-      }, hasMythic ? 750 : 550);
+      this.revealTimeout = window.setTimeout(
+        () => {
+          this.revealLocked = false;
+        },
+        hasMythic ? 750 : 550,
+      );
     }
     offers.forEach((def, i) => {
       const info = STR.upgrades[def.id] ?? { name: def.id, desc: '' };
@@ -97,9 +100,10 @@ export class UpgradeScreen {
       card.style.setProperty('--rarity', `var(--rarity-${def.rarity})`);
       card.style.animationDelay = isLegendary || isMythic ? '0.55s' : `${i * 0.08}s`;
       // Legendaere/mythische sind Einmal-Karten — kein "Stufe 1/1"-Label
-      const stacksLabel = def.instant || isLegendary || isMythic
-        ? ''
-        : `<span class="upgrade-stacks">${STR.stacksLabel} ${stacks + 1}/${def.maxStacks}</span>`;
+      const stacksLabel =
+        def.instant || isLegendary || isMythic
+          ? ''
+          : `<span class="upgrade-stacks">${STR.stacksLabel} ${stacks + 1}/${def.maxStacks}</span>`;
       card.innerHTML = `
         <span class="upgrade-rarity-label">${STR.rarities[def.rarity] ?? def.rarity}</span>
         <span class="upgrade-icon">${def.icon}</span>

@@ -125,10 +125,7 @@ function updateShooter(
       const ddx = px - e.x;
       const ddz = pz - e.z;
       const dlen = Math.hypot(ddx, ddz) || 1;
-      world.spawnEnemyProjectile(
-        e.x, e.z, ddx / dlen, ddz / dlen,
-        ai.projectileSpeed, e.damage, ai.projectileRange,
-      );
+      world.spawnEnemyProjectile(e.x, e.z, ddx / dlen, ddz / dlen, ai.projectileSpeed, e.damage, ai.projectileRange);
       events.emit('enemyShot', { x: e.x, z: e.z });
       e.fireTimer = ai.fireInterval;
     }

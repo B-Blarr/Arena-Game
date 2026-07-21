@@ -57,7 +57,9 @@ export class PauseScreen {
       </div>
     `;
     (this.root.querySelector('.pause-resume') as HTMLButtonElement).addEventListener('click', () => this.cb.onResume());
-    (this.root.querySelector('.pause-restart') as HTMLButtonElement).addEventListener('click', () => this.cb.onRestart());
+    (this.root.querySelector('.pause-restart') as HTMLButtonElement).addEventListener('click', () =>
+      this.cb.onRestart(),
+    );
     (this.root.querySelector('.pause-menu') as HTMLButtonElement).addEventListener('click', () => this.cb.onMenu());
 
     for (const input of this.root.querySelectorAll<HTMLInputElement>('input[type=range]')) {

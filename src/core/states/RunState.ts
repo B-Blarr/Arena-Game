@@ -85,12 +85,14 @@ export class RunState implements GameState {
 
     // Spieler-Aufstellung: P1 aus dem aktiven Profil; P2 (Koop) aus dem
     // gewaehlten Partner-Profil oder als Gast mit frischen Defaults
-    const configs: PlayerConfig[] = [{
-      hero,
-      weaponId: s.weaponId,
-      perma: g.save.data.permaUpgrades,
-      autoAim: s.autoAim,
-    }];
+    const configs: PlayerConfig[] = [
+      {
+        hero,
+        weaponId: s.weaponId,
+        perma: g.save.data.permaUpgrades,
+        autoAim: s.autoAim,
+      },
+    ];
     const p2 = g.runCoopP2;
     if (p2) {
       if (p2.profileId) {
@@ -269,9 +271,7 @@ export class RunState implements GameState {
     // NEU (mythisch "Zeitbruch"): normale Gegner + deren Kugeln verlangsamen, solange
     // ein Spieler das Upgrade traegt. Der Boss-Pfad liest enemyTimeScale NICHT -> Boss
     // bleibt normal schnell (Boss-Duell fair). Pro Frame gesetzt, damit Koop/Revive stimmen.
-    world.enemyTimeScale = world.players.some((p) => p.stackOf('timeBreak') > 0)
-      ? UV.timeBreakScale
-      : 1;
+    world.enemyTimeScale = world.players.some((p) => p.stackOf('timeBreak') > 0) ? UV.timeBreakScale : 1;
 
     if (this.phase === 'dying') {
       // Welt klingt in Zeitlupe aus, dann Abrechnung
@@ -644,11 +644,14 @@ export class RunState implements GameState {
       const cx = (p0.x + p1.x) / 2;
       const cz = (p0.z + p1.z) / 2;
       const cc = COOP.camera;
-      const kNeeded = Math.min(cc.zoomMax, Math.max(
-        1,
-        (Math.abs(p0.z - p1.z) / 2 + cc.margin) / cc.nearHalfZ,
-        (Math.abs(p0.x - p1.x) / 2 + cc.margin) / cc.halfX,
-      ));
+      const kNeeded = Math.min(
+        cc.zoomMax,
+        Math.max(
+          1,
+          (Math.abs(p0.z - p1.z) / 2 + cc.margin) / cc.nearHalfZ,
+          (Math.abs(p0.x - p1.x) / 2 + cc.margin) / cc.halfX,
+        ),
+      );
       g.cameraRig.update(rawDt, cx, cz, 0, 0, kNeeded);
     } else {
       const p = world.player;

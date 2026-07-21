@@ -32,19 +32,38 @@ export interface Projectile {
 
 export function makeProjectile(): Projectile {
   return {
-    x: 0, z: 0, prevX: 0, prevZ: 0, vx: 0, vz: 0,
-    damage: 0, pierceLeft: 0, ricochetLeft: 0,
-    traveled: 0, range: 10, radius: 0.15, knockback: 0,
-    boomerang: false, returning: false,
-    hitUids: [], hitCount: 0, ownerIdx: 0, fromBoss: false, prism: false,
+    x: 0,
+    z: 0,
+    prevX: 0,
+    prevZ: 0,
+    vx: 0,
+    vz: 0,
+    damage: 0,
+    pierceLeft: 0,
+    ricochetLeft: 0,
+    traveled: 0,
+    range: 10,
+    radius: 0.15,
+    knockback: 0,
+    boomerang: false,
+    returning: false,
+    hitUids: [],
+    hitCount: 0,
+    ownerIdx: 0,
+    fromBoss: false,
+    prism: false,
   };
 }
 
 export function initProjectile(
   p: Projectile,
-  x: number, z: number,
-  dirX: number, dirZ: number,
-  speed: number, damage: number, range: number,
+  x: number,
+  z: number,
+  dirX: number,
+  dirZ: number,
+  speed: number,
+  damage: number,
+  range: number,
 ): void {
   p.x = x;
   p.z = z;

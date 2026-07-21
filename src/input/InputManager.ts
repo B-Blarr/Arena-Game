@@ -69,8 +69,14 @@ export class InputManager {
         this.events.emit('padConnected', { index });
       } else {
         const slot = this.coop
-          ? (this.slotPad[0] === index ? 0 : this.slotPad[1] === index ? 1 : -1)
-          : (this.soloPadIndex === index ? 0 : -1);
+          ? this.slotPad[0] === index
+            ? 0
+            : this.slotPad[1] === index
+              ? 1
+              : -1
+          : this.soloPadIndex === index
+            ? 0
+            : -1;
         if (this.soloPadIndex === index) this.soloPadIndex = this.pads.firstConnected();
         this.events.emit('padDisconnected', { index, slot });
       }

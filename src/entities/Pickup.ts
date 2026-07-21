@@ -22,8 +22,16 @@ export interface Pickup {
 export function makePickup(): Pickup {
   return {
     kind: PICKUP_CORE,
-    x: 0, z: 0, prevX: 0, prevZ: 0, vx: 0, vz: 0,
-    age: 0, lifetime: 0, magnetized: false, bobPhase: 0,
+    x: 0,
+    z: 0,
+    prevX: 0,
+    prevZ: 0,
+    vx: 0,
+    vz: 0,
+    age: 0,
+    lifetime: 0,
+    magnetized: false,
+    bobPhase: 0,
   };
 }
 

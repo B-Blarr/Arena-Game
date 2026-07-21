@@ -55,9 +55,14 @@ const HERO_GLYPHS: Record<string, string> = {
   </svg>`,
 };
 const HERO_COLORS: Record<string, string> = {
-  volt: '#00e5ff', blitz: '#ffe97a', brocken: '#ff8a5c',
+  volt: '#00e5ff',
+  blitz: '#ffe97a',
+  brocken: '#ff8a5c',
   // NEU (Premium-Helden)
-  koloss: '#ffb060', kristall: '#bff6ff', phantom: '#b57aff', orbit: '#bff8ff',
+  koloss: '#ffb060',
+  kristall: '#bff6ff',
+  phantom: '#b57aff',
+  orbit: '#bff8ff',
 };
 
 /** Startmenue: Spielen, Heldenwahl, Schwierigkeit, Auto-Aim, Daily, Shop. */
@@ -162,7 +167,7 @@ export class MenuScreen {
     const save = this.save.data;
     this.coresEl.textContent = String(save.cores);
     // NEU (Reise-Ausbau): bei aktivem Reise-Toggle den Reise-Bestwert zeigen.
-    const bestScores = (this.journeyMode && !this.dailyMode) ? save.bestJourneyScores : save.bestScores;
+    const bestScores = this.journeyMode && !this.dailyMode ? save.bestJourneyScores : save.bestScores;
     this.bestEl.textContent = String(bestScores[save.settings.difficulty]);
     this.warnEl.textContent = this.save.storageAvailable ? '' : STR.saveWarning;
     (this.root.querySelector('.menu-profile-name') as HTMLElement).textContent = this.save.activeName;

@@ -7,7 +7,10 @@ export class Pool<T> {
   readonly items: T[] = [];
   count = 0;
 
-  constructor(factory: () => T, readonly capacity: number) {
+  constructor(
+    factory: () => T,
+    readonly capacity: number,
+  ) {
     for (let i = 0; i < capacity; i++) this.items.push(factory());
   }
 

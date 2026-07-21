@@ -91,9 +91,13 @@ function updateTrioShots(boss: Boss, dt: number, world: World, events: EventBus)
       const dz = target.z - boss.z;
       const d = Math.hypot(dx, dz) || 1;
       world.spawnEnemyProjectile(
-        boss.x, boss.z, dx / d, dz / d,
+        boss.x,
+        boss.z,
+        dx / d,
+        dz / d,
         (def.trioProjectileSpeed ?? 8) * boss.projSpeedMult,
-        Math.round(boss.projectileDamage * 1.2), 40,
+        Math.round(boss.projectileDamage * 1.2),
+        40,
         true, // NEU: Boss-Projektil -> vom "Zeitbruch"-Slow ausgenommen
       );
       events.emit('enemyShot', { x: boss.x, z: boss.z });
@@ -116,9 +120,13 @@ function updateTrioShots(boss: Boss, dt: number, world: World, events: EventBus)
  */
 function tickShockRing(
   state: { r: number; hitMask: number },
-  centerX: number, centerZ: number,
-  maxRadius: number, ringSpeed: number, damage: number,
-  dt: number, world: World,
+  centerX: number,
+  centerZ: number,
+  maxRadius: number,
+  ringSpeed: number,
+  damage: number,
+  dt: number,
+  world: World,
 ): boolean {
   state.r += ringSpeed * dt;
   for (let i = 0; i < world.players.length; i++) {
@@ -179,8 +187,13 @@ function goliathStompRocks(boss: Boss, world: World, events: EventBus): void {
   const nx = -boss.x / d;
   const nz = -boss.z / d;
   fireFan(
-    world, boss.x, boss.z, nx, nz,
-    count, def.stompRockSpread ?? 1.75,
+    world,
+    boss.x,
+    boss.z,
+    nx,
+    nz,
+    count,
+    def.stompRockSpread ?? 1.75,
     (def.stompRockSpeed ?? 4.5) * world.mods.enemySpeed,
     boss.projectileDamage,
   );
@@ -215,9 +228,13 @@ function updateGoliath(boss: Boss, dt: number, world: World, events: EventBus): 
         boss.chargeDirZ = dz / d;
         boss.telegraphGlow = boss.stateTimer;
         events.emit('bossTelegraph', {
-          kind: 'charge', x: boss.x, z: boss.z,
-          dirX: boss.chargeDirX, dirZ: boss.chargeDirZ,
-          length: ARENA_RADIUS * 2, duration: boss.stateTimer,
+          kind: 'charge',
+          x: boss.x,
+          z: boss.z,
+          dirX: boss.chargeDirX,
+          dirZ: boss.chargeDirZ,
+          length: ARENA_RADIUS * 2,
+          duration: boss.stateTimer,
         });
         break;
       }
@@ -232,8 +249,11 @@ function updateGoliath(boss: Boss, dt: number, world: World, events: EventBus): 
         boss.shockTelegraphLeft = def.shockTelegraph ?? 1.0;
         boss.telegraphGlow = boss.shockTelegraphLeft;
         events.emit('bossTelegraph', {
-          kind: 'shockwave', x: boss.shockX, z: boss.shockZ,
-          radius: def.shockRadius ?? 6, duration: def.shockTelegraph ?? 1.0,
+          kind: 'shockwave',
+          x: boss.shockX,
+          z: boss.shockZ,
+          radius: def.shockRadius ?? 6,
+          duration: def.shockTelegraph ?? 1.0,
         });
       }
 
@@ -286,9 +306,13 @@ function updateGoliath(boss: Boss, dt: number, world: World, events: EventBus): 
           boss.contactDamageNow = def.contactDamage;
           boss.telegraphGlow = boss.stateTimer;
           events.emit('bossTelegraph', {
-            kind: 'charge', x: boss.x, z: boss.z,
-            dirX: boss.chargeDirX, dirZ: boss.chargeDirZ,
-            length: ARENA_RADIUS * 2, duration: boss.stateTimer,
+            kind: 'charge',
+            x: boss.x,
+            z: boss.z,
+            dirX: boss.chargeDirX,
+            dirZ: boss.chargeDirZ,
+            length: ARENA_RADIUS * 2,
+            duration: boss.stateTimer,
           });
         } else {
           // Betaeubt + verwundbar: das Belohnungsfenster
@@ -322,16 +346,16 @@ function updateGoliath(boss: Boss, dt: number, world: World, events: EventBus): 
       boss.shockR = 0;
       boss.shockHitMask = 0;
       events.emit('bossStomp', {
-        x: boss.shockX, z: boss.shockZ,
-        radius: def.shockRadius ?? 6, speed: def.shockRingSpeed ?? 10,
+        x: boss.shockX,
+        z: boss.shockZ,
+        radius: def.shockRadius ?? 6,
+        speed: def.shockRingSpeed ?? 10,
       });
       // Phase 2: zweite Welle nach kurzer Pause (Einfach: laengere Pause).
       // Der Konter ist "raus aus dem Kreis" — der Dash ueberspringt bewusst
       // nur EINEN Ring (i-Frames 0.3 s decken den Abstand nie ab).
       if (boss.phase2) {
-        boss.shock2Countdown = world.difficulty === 'easy'
-          ? (def.shock2DelayEasy ?? 1.1)
-          : (def.shock2Delay ?? 0.8);
+        boss.shock2Countdown = world.difficulty === 'easy' ? (def.shock2DelayEasy ?? 1.1) : (def.shock2Delay ?? 0.8);
       }
     }
   }
@@ -343,8 +367,14 @@ function updateGoliath(boss: Boss, dt: number, world: World, events: EventBus): 
     shockBuf.r = boss.shockR;
     shockBuf.hitMask = boss.shockHitMask;
     boss.shockActive = tickShockRing(
-      shockBuf, boss.shockX, boss.shockZ,
-      def.shockRadius ?? 6, def.shockRingSpeed ?? 10, shockDamage, dt, world,
+      shockBuf,
+      boss.shockX,
+      boss.shockZ,
+      def.shockRadius ?? 6,
+      def.shockRingSpeed ?? 10,
+      shockDamage,
+      dt,
+      world,
     );
     boss.shockR = shockBuf.r;
     boss.shockHitMask = shockBuf.hitMask;
@@ -358,8 +388,10 @@ function updateGoliath(boss: Boss, dt: number, world: World, events: EventBus): 
       boss.shock2R = 0;
       boss.shock2HitMask = 0;
       events.emit('bossStomp', {
-        x: boss.shockX, z: boss.shockZ,
-        radius: def.shockRadius ?? 6, speed: def.shockRingSpeed ?? 10,
+        x: boss.shockX,
+        z: boss.shockZ,
+        radius: def.shockRadius ?? 6,
+        speed: def.shockRingSpeed ?? 10,
       });
     }
   }
@@ -367,8 +399,14 @@ function updateGoliath(boss: Boss, dt: number, world: World, events: EventBus): 
     shockBuf.r = boss.shock2R;
     shockBuf.hitMask = boss.shock2HitMask;
     boss.shock2Active = tickShockRing(
-      shockBuf, boss.shockX, boss.shockZ,
-      def.shockRadius ?? 6, def.shockRingSpeed ?? 10, shockDamage, dt, world,
+      shockBuf,
+      boss.shockX,
+      boss.shockZ,
+      def.shockRadius ?? 6,
+      def.shockRingSpeed ?? 10,
+      shockDamage,
+      dt,
+      world,
     );
     boss.shock2R = shockBuf.r;
     boss.shock2HitMask = shockBuf.hitMask;
@@ -458,9 +496,11 @@ function updateMinos(boss: Boss, dt: number, world: World, events: EventBus): vo
       for (let i = 0; i < size; i++) {
         const t = i - (size - 1) / 2;
         minosPlantBomb(
-          boss, events,
-          bombTarget.x + qx * t * spacing, bombTarget.z + qz * t * spacing,
-          fuse + (i * stagger) * fuseMult,
+          boss,
+          events,
+          bombTarget.x + qx * t * spacing,
+          bombTarget.z + qz * t * spacing,
+          fuse + i * stagger * fuseMult,
         );
       }
     } else {
@@ -471,8 +511,10 @@ function updateMinos(boss: Boss, dt: number, world: World, events: EventBus): vo
         const jx = (world.rngSummons.next() - 0.5) * 1.6;
         const jz = (world.rngSummons.next() - 0.5) * 1.6;
         minosPlantBomb(
-          boss, events,
-          bombTarget.x + qx * side * spread + jx, bombTarget.z + qz * side * spread + jz,
+          boss,
+          events,
+          bombTarget.x + qx * side * spread + jx,
+          bombTarget.z + qz * side * spread + jz,
           fuse,
         );
       }
@@ -543,8 +585,17 @@ function updateHydra(boss: Boss, dt: number, world: World, events: EventBus): vo
       m.fireTimer -= dt;
       if (m.fireTimer <= 0) {
         m.fireTimer = (def.miniFanInterval ?? 4.5) * boss.cdMult;
-        fireFan(world, m.x, m.z, dx / d, dz / d, 3, (def.fanAngle ?? 0.7) * 0.7,
-          (def.fanProjectileSpeed ?? 7) * boss.projSpeedMult, Math.round(boss.projectileDamage * 0.8));
+        fireFan(
+          world,
+          m.x,
+          m.z,
+          dx / d,
+          dz / d,
+          3,
+          (def.fanAngle ?? 0.7) * 0.7,
+          (def.fanProjectileSpeed ?? 7) * boss.projSpeedMult,
+          Math.round(boss.projectileDamage * 0.8),
+        );
         events.emit('enemyShot', { x: m.x, z: m.z });
       }
     }
@@ -570,7 +621,7 @@ function updateHydra(boss: Boss, dt: number, world: World, events: EventBus): vo
     boss.hidden = true;
     events.emit('explosion', { x: boss.x, z: boss.z, radius: 2.5, color: boss.def.color });
     for (let i = 0; i < boss.minis.length; i++) {
-      const m = boss.minis[i] as typeof boss.minis[number];
+      const m = boss.minis[i] as (typeof boss.minis)[number];
       m.active = true;
       m.maxHp = Math.max(1, Math.round(boss.hp * (def.miniHpFrac ?? 0.25)));
       m.hp = m.maxHp;
@@ -600,8 +651,17 @@ function updateHydra(boss: Boss, dt: number, world: World, events: EventBus): vo
     const dx = target.x - boss.x;
     const dz = target.z - boss.z;
     const d = Math.hypot(dx, dz) || 1;
-    fireFan(world, boss.x, boss.z, dx / d, dz / d, def.fanCount ?? 5, def.fanAngle ?? 0.7,
-      (def.fanProjectileSpeed ?? 7) * boss.projSpeedMult, boss.projectileDamage);
+    fireFan(
+      world,
+      boss.x,
+      boss.z,
+      dx / d,
+      dz / d,
+      def.fanCount ?? 5,
+      def.fanAngle ?? 0.7,
+      (def.fanProjectileSpeed ?? 7) * boss.projSpeedMult,
+      boss.projectileDamage,
+    );
     events.emit('enemyShot', { x: boss.x, z: boss.z });
   }
 
@@ -641,8 +701,11 @@ function updateVortex(boss: Boss, dt: number, world: World, events: EventBus): v
       boss.suctionTelegraphed = true;
       boss.telegraphGlow = telegraph;
       events.emit('bossTelegraph', {
-        kind: 'vortex', x: boss.x, z: boss.z,
-        radius: boss.phase2 ? 16 : (def.suctionRange ?? 14), duration: telegraph,
+        kind: 'vortex',
+        x: boss.x,
+        z: boss.z,
+        radius: boss.phase2 ? 16 : (def.suctionRange ?? 14),
+        duration: telegraph,
       });
     }
     if (boss.suctionTimer <= 0) {
@@ -679,7 +742,7 @@ function updateVortex(boss: Boss, dt: number, world: World, events: EventBus): v
     // Spiral-Salven waehrend des Sogs (+ kontinuierliche Einwaerts-Ringe)
     boss.spiralTimer -= dt;
     if (boss.spiralTimer <= 0) {
-      boss.spiralTimer = (boss.phase2 ? (def.spiralIntervalP2 ?? 0.7) : (def.spiralInterval ?? 0.8));
+      boss.spiralTimer = boss.phase2 ? (def.spiralIntervalP2 ?? 0.7) : (def.spiralInterval ?? 0.8);
       const count = boss.phase2 ? (def.spiralCountP2 ?? 8) : (def.spiralCount ?? 6);
       boss.salvoAngle += 0.35;
       const speed = (def.spiralProjectileSpeed ?? 4.5) * boss.projSpeedMult;
@@ -691,8 +754,10 @@ function updateVortex(boss: Boss, dt: number, world: World, events: EventBus): v
       // Wiederhol-Ring ist reine Kosmetik — bossTelegraph wuerde jedes Mal
       // den Gefahren-Warnton triggern ("Warnton = ausweichen" bliebe nicht lesbar)
       events.emit('vortexRing', {
-        x: boss.x, z: boss.z,
-        radius: boss.phase2 ? 16 : (def.suctionRange ?? 14), duration: 0.9,
+        x: boss.x,
+        z: boss.z,
+        radius: boss.phase2 ? 16 : (def.suctionRange ?? 14),
+        duration: 0.9,
       });
     }
 
@@ -703,8 +768,11 @@ function updateVortex(boss: Boss, dt: number, world: World, events: EventBus): v
       boss.shockX = boss.x;
       boss.shockZ = boss.z;
       events.emit('bossTelegraph', {
-        kind: 'shockwave', x: boss.shockX, z: boss.shockZ,
-        radius: collapseRadius, duration: 0.8,
+        kind: 'shockwave',
+        x: boss.shockX,
+        z: boss.shockZ,
+        radius: collapseRadius,
+        duration: 0.8,
       });
     }
     if (boss.suctionLeft <= 0) {
@@ -712,8 +780,10 @@ function updateVortex(boss: Boss, dt: number, world: World, events: EventBus): v
       boss.shockR = 0;
       boss.shockHitMask = 0;
       events.emit('bossStomp', {
-        x: boss.shockX, z: boss.shockZ,
-        radius: collapseRadius, speed: def.collapseRingSpeed ?? 12,
+        x: boss.shockX,
+        z: boss.shockZ,
+        radius: collapseRadius,
+        speed: def.collapseRingSpeed ?? 12,
       });
     }
   }
@@ -724,9 +794,14 @@ function updateVortex(boss: Boss, dt: number, world: World, events: EventBus): v
     shockBuf.r = boss.shockR;
     shockBuf.hitMask = boss.shockHitMask;
     boss.shockActive = tickShockRing(
-      shockBuf, boss.shockX, boss.shockZ,
-      collapseRadius, def.collapseRingSpeed ?? 12,
-      Math.round(boss.projectileDamage * 1.2), dt, world,
+      shockBuf,
+      boss.shockX,
+      boss.shockZ,
+      collapseRadius,
+      def.collapseRingSpeed ?? 12,
+      Math.round(boss.projectileDamage * 1.2),
+      dt,
+      world,
     );
     boss.shockR = shockBuf.r;
     boss.shockHitMask = shockBuf.hitMask;
@@ -739,9 +814,14 @@ function updateVortex(boss: Boss, dt: number, world: World, events: EventBus): v
 
 function fireFan(
   world: World,
-  x: number, z: number,
-  dirX: number, dirZ: number,
-  count: number, totalAngle: number, speed: number, damage: number,
+  x: number,
+  z: number,
+  dirX: number,
+  dirZ: number,
+  count: number,
+  totalAngle: number,
+  speed: number,
+  damage: number,
 ): void {
   const baseAngle = Math.atan2(dirZ, dirX);
   for (let i = 0; i < count; i++) {

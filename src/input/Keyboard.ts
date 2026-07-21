@@ -9,9 +9,7 @@ export class Keyboard {
   private disposers: Array<() => void> = [];
 
   // Verhindert Seiten-Scrollen durch Pfeile/Leertaste
-  private static readonly PREVENT = new Set([
-    'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space',
-  ]);
+  private static readonly PREVENT = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space']);
 
   constructor() {
     const onKeyDown = (e: KeyboardEvent): void => {

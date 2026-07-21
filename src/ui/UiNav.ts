@@ -203,7 +203,10 @@ export class UiNav {
   private step(dirX: number, dirZ: number): void {
     if (dirX !== 0 && this.focused instanceof HTMLInputElement && this.focused.type === 'range') {
       const el = this.focused;
-      const next = Math.min(Number(el.max || 100), Math.max(Number(el.min || 0), Number(el.value) + dirX * NAV.sliderStep));
+      const next = Math.min(
+        Number(el.max || 100),
+        Math.max(Number(el.min || 0), Number(el.value) + dirX * NAV.sliderStep),
+      );
       el.value = String(next);
       el.dispatchEvent(new Event('input', { bubbles: true }));
       return;
@@ -248,7 +251,10 @@ export class UiNav {
     if (this.lastFocusKey === null && this.lastFocusIndex < 0) return;
     let target: HTMLElement | null = null;
     if (this.lastFocusKey) {
-      target = this.items.find((el) => el.dataset.key === this.lastFocusKey || el.closest(`[data-key="${this.lastFocusKey}"]`) === el) ?? null;
+      target =
+        this.items.find(
+          (el) => el.dataset.key === this.lastFocusKey || el.closest(`[data-key="${this.lastFocusKey}"]`) === el,
+        ) ?? null;
     }
     if (!target) target = this.items[Math.max(0, Math.min(this.lastFocusIndex, this.items.length - 1))] ?? null;
     if (target) this.setFocus(target);

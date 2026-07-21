@@ -42,29 +42,29 @@ npm run preview
 
 ## 🎮 Steuerung
 
-| Taste | Aktion |
-|---|---|
-| **W A S D** oder **Pfeiltasten** | Laufen |
-| **Leertaste** | Dash (kurzer Sprint, macht kurz unverwundbar) |
-| **Maus** | Zielen (nur wenn „Auto-Zielen" im Menü auf **Aus** steht — dann gibt's +10 % Schaden!) |
-| **P** oder **Esc** | Pause |
-| **1 / 2 / 3** | Upgrade-Karte wählen |
-| **R** | Nach „Runde vorbei" sofort neu starten |
+| Taste                            | Aktion                                                                                 |
+| -------------------------------- | -------------------------------------------------------------------------------------- |
+| **W A S D** oder **Pfeiltasten** | Laufen                                                                                 |
+| **Leertaste**                    | Dash (kurzer Sprint, macht kurz unverwundbar)                                          |
+| **Maus**                         | Zielen (nur wenn „Auto-Zielen" im Menü auf **Aus** steht — dann gibt's +10 % Schaden!) |
+| **P** oder **Esc**               | Pause                                                                                  |
+| **1 / 2 / 3**                    | Upgrade-Karte wählen                                                                   |
+| **R**                            | Nach „Runde vorbei" sofort neu starten                                                 |
 
 Geschossen wird **automatisch** — auch das Zielen übernimmt das Spiel
 („Auto-Zielen", standardmäßig an).
 
 **🎮 Gamepad** (Xbox-Layout, einfach anstecken):
 
-| Eingabe | Aktion |
-|---|---|
-| **Linker Stick** | Laufen |
-| **Rechter Stick** | Zielen (bei Auto-Zielen aus) |
-| **A** oder **RT** | Dash · in Menüs: Bestätigen |
-| **B** | In Menüs: Zurück |
-| **Steuerkreuz / linker Stick** | In Menüs: Auswahl bewegen |
-| **Y** | Upgrade-Wahl: Neu würfeln |
-| **Start** | Pause |
+| Eingabe                        | Aktion                       |
+| ------------------------------ | ---------------------------- |
+| **Linker Stick**               | Laufen                       |
+| **Rechter Stick**              | Zielen (bei Auto-Zielen aus) |
+| **A** oder **RT**              | Dash · in Menüs: Bestätigen  |
+| **B**                          | In Menüs: Zurück             |
+| **Steuerkreuz / linker Stick** | In Menüs: Auswahl bewegen    |
+| **Y**                          | Upgrade-Wahl: Neu würfeln    |
+| **Start**                      | Pause                        |
 
 Das komplette Spiel ist ohne Maus bedienbar; bei Treffern und Boss-Stampfern
 vibriert der Controller (abschaltbar in der Pause unter „Vibration").

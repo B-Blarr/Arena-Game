@@ -252,11 +252,7 @@ export class Arena {
     for (let i = 0; i < count; i++) {
       const angle = (i / count) * Math.PI * 2;
       const h = 1.5 + rng.next() * 3;
-      pos.set(
-        Math.cos(angle) * (ARENA_RADIUS + 2.5),
-        h / 2,
-        Math.sin(angle) * (ARENA_RADIUS + 2.5),
-      );
+      pos.set(Math.cos(angle) * (ARENA_RADIUS + 2.5), h / 2, Math.sin(angle) * (ARENA_RADIUS + 2.5));
       scl.set(1, h, 1);
       mat4.compose(pos, quat, scl);
       this.pylonMesh.setMatrixAt(i, mat4);

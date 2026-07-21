@@ -218,7 +218,15 @@ export class StickerSystem {
    * Run-Ende (aus Game.finishRun, NACH stats.totalRuns++ und VOR save.save()):
    * wertet die Kontext-Sticker aus und liefert alle Unlocks dieses Runs.
    */
-  finishRun(ctx: { difficulty: string; isDaily: boolean; wave: number; heroId: string; weaponId: string; isCoop: boolean; isJourney: boolean }): string[] {
+  finishRun(ctx: {
+    difficulty: string;
+    isDaily: boolean;
+    wave: number;
+    heroId: string;
+    weaponId: string;
+    isCoop: boolean;
+    isJourney: boolean;
+  }): string[] {
     this.inFinishRun = true;
     // Held/Waffe zaehlen NUR fuers eigene Profil (bumpOwn) — der Partner
     // bekommt in Game.finishRun seine EIGENEN Werte gutgeschrieben

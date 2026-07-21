@@ -137,7 +137,11 @@ export class InstancedRenderer {
       this.enemyMeshes.push(mesh);
     }
 
-    this.playerProj = new InstancedMesh(assets.geoPlayerProjectile, assets.matPlayerProjectile, POOLS.playerProjectiles);
+    this.playerProj = new InstancedMesh(
+      assets.geoPlayerProjectile,
+      assets.matPlayerProjectile,
+      POOLS.playerProjectiles,
+    );
     this.enemyProj = new InstancedMesh(assets.geoEnemyProjectile, assets.matEnemyProjectile, POOLS.enemyProjectiles);
     for (const m of [this.playerProj, this.enemyProj]) {
       m.instanceMatrix.setUsage(DynamicDrawUsage);
@@ -331,11 +335,27 @@ export class InstancedRenderer {
     scene.add(reviveProg);
 
     return {
-      group, parts, ring, blob, cloneGroup, cloneParts,
-      bodyMat, engineMat, cloneBodyMat,
-      ringBase: 1, ghostRotX: Math.PI / 2, ghostY: 0.55,
-      ghostMeshes, ghostMats, ghostLife, ghostCursor: 0, ghostSpawnTimer: 0,
-      orbMeshes, reviveZone, reviveProg, reviveProgMat,
+      group,
+      parts,
+      ring,
+      blob,
+      cloneGroup,
+      cloneParts,
+      bodyMat,
+      engineMat,
+      cloneBodyMat,
+      ringBase: 1,
+      ghostRotX: Math.PI / 2,
+      ghostY: 0.55,
+      ghostMeshes,
+      ghostMats,
+      ghostLife,
+      ghostCursor: 0,
+      ghostSpawnTimer: 0,
+      orbMeshes,
+      reviveZone,
+      reviveProg,
+      reviveProgMat,
       bodyColor: 0x00e5ff,
       animatedColorway: false,
     };
@@ -344,19 +364,31 @@ export class InstancedRenderer {
   private heroGeo(key: HeroPartGeo) {
     const a = this.assets;
     switch (key) {
-      case 'coneHull': return a.geoPlayerBody;
-      case 'dartHull': return a.geoHeroDartHull;
-      case 'wedgeHull': return a.geoHeroWedgeHull;
-      case 'fin': return a.geoHeroFin;
-      case 'wing': return a.geoHeroWing;
-      case 'shoulder': return a.geoHeroShoulder;
-      case 'engine': return a.geoHeroEngine;
+      case 'coneHull':
+        return a.geoPlayerBody;
+      case 'dartHull':
+        return a.geoHeroDartHull;
+      case 'wedgeHull':
+        return a.geoHeroWedgeHull;
+      case 'fin':
+        return a.geoHeroFin;
+      case 'wing':
+        return a.geoHeroWing;
+      case 'shoulder':
+        return a.geoHeroShoulder;
+      case 'engine':
+        return a.geoHeroEngine;
       // NEU (Premium-Helden):
-      case 'bastion': return a.geoHeroBastion;
-      case 'stealthHull': return a.geoHeroStealthHull;
-      case 'crystalHull': return a.geoHeroCrystal;
-      case 'orbCore': return a.geoHeroOrb;
-      case 'halo': return a.geoHeroHalo;
+      case 'bastion':
+        return a.geoHeroBastion;
+      case 'stealthHull':
+        return a.geoHeroStealthHull;
+      case 'crystalHull':
+        return a.geoHeroCrystal;
+      case 'orbCore':
+        return a.geoHeroOrb;
+      case 'halo':
+        return a.geoHeroHalo;
     }
   }
 
@@ -409,9 +441,7 @@ export class InstancedRenderer {
         slot.userData.baseRotY = part.rotY ?? 0;
         if (part.sx !== undefined) slot.scale.set(part.sx, part.sy ?? 1, part.sz ?? 1);
         else slot.scale.setScalar(part.scale ?? 1);
-        slot.material = part.mat === 'engine'
-          ? fig.engineMat
-          : (isClone ? fig.cloneBodyMat : fig.bodyMat);
+        slot.material = part.mat === 'engine' ? fig.engineMat : isClone ? fig.cloneBodyMat : fig.bodyMat;
       }
     };
     apply(fig.parts, false);
@@ -480,7 +510,9 @@ export class InstancedRenderer {
       mesh.setMatrixAt(idx, dummy.matrix);
       // Weiss-Flash bei Treffern; Eliten gleissen heller, Schild toent kalt
       const baseColor = isElite
-        ? (e.shieldHp > 0 ? shieldColor : (this.assets.eliteColors[e.type] as Color))
+        ? e.shieldHp > 0
+          ? shieldColor
+          : (this.assets.eliteColors[e.type] as Color)
         : (this.assets.enemyColors[e.type] as Color);
       mesh.setColorAt(idx, e.flashTimer > 0 ? flashColor : baseColor);
 
@@ -536,7 +568,12 @@ export class InstancedRenderer {
         this.playerProj.setMatrixAt(normalIdx, dummy.matrix);
         normalIdx++;
         streakIdx = this.writeStreak(
-          streakIdx, p.vx, p.vz, x, z, rScale,
+          streakIdx,
+          p.vx,
+          p.vz,
+          x,
+          z,
+          rScale,
           (this.streakColors[p.ownerIdx] ?? this.streakColors[0]) as Color,
         );
       }

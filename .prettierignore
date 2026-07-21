@@ -1,0 +1,7 @@
+dist
+node_modules
+package-lock.json
+
+# Handgetunte Daten-Tabellen — bewusst kompakt gehalten (Werte spaltenweise
+# vergleichbar). Prettier wuerde sie zu Mehrzeilern aufblaehen, daher ausgenommen.
+src/config/

@@ -78,8 +78,9 @@ export class AlbumScreen {
       const defs = stickersOfPage(page.id);
       const unlocked = defs.filter((s) => data.stickers[s.id]).length;
       const hasNew = defs.some((s) => this.isNew(s.id));
-      const hasClaim = defs.some((s) => s.reward && data.stickers[s.id] && !data.stickerRewards.includes(s.id))
-        || (!data.stickerPageRewards.includes(page.id) && defs.length > 0 && defs.every((s) => data.stickers[s.id]));
+      const hasClaim =
+        defs.some((s) => s.reward && data.stickers[s.id] && !data.stickerRewards.includes(s.id)) ||
+        (!data.stickerPageRewards.includes(page.id) && defs.length > 0 && defs.every((s) => data.stickers[s.id]));
       const btn = document.createElement('button');
       btn.className = `album-tab${page.id === this.activePage ? ' active' : ''}`;
       btn.dataset.key = `album-tab-${page.id}`;
@@ -166,9 +167,10 @@ export class AlbumScreen {
     const defs = stickersOfPage(page.id);
     const complete = defs.every((s) => data.stickers[s.id]);
     const claimed = data.stickerPageRewards.includes(page.id);
-    const label = page.reward.kind === 'cores'
-      ? STR.albumRewardCores(page.reward.amount)
-      : STR.albumRewardColorway(STR.colorways[page.reward.colorwayId] ?? page.reward.colorwayId);
+    const label =
+      page.reward.kind === 'cores'
+        ? STR.albumRewardCores(page.reward.amount)
+        : STR.albumRewardColorway(STR.colorways[page.reward.colorwayId] ?? page.reward.colorwayId);
     const chip = page.reward.kind === 'colorway' ? this.colorChip(page.reward.colorwayId) : '';
 
     if (claimed) {
