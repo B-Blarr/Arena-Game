@@ -10,6 +10,7 @@ export interface InputState {
   moveX: number;
   moveZ: number;
   dashJustPressed: boolean;
+  abilityJustPressed: boolean;
   pauseJustPressed: boolean;
   /** Manuelle Ziel-Richtung (Maus/rechter Stick), Einheitsvektor. */
   aimDirX: number;
@@ -34,6 +35,7 @@ function makeState(): InputState {
     moveX: 0,
     moveZ: 0,
     dashJustPressed: false,
+    abilityJustPressed: false,
     pauseJustPressed: false,
     aimDirX: 0,
     aimDirZ: 1,
@@ -214,6 +216,7 @@ export class InputManager {
     s.moveX = 0;
     s.moveZ = 0;
     s.dashJustPressed = false;
+    s.abilityJustPressed = false;
     s.pauseJustPressed = false;
     s.hasManualAim = false;
 
@@ -237,6 +240,9 @@ export class InputManager {
       for (const code of map.dash) {
         if (kb.wasJustPressed(code)) s.dashJustPressed = true;
       }
+      for (const code of map.ability) {
+        if (kb.wasJustPressed(code)) s.abilityJustPressed = true;
+      }
     }
     if (pad >= 0) {
       const p = this.pads.pads[pad];
@@ -247,6 +253,9 @@ export class InputManager {
         }
         if (this.pads.simPressed(pad, PAD_BTN.a) || this.pads.simPressed(pad, PAD_BTN.rt)) {
           s.dashJustPressed = true;
+        }
+        if (this.pads.simPressed(pad, PAD_BTN.lt) || this.pads.simPressed(pad, PAD_BTN.x)) {
+          s.abilityJustPressed = true;
         }
         if (this.pads.simPressed(pad, PAD_BTN.start)) s.pauseJustPressed = true;
         this.applyStickAim(s, p.aimX, p.aimZ);
@@ -294,12 +303,18 @@ export class InputManager {
     s.moveZ = mz;
 
     s.dashJustPressed = kb.wasJustPressed('Space');
+    for (const code of KEYS.wasd.ability) {
+      if (kb.wasJustPressed(code)) s.abilityJustPressed = true;
+    }
     for (const code of KEYS.pause) {
       if (kb.wasJustPressed(code)) s.pauseJustPressed = true;
     }
     if (this.soloPadIndex >= 0 && pad?.connected) {
       if (this.pads.simPressed(this.soloPadIndex, PAD_BTN.a) || this.pads.simPressed(this.soloPadIndex, PAD_BTN.rt)) {
         s.dashJustPressed = true;
+      }
+      if (this.pads.simPressed(this.soloPadIndex, PAD_BTN.lt) || this.pads.simPressed(this.soloPadIndex, PAD_BTN.x)) {
+        s.abilityJustPressed = true;
       }
       if (this.pads.simPressed(this.soloPadIndex, PAD_BTN.start)) s.pauseJustPressed = true;
       this.applyStickAim(s, pad.aimX, pad.aimZ);

@@ -383,6 +383,17 @@ export const STR = {
     orbit: { name: 'ORBIT', trait: 'Kern im rotierenden Halo – das Meisterstück' },
   } as Record<string, { name: string; trait: string }>,
 
+  // Held-Spezialfähigkeiten (Taste E / Pad LT)
+  abilities: {
+    volt: { name: 'Novaschlag', desc: 'Entlädt eine Schockwelle, die nahe Gegner wegfegt' },
+    blitz: { name: 'Phasenblitz', desc: 'Blitzt unverwundbar ein großes Stück nach vorn' },
+    brocken: { name: 'Schockstoß', desc: 'Wuchtige Druckwelle mit Rückstoß + kurze Unverwundbarkeit' },
+    koloss: { name: 'Bollwerk', desc: 'Wird lange unverwundbar und friert Gegner ringsum ein' },
+    kristall: { name: 'Prismasplitter', desc: 'Schleudert Kristallsplitter in alle Richtungen' },
+    phantom: { name: 'Orbital-Schlag', desc: 'Ruft mehrere schwere Einschläge auf die zähesten Ziele' },
+    orbit: { name: 'Singularität', desc: 'Wirft ein Schwarzes Loch, das Gegner bündelt und kollabiert' },
+  } as Record<string, { name: string; desc: string }>,
+
   // Waffen
   weapons: {
     blaster: { name: 'Neon-Blaster', desc: 'Der treue Standard' },
@@ -456,6 +467,7 @@ export const STR = {
   promptMove: 'Laufen!',
   promptShoot: 'Schießen!',
   promptDash: 'Dash!',
+  promptAbility: 'Spezial einsetzen!',
   promptCollect: 'Kerne einsammeln!',
 
   // Sonstiges

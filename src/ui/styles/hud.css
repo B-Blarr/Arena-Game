@@ -240,6 +240,42 @@ body.reduce-fx .hud-combo.c3 .hud-combo-ring {
   text-shadow: var(--glow-text);
 }
 
+/* ---------- Spezialfaehigkeit (Ring links neben dem Dash) ---------- */
+.hud-ability {
+  position: absolute;
+  bottom: 24px;
+  right: 92px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.375rem;
+  background: conic-gradient(var(--accent-2) calc(var(--ability-t) * 360deg), rgba(255, 255, 255, 0.1) 0deg);
+  box-shadow: 0 0 12px rgba(157, 92, 255, 0.35);
+  transition: transform 0.15s ease;
+}
+
+.hud-ability-inner {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: rgba(7, 7, 15, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hud-ability.ready {
+  transform: scale(1.12);
+  box-shadow: 0 0 22px rgba(157, 92, 255, 0.8);
+}
+
+.hud-ability.hidden {
+  display: none;
+}
+
 /* ---------- Boss-Leiste ---------- */
 .hud-boss {
   position: absolute;
@@ -813,6 +849,21 @@ body.reduce-fx .sticker-toast-icon {
 #hud.coop .hud-dash.p1 {
   left: 24px;
   right: auto;
+  bottom: 92px;
+  transform: none;
+}
+
+/* Faehigkeits-Ringe sitzen jeweils neben dem zugehoerigen Dash-Ring */
+#hud.coop .hud-ability.p1 {
+  left: 88px;
+  right: auto;
+  bottom: 92px;
+  transform: none;
+}
+
+.hud-ability.p2 {
+  right: 88px;
+  left: auto;
   bottom: 92px;
   transform: none;
 }

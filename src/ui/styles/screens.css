@@ -276,6 +276,13 @@ body.pad-connected.audio-locked .menu-sound-hint {
   min-height: 2.5rem;
 }
 
+.hero-ability {
+  font-size: 0.85rem;
+  color: var(--accent-2);
+  text-align: center;
+  opacity: 0.9;
+}
+
 .hero-price {
   display: flex;
   align-items: center;

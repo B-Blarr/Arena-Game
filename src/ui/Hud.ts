@@ -1,6 +1,7 @@
 import { STR } from '../config/strings.de';
 import type { EventBus } from '../core/EventBus';
 import type { World } from '../core/World';
+import type { Player } from '../entities/Player';
 import type { CoopSystem } from '../systems/CoopSystem';
 import type { ScoreSystem } from '../systems/ScoreSystem';
 import type { Sfx } from '../audio/Sfx';
@@ -22,6 +23,7 @@ export class Hud {
   private hpText2!: HTMLElement;
   private hpWrap2!: HTMLElement;
   private dashEl2!: HTMLElement;
+  private abilityEl2!: HTMLElement;
   private coopActive = false;
   private readonly downed: [boolean, boolean] = [false, false];
   private readonly waveLabel: HTMLElement;
@@ -32,6 +34,7 @@ export class Hud {
   private readonly coresEl: HTMLElement;
   private readonly coresVal: HTMLElement;
   private readonly dashEl: HTMLElement;
+  private readonly abilityEl: HTMLElement;
   private readonly bossWrap: HTMLElement;
   private readonly bossName: HTMLElement;
   private readonly bossFill: HTMLElement;
@@ -72,6 +75,7 @@ export class Hud {
         <span class="hud-hp-text"></span>
       </div>
       <div class="hud-dash p1"><div class="hud-dash-inner">⚡</div></div>
+      <div class="hud-ability p1 hidden"><div class="hud-ability-inner">💥</div></div>
       <div class="hud-hp p2 hidden">
         <span class="hud-hp-name"></span>
         <span class="hud-hp-icon">❤</span>
@@ -79,6 +83,7 @@ export class Hud {
         <span class="hud-hp-text"></span>
       </div>
       <div class="hud-dash p2 hidden"><div class="hud-dash-inner">⚡</div></div>
+      <div class="hud-ability p2 hidden"><div class="hud-ability-inner">💥</div></div>
     `;
     const q = (sel: string): HTMLElement => this.root.querySelector(sel) as HTMLElement;
     this.hpFill = q('.hud-hp.p1 .hud-hp-fill');
@@ -90,6 +95,7 @@ export class Hud {
     this.hpText2 = q('.hud-hp.p2 .hud-hp-text');
     this.hpWrap2 = q('.hud-hp.p2');
     this.dashEl2 = q('.hud-dash.p2');
+    this.abilityEl2 = q('.hud-ability.p2');
     this.waveLabel = q('.hud-wave-label');
     this.waveEnemies = q('.hud-wave-enemies');
     this.scoreValue = q('.hud-score-value');
@@ -97,7 +103,8 @@ export class Hud {
     this.comboText = q('.hud-combo-text');
     this.coresEl = q('.hud-cores');
     this.coresVal = q('.hud-cores-val');
-    this.dashEl = q('.hud-dash');
+    this.dashEl = q('.hud-dash.p1');
+    this.abilityEl = q('.hud-ability.p1');
     this.bossWrap = q('.hud-boss');
     this.bossName = q('.hud-boss-name');
     this.bossFill = q('.hud-boss-fill');
@@ -165,11 +172,24 @@ export class Hud {
         el.classList.add('ready');
         window.setTimeout(() => el.classList.remove('ready'), 250);
       }),
+      events.on('abilityReady', (e) => {
+        const el = e.playerIndex === 1 ? this.abilityEl2 : this.abilityEl;
+        el.classList.add('ready');
+        window.setTimeout(() => el.classList.remove('ready'), 250);
+      }),
     );
   }
 
   private panelFor(idx: number): HTMLElement {
     return idx === 1 ? this.hpWrap2 : this.hpWrap;
+  }
+
+  /** Faehigkeits-Ring: Glyph setzen + verbergen, wenn der Held keine Faehigkeit hat. */
+  private setAbilityRing(el: HTMLElement, player: Player | null): void {
+    const icon = player?.abilityIcon ?? '';
+    el.classList.toggle('hidden', icon === '');
+    const inner = el.querySelector('.hud-ability-inner');
+    if (inner && icon) inner.textContent = icon;
   }
 
   private setHp(idx: number, hp: number, maxHp: number, damaged: boolean): void {
@@ -200,14 +220,17 @@ export class Hud {
 
   /** Pro Frame (Echtzeit): Dash-Ringe, Combo-Ring, Gegner-Zaehler, Herzschlag. */
   update(rawDt: number, world: World, score: ScoreSystem, enemiesLeft: number, coop?: CoopSystem): void {
-    const dashFrac = (world.players[0] ?? world.player).dashChargeFrac;
+    const p0 = world.players[0] ?? world.player;
+    const dashFrac = p0.dashChargeFrac;
     this.dashEl.style.setProperty('--dash-t', dashFrac.toFixed(3));
+    this.abilityEl.style.setProperty('--ability-t', p0.abilityChargeFrac.toFixed(3));
     const ready = dashFrac >= 1;
     if (ready !== this.dashWasReady) this.dashWasReady = ready;
 
     const p2 = world.players[1];
     if (this.coopActive && p2) {
       this.dashEl2.style.setProperty('--dash-t', p2.dashChargeFrac.toFixed(3));
+      this.abilityEl2.style.setProperty('--ability-t', p2.abilityChargeFrac.toFixed(3));
       // Down-Panels: Text zeigt den Revive-Fortschritt statt HP
       for (let i = 0; i < 2; i++) {
         if (!this.downed[i as 0 | 1] || !coop) continue;
@@ -259,6 +282,9 @@ export class Hud {
     this.setHp(0, p0.hp, p0.stats.maxHp, false);
     const p1 = world.players[1];
     if (this.coopActive && p1) this.setHp(1, p1.hp, p1.stats.maxHp, false);
+    // Faehigkeits-Ringe: Glyph je Held setzen, ohne Faehigkeit ausblenden
+    this.setAbilityRing(this.abilityEl, p0);
+    this.setAbilityRing(this.abilityEl2, this.coopActive ? (p1 ?? null) : null);
     // Namen nur im Koop anzeigen (Solo bleibt exakt wie bisher)
     const nameEls = this.root.querySelectorAll<HTMLElement>('.hud-hp-name');
     nameEls.forEach((el, i) => {

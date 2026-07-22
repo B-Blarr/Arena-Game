@@ -20,6 +20,33 @@ export interface WeaponDef {
   boomerang: boolean;
 }
 
+/**
+ * Held-Spezialfaehigkeit: aktiv, cooldown-gebunden (spiegelt den Dash).
+ * Effekte recyceln vorhandene Systeme; der `kind` steuert den Resolver
+ * (self-Kinds in Player.tryAbility, gegner-treffende im CombatSystem).
+ * Params werden je nach kind gelesen (Idiom wie PermaBonusDef.valuePerLevel).
+ */
+export type AbilityKind = 'blast' | 'blink' | 'shockwave' | 'bulwark' | 'shardNova' | 'orbitalStrike' | 'blackhole';
+
+export interface AbilityDef {
+  id: string;
+  /** HUD-Glyph. */
+  icon: string;
+  kind: AbilityKind;
+  /** Abklingzeit in Sekunden. */
+  cooldown: number;
+  radius?: number;
+  damage?: number;
+  duration?: number;
+  slow?: number;
+  iFrames?: number;
+  distance?: number;
+  count?: number;
+  pierce?: number;
+  pull?: number;
+  color?: number;
+}
+
 export interface HeroDef {
   id: string;
   color: number;
@@ -28,7 +55,38 @@ export interface HeroDef {
   speed: number;
   dashCooldown: number;
   weapon: WeaponDef;
+  /** Spezialfaehigkeit (optional — Helden ohne verhalten sich wie bisher). */
+  ability?: AbilityDef;
 }
+
+/** VOLT — Novaschlag: entlaedt am Spieler eine Schockwelle (reines explode()). */
+export const ABILITY_VOLT: AbilityDef = {
+  id: 'volt', icon: '💥', kind: 'blast', cooldown: 8, radius: 4, damage: 40, color: 0x00e5ff,
+};
+/** BLITZ — Phasenblitz: kurzer Teleport-Dash mit i-Frames (nutzt den Dash-Integrator). */
+export const ABILITY_BLITZ: AbilityDef = {
+  id: 'blitz', icon: '💨', kind: 'blink', cooldown: 6, distance: 9, iFrames: 0.6,
+};
+/** BROCKEN — Schockstoss: Explosion mit Rueckstoss + kurze i-Frames (offensiv). */
+export const ABILITY_BROCKEN: AbilityDef = {
+  id: 'brocken', icon: '💢', kind: 'shockwave', cooldown: 9, radius: 5, damage: 30, iFrames: 0.4, color: 0xff8a5c,
+};
+/** KOLOSS — Bollwerk: lange Unverwundbarkeit + Frost-Ring (defensiv). */
+export const ABILITY_KOLOSS: AbilityDef = {
+  id: 'koloss', icon: '🛡', kind: 'bulwark', cooldown: 14, iFrames: 2.5, radius: 5, slow: 0.4, duration: 2, color: 0x66ccff,
+};
+/** KRISTALL — Prismasplitter: radiale Kristall-Salve in alle Richtungen. */
+export const ABILITY_KRISTALL: AbilityDef = {
+  id: 'kristall', icon: '🔷', kind: 'shardNova', cooldown: 7, count: 10, damage: 12, pierce: 2,
+};
+/** PHANTOM — Orbital-Schlag: mehrere schwere Einschlaege auf die zaehesten Ziele. */
+export const ABILITY_PHANTOM: AbilityDef = {
+  id: 'phantom', icon: '🎯', kind: 'orbitalStrike', cooldown: 12, count: 3, damage: 150,
+};
+/** ORBIT — Singularitaet: geworfenes Schwarzes Loch mit Kollaps-Crunch. */
+export const ABILITY_ORBIT: AbilityDef = {
+  id: 'orbit', icon: '🌀', kind: 'blackhole', cooldown: 10, pull: 12, duration: 0.8,
+};
 
 export const WEAPON_BLASTER: WeaponDef = {
   id: 'blaster', fireRate: 2.5, damage: 10, projectileSpeed: 18, range: 14,
@@ -86,16 +144,16 @@ export const WEAPON_ORBITER: WeaponDef = {
 };
 
 export const HEROES: readonly HeroDef[] = [
-  { id: 'volt', color: 0x00e5ff, price: 0, maxHp: 100, speed: 6.0, dashCooldown: 2.5, weapon: WEAPON_BLASTER },
-  { id: 'blitz', color: 0xffe97a, price: 250, maxHp: 70, speed: 7.2, dashCooldown: 2.0, weapon: WEAPON_PULSE },
-  { id: 'brocken', color: 0xff8a5c, price: 500, maxHp: 150, speed: 5.0, dashCooldown: 3.0, weapon: WEAPON_SPREAD },
+  { id: 'volt', color: 0x00e5ff, price: 0, maxHp: 100, speed: 6.0, dashCooldown: 2.5, weapon: WEAPON_BLASTER, ability: ABILITY_VOLT },
+  { id: 'blitz', color: 0xffe97a, price: 250, maxHp: 70, speed: 7.2, dashCooldown: 2.0, weapon: WEAPON_PULSE, ability: ABILITY_BLITZ },
+  { id: 'brocken', color: 0xff8a5c, price: 500, maxHp: 150, speed: 5.0, dashCooldown: 3.0, weapon: WEAPON_SPREAD, ability: ABILITY_BROCKEN },
   // NEU (Premium-Helden, balancierte Sidegrades): teuer = Prestige + Optik + eigene Waffe, NICHT mehr Macht.
-  { id: 'koloss', color: 0xffb060, price: 1200, maxHp: 200, speed: 4.4, dashCooldown: 3.4, weapon: WEAPON_MOERSER },
+  { id: 'koloss', color: 0xffb060, price: 1200, maxHp: 200, speed: 4.4, dashCooldown: 3.4, weapon: WEAPON_MOERSER, ability: ABILITY_KOLOSS },
   // kristall/orbit: gesaettigte Default-Farbe (nicht fast-weiss) -> Facetten/Halo lesen auch OHNE
   // Farbvariante; die Colorway ueberschreibt sie weiterhin komplett.
-  { id: 'kristall', color: 0x5ad2ff, price: 1500, maxHp: 110, speed: 6.2, dashCooldown: 2.3, weapon: WEAPON_PRISMA },
-  { id: 'phantom', color: 0x9a3dff, price: 2000, maxHp: 75, speed: 7.0, dashCooldown: 1.9, weapon: WEAPON_RAILGUN },
-  { id: 'orbit', color: 0x33d0ff, price: 2500, maxHp: 120, speed: 6.0, dashCooldown: 2.4, weapon: WEAPON_ORBITER },
+  { id: 'kristall', color: 0x5ad2ff, price: 1500, maxHp: 110, speed: 6.2, dashCooldown: 2.3, weapon: WEAPON_PRISMA, ability: ABILITY_KRISTALL },
+  { id: 'phantom', color: 0x9a3dff, price: 2000, maxHp: 75, speed: 7.0, dashCooldown: 1.9, weapon: WEAPON_RAILGUN, ability: ABILITY_PHANTOM },
+  { id: 'orbit', color: 0x33d0ff, price: 2500, maxHp: 120, speed: 6.0, dashCooldown: 2.4, weapon: WEAPON_ORBITER, ability: ABILITY_ORBIT },
 ];
 
 export function getHero(id: string): HeroDef {

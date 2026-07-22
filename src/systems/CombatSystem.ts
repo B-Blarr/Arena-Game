@@ -11,6 +11,7 @@ import {
   ELITE,
 } from '../config/enemies';
 import { UPGRADE_VALUES as UV } from '../config/upgrades';
+import type { AbilityDef } from '../config/heroes';
 import type { EventBus } from '../core/EventBus';
 import type { World } from '../core/World';
 import type { Enemy } from '../entities/Enemy';
@@ -22,6 +23,7 @@ import type { PickupSystem } from './PickupSystem';
 const orbQueryBuf: number[] = [];
 const dashQueryBuf: number[] = [];
 const holeQueryBuf: number[] = [];
+const abilityQueryBuf: number[] = [];
 /** Gegner stehen nur punktweise im Hash — Query um max. Gegnerradius (Tank 1.0) erweitern. */
 const MAX_ENEMY_RADIUS = 1.0;
 
@@ -54,6 +56,11 @@ export class CombatSystem {
         p.phoenixBlastPending = false;
         this.explode(p.x, p.z, UV.phoenixBlastRadius, UV.phoenixBlastDamage, 0, 0xffc83d, true, p.index);
       }
+      // Held-Spezialfaehigkeit (gegner-treffende Kinds) — gleicher Poll wie oben.
+      if (p.abilityPending) {
+        p.abilityPending = false;
+        this.resolveAbility(p);
+      }
       if (!p.targetable) continue;
       const input = inputs[i];
       if (input) this.updateFiring(p, input);
@@ -62,6 +69,127 @@ export class CombatSystem {
       this.updateOrbital(p, dt);
     }
     this.sweepDead();
+  }
+
+  // ---------------------------------------------------------- Held-Faehigkeit
+
+  /**
+   * Loest gegner-treffende Held-Faehigkeiten auf. Alle Kinds recyceln
+   * vorhandene Effekte (explode/Frost/Orbital/Schwarzes Loch) — kein RNG-
+   * Stream, damit der Daily-Seed byte-identisch bleibt.
+   */
+  private resolveAbility(p: Player): void {
+    const def = p.ability;
+    if (!def) return;
+    switch (def.kind) {
+      case 'blast':
+      case 'shockwave':
+        this.explode(p.x, p.z, def.radius ?? 4, def.damage ?? 40, 0, def.color ?? 0xffc83d, true, p.index);
+        break;
+      case 'bulwark':
+        this.abilityFrostRing(p, def);
+        break;
+      case 'shardNova':
+        this.abilityShardNova(p, def);
+        break;
+      case 'orbitalStrike':
+        this.abilityOrbitalStrike(p, def);
+        break;
+      case 'blackhole':
+        this.abilityBlackhole(p, def);
+        break;
+      default:
+        // blink wird lokal in Player.tryAbility aufgeloest (kein abilityPending)
+        break;
+    }
+  }
+
+  /** Bollwerk: Frost-Ring um den Spieler (Verlangsamung, kein Schaden). */
+  private abilityFrostRing(p: Player, def: AbilityDef): void {
+    const radius = def.radius ?? 5;
+    const slow = def.slow ?? 0.4;
+    const duration = def.duration ?? 2;
+    const found = this.world.spatialHash.queryCircle(p.x, p.z, radius + MAX_ENEMY_RADIUS, abilityQueryBuf);
+    for (let n = 0; n < found; n++) {
+      const idx = abilityQueryBuf[n] as number;
+      if (idx >= this.world.enemies.count) continue;
+      const e = this.world.enemies.get(idx);
+      if (e.hp <= 0) continue;
+      const dx = e.x - p.x;
+      const dz = e.z - p.z;
+      const rr = radius + e.radius;
+      if (dx * dx + dz * dz <= rr * rr) {
+        e.slowFactor = 1 - slow;
+        e.slowTimer = duration;
+      }
+    }
+    // Sichtbarer Ring (Partikel/Shake ueber die bestehende Explosions-Pipeline)
+    this.events.emit('explosion', { x: p.x, z: p.z, radius, color: def.color ?? 0x66ccff });
+  }
+
+  /** Prismasplitter: radiale Salve gleichmaessig verteilter Projektile. */
+  private abilityShardNova(p: Player, def: AbilityDef): void {
+    const count = def.count ?? 10;
+    const damage = def.damage ?? 12;
+    const speed = p.stats.projectileSpeed;
+    const range = p.stats.range;
+    for (let i = 0; i < count; i++) {
+      const proj = this.world.playerProjectiles.spawn();
+      if (!proj) break;
+      const a = (i / count) * Math.PI * 2;
+      initProjectile(proj, p.x, p.z, Math.cos(a), Math.sin(a), speed, damage, range);
+      proj.radius = p.stats.projectileRadius;
+      proj.pierceLeft = def.pierce ?? 2;
+      proj.ownerIdx = p.index;
+    }
+    this.events.emit('shotFired', { x: p.x, z: p.z, dirX: p.faceX, dirZ: p.faceZ, playerIndex: p.index });
+  }
+
+  /** Orbital-Schlag: mehrere schwere Einschlaege auf die zaehesten Ziele/Boss. */
+  private abilityOrbitalStrike(p: Player, def: AbilityDef): void {
+    const count = def.count ?? 3;
+    const damage = def.damage ?? 150;
+    for (let i = 0; i < count; i++) this.strikeStrongest(p, damage);
+  }
+
+  /** Ein Einschlag auf den Boss bzw. den zaehesten Gegner (hp sinkt sofort -> verteilt sich). */
+  private strikeStrongest(p: Player, damage: number): void {
+    const boss = this.world.boss;
+    if (boss && boss.alive && !boss.hidden) {
+      const dmg = Math.round(damage * p.damageBoost);
+      boss.takeDamage(dmg, this.events);
+      this.events.emit('enemyHit', { x: boss.x, z: boss.z, damage: dmg, crit: false, enemyType: -1 });
+      this.events.emit('orbitalStrike', { x: boss.x, z: boss.z });
+      return;
+    }
+    let best: Enemy | null = null;
+    const pool = this.world.enemies;
+    for (let i = 0; i < pool.count; i++) {
+      const e = pool.get(i);
+      if (e.hp <= 0) continue;
+      if (!best || e.hp > best.hp) best = e;
+    }
+    if (!best) return;
+    this.hitEnemy(best, damage, false, best.x, best.z, 6, true, p.index);
+    this.events.emit('orbitalStrike', { x: best.x, z: best.z });
+  }
+
+  /** Singularitaet: wirft ein Schwarzes Loch voraus (nutzt updateBlackHole + Kollaps). */
+  private abilityBlackhole(p: Player, def: AbilityDef): void {
+    if (p.blackHoleTimer > 0) return; // schon eines aktiv -> kein Doppel-Wurf
+    let hx = p.x + p.faceX * UV.blackHoleThrowDist;
+    let hz = p.z + p.faceZ * UV.blackHoleThrowDist;
+    const hd = Math.hypot(hx, hz);
+    const hMax = p.arenaRadius - 1.5;
+    if (hd > hMax) {
+      hx = (hx / hd) * hMax;
+      hz = (hz / hd) * hMax;
+    }
+    p.blackHoleX = hx;
+    p.blackHoleZ = hz;
+    p.blackHoleTimer = def.duration ?? UV.blackHoleDuration;
+    p.abilityBlackHolePull = def.pull ?? UV.blackHolePull;
+    this.events.emit('blackHole', { x: hx, z: hz, radius: UV.blackHoleRadius, duration: p.blackHoleTimer });
   }
 
   // ---------------------------------------------------------- Feuern
@@ -299,7 +427,9 @@ export class CombatSystem {
       // Nahe dem Zentrum gedaempft, Schrittweite hart durch Restdistanz
       // begrenzt -> stabiler Knaeuel am Fangring, kein Durchfliegen
       const frac = Math.min(Math.max(d / UV.blackHoleSlowRadius, UV.blackHoleMinPullFrac), 1);
-      const step = Math.min(p.stats.blackHolePull * frac * dt, d - UV.blackHoleCaptureRadius);
+      // Sog aus dem legendaeren Upgrade ODER der ORBIT-Faehigkeit (Singularitaet)
+      const pull = p.stats.blackHolePull || p.abilityBlackHolePull;
+      const step = Math.min(pull * frac * dt, d - UV.blackHoleCaptureRadius);
       e.x += (dx / d) * step;
       e.z += (dz / d) * step;
     }

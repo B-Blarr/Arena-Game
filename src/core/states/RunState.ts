@@ -296,7 +296,7 @@ export class RunState implements GameState {
       const p = world.players[i] as Player;
       const input = g.input.sample(i as 0 | 1, g.cameraRig.camera, p.x, p.z);
       this.inputs.push(input);
-      p.update(dt, input.moveX, input.moveZ, input.dashJustPressed);
+      p.update(dt, input.moveX, input.moveZ, input.dashJustPressed, input.abilityJustPressed);
       if (p.isDashing) g.particles.dashTrail(p.x, p.z);
       // Kosmetische Spur nur beim Laufen (nicht im Dash, der hat seine eigene Spur).
       else if (trail && this.trailTick === 0 && Math.abs(p.velX) + Math.abs(p.velZ) > 0.4) {

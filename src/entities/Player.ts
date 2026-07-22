@@ -1,6 +1,6 @@
 import { ARENA_RADIUS, DASH, PLAYER, type DifficultyMods } from '../config/balance';
 import { UPGRADE_VALUES as UV } from '../config/upgrades';
-import { getWeapon, type HeroDef, type WeaponDef } from '../config/heroes';
+import { getWeapon, type AbilityDef, type HeroDef, type WeaponDef } from '../config/heroes';
 import { clamp } from '../utils/math';
 import type { EventBus } from '../core/EventBus';
 
@@ -83,11 +83,26 @@ export class Player {
   dashTimer = 0;
   dashDirX = 0;
   dashDirZ = 1;
+  /** Ueberschreibt die Dash-Distanz fuer diesen Dash (0 = normale DASH.distance).
+   *  Der Phasenblitz (Held-Faehigkeit) nutzt denselben Integrator mit groesserer Distanz. */
+  dashDistanceOverride = 0;
   /** Restliche Abklingzeit je Ladung (Laenge = dashCharges). */
   dashCooldowns: number[] = [0];
   /** Inkrementiert pro Dash — Gegner werden pro Dash nur 1x getroffen. */
   dashId = 0;
   private dashReadyNotified = true;
+
+  // Held-Spezialfaehigkeit (aktiv, cooldown-gebunden — spiegelt den Dash)
+  ability: AbilityDef | null = null;
+  abilityCooldown = 0;
+  abilityCooldownMax = 0;
+  /** Poll-Flag — CombatSystem loest gegner-treffende Faehigkeiten aus. */
+  abilityPending = false;
+  private abilityReadyNotified = true;
+  /** Fuers Tutorial: wie oft die Faehigkeit genutzt wurde. */
+  abilityUses = 0;
+  /** Faehigkeits-Variante des Schwarzen-Loch-Sogs (0 = aus), analog stats.blackHolePull. */
+  abilityBlackHolePull = 0;
 
   fireCooldown = 0;
   orbAngle = 0;
@@ -145,6 +160,7 @@ export class Player {
     this.faceZ = 1;
     this.dashTimer = 0;
     this.dashId = 0;
+    this.dashDistanceOverride = 0;
     this.fireCooldown = 0;
     this.orbAngle = 0;
     this.orbitalTimer = 0;
@@ -160,6 +176,14 @@ export class Player {
     this.reviveAvailable = (perma.secondChance ?? 0) > 0;
     this.phoenixCharge = false; // NEU: Phoenixkern erst per Upgrade-Wahl laden
     this.phoenixBlastPending = false;
+    // Held-Spezialfaehigkeit: bereit starten (kein Cooldown beim Runstart)
+    this.ability = hero.ability ?? null;
+    this.abilityCooldownMax = hero.ability?.cooldown ?? 0;
+    this.abilityCooldown = 0;
+    this.abilityPending = false;
+    this.abilityReadyNotified = true;
+    this.abilityUses = 0;
+    this.abilityBlackHolePull = 0;
     this.recomputeStats();
     this.dashCooldowns = new Array<number>(this.stats.dashCharges).fill(0);
     this.dashReadyNotified = true;
@@ -315,6 +339,17 @@ export class Player {
     return best;
   }
 
+  /** Ladeanteil [0..1] der Spezialfaehigkeit (fuers HUD). Ohne Faehigkeit voll. */
+  get abilityChargeFrac(): number {
+    if (this.abilityCooldownMax <= 0) return 1;
+    return 1 - clamp(this.abilityCooldown / this.abilityCooldownMax, 0, 1);
+  }
+
+  /** HUD-Glyph der Faehigkeit (leer = Held hat keine). */
+  get abilityIcon(): string {
+    return this.ability?.icon ?? '';
+  }
+
   tryDash(dirX: number, dirZ: number): boolean {
     if (this.dashTimer > 0) return false;
     for (let i = 0; i < this.dashCooldowns.length; i++) {
@@ -339,7 +374,46 @@ export class Player {
     return false;
   }
 
-  update(dt: number, moveX: number, moveZ: number, dashPressed: boolean): void {
+  /**
+   * Held-Spezialfaehigkeit ausloesen. Self-Kinds (Phasenblitz) wirken sofort
+   * lokal; alle anderen setzen abilityPending — das CombatSystem loest sie
+   * denselben Frame auf (p.update laeuft VOR combat.update, wie Schwarzes
+   * Loch/Phoenix). i-Frames (Bollwerk/Schockstoss) wirken ebenfalls sofort.
+   * dirX/dirZ = aktuelle Laufrichtung (fuer den Blink-Zielvektor).
+   */
+  tryAbility(dirX: number, dirZ: number): boolean {
+    const def = this.ability;
+    if (!def || this.abilityCooldown > 0) return false;
+    this.abilityCooldown = this.abilityCooldownMax;
+    this.abilityReadyNotified = false;
+    this.abilityUses++;
+    if (def.kind === 'blink') {
+      this.startBlink(def, dirX, dirZ);
+    } else {
+      if (def.iFrames) this.iFrames = Math.max(this.iFrames, def.iFrames);
+      this.abilityPending = true;
+    }
+    this.events.emit('abilityUsed', { playerIndex: this.index, x: this.x, z: this.z });
+    return true;
+  }
+
+  /** Phasenblitz: Teleport-Dash ueber den Dash-Integrator (groessere Distanz). */
+  private startBlink(def: AbilityDef, dirX: number, dirZ: number): void {
+    this.dashTimer = DASH.duration;
+    this.dashId++;
+    const len = Math.hypot(dirX, dirZ);
+    if (len > 0.01) {
+      this.dashDirX = dirX / len;
+      this.dashDirZ = dirZ / len;
+    } else {
+      this.dashDirX = this.faceX;
+      this.dashDirZ = this.faceZ;
+    }
+    this.dashDistanceOverride = def.distance ?? DASH.distance;
+    this.iFrames = Math.max(this.iFrames, def.iFrames ?? DASH.iFrames);
+  }
+
+  update(dt: number, moveX: number, moveZ: number, dashPressed: boolean, abilityPressed: boolean): void {
     this.prevX = this.x;
     this.prevZ = this.z;
 
@@ -352,6 +426,7 @@ export class Player {
         const cd = this.dashCooldowns[i] as number;
         if (cd > 0) this.dashCooldowns[i] = cd - dt;
       }
+      if (this.abilityCooldown > 0) this.abilityCooldown -= dt;
       if (this.fireCooldown > 0) this.fireCooldown -= dt;
       return;
     }
@@ -365,18 +440,26 @@ export class Player {
       this.dashReadyNotified = true;
       this.events.emit('dashReady', { playerIndex: this.index });
     }
+    if (this.abilityCooldown > 0) this.abilityCooldown -= dt;
+    if (!this.abilityReadyNotified && this.abilityChargeFrac >= 1) {
+      this.abilityReadyNotified = true;
+      this.events.emit('abilityReady', { playerIndex: this.index });
+    }
     if (this.fireCooldown > 0) this.fireCooldown -= dt;
     if (this.rapidFireTimer > 0) this.rapidFireTimer -= dt;
     this.orbAngle += dt * UV.orbRotationsPerSec * Math.PI * 2;
 
     if (dashPressed) this.tryDash(moveX, moveZ);
+    if (abilityPressed) this.tryAbility(moveX, moveZ);
 
     const wasDashing = this.dashTimer > 0;
     if (this.dashTimer > 0) {
       this.dashTimer -= dt;
-      const dashSpeed = DASH.distance / DASH.duration;
+      const dist = this.dashDistanceOverride > 0 ? this.dashDistanceOverride : DASH.distance;
+      const dashSpeed = dist / DASH.duration;
       this.x += this.dashDirX * dashSpeed * dt;
       this.z += this.dashDirZ * dashSpeed * dt;
+      if (this.dashTimer <= 0) this.dashDistanceOverride = 0;
     } else {
       this.x += moveX * this.stats.speed * dt;
       this.z += moveZ * this.stats.speed * dt;

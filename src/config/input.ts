@@ -10,6 +10,8 @@ export const PAD_BTN = {
   b: 1,
   x: 2,
   y: 3,
+  /** Linker Trigger — Spezialfaehigkeit (natuerlicher Partner zu RT-Dash). */
+  lt: 6,
   rt: 7,
   start: 9,
   dpadUp: 12,
@@ -22,9 +24,17 @@ export const PAD_DEADZONE = 0.15;
 
 /** Tastatur-Belegungen (e.code, layout-unabhaengig). */
 export const KEYS = {
-  wasd: { left: 'KeyA', right: 'KeyD', up: 'KeyW', down: 'KeyS', dash: ['Space'] },
-  // ShiftRight/Enter liegen direkt neben den Pfeilen — gut fuer Spieler 2
-  arrows: { left: 'ArrowLeft', right: 'ArrowRight', up: 'ArrowUp', down: 'ArrowDown', dash: ['ShiftRight', 'Enter'] },
+  wasd: { left: 'KeyA', right: 'KeyD', up: 'KeyW', down: 'KeyS', dash: ['Space'], ability: ['KeyE', 'ShiftLeft'] },
+  // ShiftRight/Enter liegen direkt neben den Pfeilen — gut fuer Spieler 2;
+  // ControlRight/Numpad0 sitzen im selben Cluster und sind frei fuer die Faehigkeit.
+  arrows: {
+    left: 'ArrowLeft',
+    right: 'ArrowRight',
+    up: 'ArrowUp',
+    down: 'ArrowDown',
+    dash: ['ShiftRight', 'Enter'],
+    ability: ['ControlRight', 'Numpad0'],
+  },
   pause: ['KeyP', 'Escape'],
 } as const;
 
@@ -53,6 +63,8 @@ export interface RumblePreset {
 export const RUMBLE = {
   hit: { ms: 100, strong: 0.5, weak: 0.3 },
   dash: { ms: 40, strong: 0.15, weak: 0.45 },
+  /** Held-Spezialfaehigkeit ausgeloest — spuerbarer als der Dash. */
+  ability: { ms: 120, strong: 0.45, weak: 0.35 },
   bossStomp: { ms: 150, strong: 0.7, weak: 0.2 },
   bossDied: { ms: 300, strong: 0.6, weak: 0.6 },
   playerDied: { ms: 400, strong: 0.5, weak: 0.5 },

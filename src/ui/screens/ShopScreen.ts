@@ -102,6 +102,7 @@ export class ShopScreen {
         <span class="hero-avatar">${HERO_GLYPHS[hero.id] ?? '▲'}</span>
         <span class="hero-name">${info.name}</span>
         <span class="hero-trait">${info.trait}</span>
+        ${hero.ability ? `<span class="hero-ability">${hero.ability.icon} ${STR.abilities[hero.id]?.name ?? ''}</span>` : ''}
         ${
           unlocked
             ? `<span class="hero-price" style="color:${selected ? 'var(--accent)' : 'var(--text-2)'}">${selected ? STR.selected : STR.select}</span>`

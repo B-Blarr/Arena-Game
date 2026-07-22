@@ -23,6 +23,7 @@ export class RumbleSystem {
       // Persoenliche Momente ruetteln nur den eigenen Pad, Boss-Events alle
       events.on('playerHit', (e) => this.play(RUMBLE.hit, e.playerIndex)),
       events.on('playerDashed', (e) => this.play(RUMBLE.dash, e.playerIndex)),
+      events.on('abilityUsed', (e) => this.play(RUMBLE.ability, e.playerIndex)),
       events.on('playerDowned', (e) => this.play(RUMBLE.playerDied, e.playerIndex)),
       events.on('bossStomp', () => this.play(RUMBLE.bossStomp)),
       events.on('bossDied', () => this.play(RUMBLE.bossDied)),

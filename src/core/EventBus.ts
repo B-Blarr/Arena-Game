@@ -40,6 +40,10 @@ export interface GameEvents {
   playerDied: { x: number; z: number };
   playerDashed: { x: number; z: number; playerIndex: number };
   dashReady: { playerIndex: number };
+  /** Held-Spezialfaehigkeit ausgeloest (treibt Sfx/Rumble/Partikel). */
+  abilityUsed: { playerIndex: number; x: number; z: number };
+  /** Held-Spezialfaehigkeit wieder aufgeladen (HUD-Ring blitzt). */
+  abilityReady: { playerIndex: number };
   playerRevived: { playerIndex: number };
   /** NEU: Phoenixkern (mythisch): einmalige Auto-Wiederbelebung mit Schockwelle. */
   phoenixRevived: { playerIndex: number; x: number; z: number };
