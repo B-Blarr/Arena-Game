@@ -16,7 +16,7 @@ import type { GameState } from '../StateMachine';
 import type { Game } from '../Game';
 
 type RunPhase = 'wave' | 'waveEnd' | 'upgrade' | 'pathChoice' | 'dying';
-type TutStage = 'move' | 'dash' | 'collect' | 'done';
+type TutStage = 'move' | 'dash' | 'ability' | 'collect' | 'done';
 
 /**
  * Der eigentliche Lauf. Interne Phasen: wave -> waveEnd -> upgrade -> wave...
@@ -569,6 +569,9 @@ export class RunState implements GameState {
     } else if (!done.includes('dash')) {
       this.tutStage = 'dash';
       this.game.ui.showPrompt(`<span class="keycap">Leertaste</span> ${STR.promptDash}`);
+    } else if (!done.includes('ability') && this.game.world.player.ability) {
+      this.tutStage = 'ability';
+      this.game.ui.showPrompt(`<span class="keycap">E</span> ${STR.promptAbility}`);
     } else if (!done.includes('collect')) {
       this.tutStage = 'collect';
     } else {
@@ -589,8 +592,18 @@ export class RunState implements GameState {
       case 'dash':
         if (g.world.player.dashId > 0) {
           this.completeTut('dash');
-          this.tutStage = 'collect';
-          g.ui.hidePrompt();
+          if (!g.save.data.tutorialDone.includes('ability') && g.world.player.ability) {
+            this.tutStage = 'ability';
+            g.ui.showPrompt(`<span class="keycap">E</span> ${STR.promptAbility}`);
+          } else {
+            this.afterAbility();
+          }
+        }
+        break;
+      case 'ability':
+        if (g.world.player.abilityUses > 0) {
+          this.completeTut('ability');
+          this.afterAbility();
         }
         break;
       case 'collect': {
@@ -613,6 +626,14 @@ export class RunState implements GameState {
       case 'done':
         break;
     }
+  }
+
+  /** Nach der Faehigkeits-Stufe: zum Sammeln weiter, oder fertig (Veteranen
+   *  mit bereits erledigtem 'collect' fallen nicht erneut ins Sammel-Tutorial). */
+  private afterAbility(): void {
+    const g = this.game;
+    this.tutStage = g.save.data.tutorialDone.includes('collect') ? 'done' : 'collect';
+    g.ui.hidePrompt();
   }
 
   private completeTut(id: string): void {

@@ -124,6 +124,7 @@ export class MenuScreen {
         <div class="menu-hint">
           <span><span class="keycap">W</span><span class="keycap">A</span><span class="keycap">S</span><span class="keycap">D</span> / Pfeile: Laufen</span>
           <span><span class="keycap">Leertaste</span> Dash</span>
+          <span><span class="keycap">E</span> Spezial</span>
           <span><span class="keycap">P</span>/<span class="keycap">Esc</span> Pause</span>
         </div>
         <div class="menu-hint menu-hint-pad">

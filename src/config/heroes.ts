@@ -59,9 +59,10 @@ export interface HeroDef {
   ability?: AbilityDef;
 }
 
-/** VOLT — Novaschlag: entlaedt am Spieler eine Schockwelle (reines explode()). */
+/** VOLT — Novaschlag: entlaedt am Spieler eine Schockwelle (reines explode()).
+ *  Radius grosszuegig, damit die Schadensreichweite zum sichtbaren Blast passt. */
 export const ABILITY_VOLT: AbilityDef = {
-  id: 'volt', icon: '💥', kind: 'blast', cooldown: 8, radius: 4, damage: 40, color: 0x00e5ff,
+  id: 'volt', icon: '💥', kind: 'blast', cooldown: 8, radius: 6.2, damage: 40, color: 0x00e5ff,
 };
 /** BLITZ — Phasenblitz: kurzer Teleport-Dash mit i-Frames (nutzt den Dash-Integrator). */
 export const ABILITY_BLITZ: AbilityDef = {

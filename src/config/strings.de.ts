@@ -107,7 +107,7 @@ export const STR = {
 
   // Gamepad
   padDisconnected: 'Gamepad getrennt — Pause!',
-  padHint: '🎮 Stick: Laufen · A: Dash · Start: Pause',
+  padHint: '🎮 Stick: Laufen · A: Dash · LT: Spezial · Start: Pause',
   padNavHint: '🎮 Steuerkreuz: Auswählen · A: Bestätigen · B: Zurück',
   padSoundHint: '🔇 Einmal klicken oder Taste drücken, dann gibt es Sound — das Gamepad ist schon bereit!',
 
